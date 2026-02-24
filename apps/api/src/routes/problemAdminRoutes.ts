@@ -2,6 +2,7 @@ import { ProblemAdminCrudService, ProblemPublicationService } from '@packages/ap
 import { RbacAuthorizationService } from '@packages/application/src/auth';
 import { Role } from '@packages/domain/src/identity';
 import { PROBLEM_ADMIN_ROUTE_PERMISSIONS } from './permissionMapping';
+import { validateCreateProblemRequest, validateUpdateProblemRequest } from './problemValidationContracts';
 
 type AdminActor = {
   actorUserId: string;
@@ -13,13 +14,21 @@ type CreateProblemRequest = AdminActor & {
   versionId: string;
   title: string;
   statement: string;
+  metadata: {
+    difficulty: string;
+    language: string;
+  };
 };
 
 type UpdateProblemRequest = AdminActor & {
   problemId: string;
   versionId: string;
-  title?: string;
-  statement?: string;
+  title: string;
+  statement: string;
+  metadata: {
+    difficulty: string;
+    language: string;
+  };
 };
 
 type DeleteProblemRequest = AdminActor & {
@@ -33,6 +42,11 @@ export function createProblemAdminRoutes(
 ) {
   return {
     async createProblem(request: CreateProblemRequest): Promise<{ problemId: string }> {
+      validateCreateProblemRequest({
+        title: request.title,
+        statement: request.statement,
+        metadata: request.metadata
+      });
       await rbac.assertAdminAccess({
         actorUserId: request.actorUserId,
         actorRoles: request.actorRoles,
@@ -47,6 +61,11 @@ export function createProblemAdminRoutes(
       return { problemId: problem.id };
     },
     async updateProblem(request: UpdateProblemRequest): Promise<{ problemId: string }> {
+      validateUpdateProblemRequest({
+        title: request.title,
+        statement: request.statement,
+        metadata: request.metadata
+      });
       await rbac.assertAdminAccess({
         actorUserId: request.actorUserId,
         actorRoles: request.actorRoles,
