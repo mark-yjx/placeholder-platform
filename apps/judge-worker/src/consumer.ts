@@ -1,9 +1,15 @@
 import { Judge } from '@packages/contracts/src';
+import { createWorkerLogger } from './observability/WorkerLogger';
 import { RunnerRegistry } from './runner';
 import { ExecutionPlanner } from './sandbox/ExecutionPlanner';
 
 export function consumeJudgeJob(job: Judge.JudgeJob): Judge.JudgeJob {
   Judge.validateJudgeJob(job);
+  createWorkerLogger(job.submissionId).info('worker.job.received', {
+    submissionId: job.submissionId,
+    ownerUserId: job.ownerUserId,
+    problemId: job.problemId
+  });
   return job;
 }
 

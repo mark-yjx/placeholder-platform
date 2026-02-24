@@ -1,4 +1,5 @@
 export * from './authRoutes';
+export * from './healthRoutes';
 export * from './judgeCallbackRoutes';
 export * from './permissionMapping';
 export * from './problemAdminRoutes';

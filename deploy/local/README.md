@@ -17,6 +17,14 @@ This maps:
 - Postgres: `localhost:5432`
 - API health: `http://localhost:3000/health`
 
+## Observability + readiness contracts
+- API request-id context uses `x-request-id` (or generated UUID) and structured logs include `requestId`.
+- API health routes expose:
+  - `liveness` -> `{ status: "ok", requestId }`
+  - `readiness` -> `{ status, requestId, dependencies[] }`
+- Worker logs include `jobId` on every structured entry.
+- Worker readiness exposes dependency status entries as `up/down`.
+
 ## Verify health
 ```bash
 npm run local:ps
