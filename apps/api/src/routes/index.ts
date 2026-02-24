@@ -4,5 +4,6 @@ export * from './permissionMapping';
 export * from './problemAdminRoutes';
 export * from './problemStudentRoutes';
 export * from './resultRoutes';
+export * from './statsRoutes';
 export * from './submissionAdminRoutes';
 export * from './submissionStudentRoutes';
