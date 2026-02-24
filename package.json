@@ -25,7 +25,8 @@
     "local:db:setup": "npm run local:db:migrate && npm run local:db:seed",
     "smoke:local": "node tools/scripts/local-smoke.mjs",
     "api:start": "npm -w @apps/api run start",
-    "worker:start": "npm -w @apps/judge-worker run start"
+    "worker:start": "npm -w @apps/judge-worker run start",
+    "extension:package": "mkdir -p dist && npm -w oj-vscode-extension run build && npm -w oj-vscode-extension run package:vsix"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

@@ -1,5 +1,5 @@
 {
-  "name": "@apps/vscode-extension",
+  "name": "oj-vscode-extension",
   "displayName": "OJ VSCode",
   "description": "COMP9021 practice extension scaffold",
   "private": true,
@@ -59,6 +59,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "node -e \"console.log('lint @apps/vscode-extension')\"",
     "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/__tests__/*.test.js",
-    "build": "rm -rf dist && tsc -p tsconfig.build.json"
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "package:vsix": "npx --yes @vscode/vsce package --out ../../dist/oj-vscode.vsix"
   }
 }
