@@ -3,6 +3,7 @@ import { ProblemRepository } from '@packages/domain/src/ports';
 import { SubmissionPolicyService } from '@packages/domain/src/services';
 import { Role } from '@packages/domain/src/identity';
 import { SubmissionStatus } from '@packages/domain/src/submission';
+import { Judge } from '@packages/contracts/src';
 
 export type SubmissionRecord = {
   id: string;
@@ -19,6 +20,10 @@ export interface SubmissionCreationRepository {
   save(record: SubmissionRecord): Promise<void>;
 }
 
+export interface JudgeJobQueue {
+  enqueue(job: Judge.JudgeJob): Promise<void>;
+}
+
 type CreateSubmissionCommand = {
   submissionId: string;
   actorUserId: string;
@@ -32,6 +37,7 @@ export class CreateSubmissionUseCase {
   constructor(
     private readonly problems: ProblemRepository,
     private readonly submissions: SubmissionCreationRepository,
+    private readonly judgeQueue: JudgeJobQueue,
     private readonly submissionPolicy: SubmissionPolicyService
   ) {}
 
@@ -70,6 +76,16 @@ export class CreateSubmissionUseCase {
       status: submission.status
     };
     await this.submissions.save(record);
+    const judgeJob: Judge.JudgeJob = {
+      submissionId: record.id,
+      ownerUserId: record.ownerUserId,
+      problemId: record.problemId,
+      problemVersionId: record.problemVersionId,
+      language: record.language,
+      sourceCode: record.sourceCode
+    };
+    Judge.validateJudgeJob(judgeJob);
+    await this.judgeQueue.enqueue(judgeJob);
     return record;
   }
 

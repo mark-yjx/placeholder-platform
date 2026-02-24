@@ -1,1 +1,1 @@
-export {};
+export * as Judge from './judge';

@@ -2,6 +2,9 @@
   "name": "@apps/judge-worker",
   "private": true,
   "version": "0.0.0",
+  "dependencies": {
+    "@packages/contracts": "*"
+  },
   "scripts": {
     "validate:env": "node ../../tools/scripts/validate-env.mjs worker",
     "start": "npm run validate:env && node -e \"console.log('start @apps/judge-worker')\"",
