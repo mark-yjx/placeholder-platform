@@ -217,3 +217,45 @@ Acceptance checks: PR/push triggers typecheck + test + build (and smoke if enabl
 Goal: Add VS Code extension packaging command.  
 Files/areas touched: extension packaging scripts/config (`vsce` integration).  
 Acceptance checks: `npm run extension:package` outputs `.vsix` and installs locally.
+
+45. **Infrastructure: Postgres schema for problems + engagement**  
+Goal: Add Postgres persistence schema for problems and engagement entities used in student practice loop.  
+Files/areas touched: SQL migrations/seeds, local DB setup pipeline scripts/docs.  
+Acceptance checks: migration includes `problems`, `problem_versions` (immutable), `favorites`, `reviews`; constraints enforce favorites uniqueness per `(user_id, problem_id)`; review rule is explicitly encoded (single review per user/problem or clearly-defined multi-review policy); migration applies cleanly on empty DB; `npm run local:db:setup` succeeds without manual steps; minimal MVP indexes exist for `problem_id` and `user_id` query paths.  
+Scope (IN): add/adjust migrations and seeds for the above tables; required constraints and indexes.  
+Scope (OUT): no ranking/stats changes; no judge/worker changes; no API route behavior changes except wiring if strictly required.
+
+46. **Infrastructure: Postgres ProblemRepository adapter (read + admin write)**  
+Goal: Replace in-memory problem storage with Postgres-backed adapter behind existing repository port.  
+Files/areas touched: infrastructure Postgres problem adapter, dependency wiring/composition, adapter tests.  
+Acceptance checks: tests prove admin create/update creates new immutable problem version; published versions remain immutable; student fetch returns published versions only; restarting API/container does not lose problems.  
+Scope (IN): implement adapter for existing ProblemRepository port and wire via composition root/config.  
+Scope (OUT): no extension/UI changes; no new domain model; no judge changes.
+
+47. **Infrastructure: Postgres FavoritesRepository adapter**  
+Goal: Persist favorites in Postgres behind existing repository port.  
+Files/areas touched: infrastructure Postgres favorites adapter, wiring, adapter tests.  
+Acceptance checks: tests prove favorite persists across restart; duplicate favorite is idempotent (single row); unfavorite removes row; favorite list is user-isolated and correct.  
+Scope (IN): implement adapter for existing FavoritesRepository port and minimal wiring in local runtime.  
+Scope (OUT): no new endpoints/features; no judge/worker changes.
+
+48. **Infrastructure: Postgres ReviewsRepository adapter**  
+Goal: Persist reviews in Postgres behind existing repository port with explicit review policy.  
+Files/areas touched: infrastructure Postgres reviews adapter, wiring, adapter tests.  
+Acceptance checks: tests prove review persists across restart; sentiment + text stored/retrievable; ownership/policy constraints enforced (or rejected when unsupported); if one-review-per-user-per-problem policy is chosen, updates replace previous review with tests; if multi-review policy chosen, ordering/retrieval rules are defined and tested.  
+Scope (IN): implement adapter for existing ReviewsRepository port and minimal wiring so review commands use Postgres in local.  
+Scope (OUT): no ranking/recommendation changes; no judge/worker changes.
+
+49. **API wiring: switch local runtime from in-memory to Postgres for Problems/Favorites/Reviews**  
+Goal: Use Postgres adapters in local runtime without changing business logic.  
+Files/areas touched: local config/composition root wiring, adapter selection.  
+Acceptance checks: with `npm run local:up`, admin can create problem, student can fetch problems, favorite and review; after container restart, fetching returns same persisted data; no business logic changes beyond adapter selection.  
+Scope (IN): configuration and composition wiring only for adapter selection in local runtime.  
+Scope (OUT): no schema changes beyond task 45 needs; no judge/worker changes.
+
+50. **Runtime E2E smoke: real Postgres loop for Problems/Favorites/Reviews (no judge)**  
+Goal: Add real live-API smoke flow validating persistence across restart for student practice loop.  
+Files/areas touched: smoke script(s), local run docs, API test fixtures/tokens as needed.  
+Acceptance checks: smoke performs login (or explicit test token fixture), admin create problem, student fetch problems, favorite + review, restart stack (or API container), fetch again and assert persisted state; smoke fails if persistence breaks.  
+Scope (IN): implement/adjust smoke script to call live API endpoints (not in-process stubs).  
+Scope (OUT): no judge submission E2E in this phase.
