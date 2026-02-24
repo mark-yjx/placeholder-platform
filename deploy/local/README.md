@@ -24,6 +24,22 @@ npm run local:ps
 
 All services should show `healthy`.
 
+## Database migration + seed (fresh setup, no manual SQL)
+```bash
+npm run local:db:setup
+```
+
+This runs:
+1. `npm run local:db:migrate` (schema creation)
+2. `npm run local:db:seed` (MVP seed data)
+
+For a zero-state run:
+```bash
+npm run local:down
+npm run local:up
+npm run local:db:setup
+```
+
 ## Stop
 ```bash
 npm run local:down

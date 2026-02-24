@@ -19,7 +19,10 @@
     "quality": "npm run lint && npm run test && npm run build",
     "local:up": "docker compose -f deploy/local/docker-compose.yml up -d --wait",
     "local:down": "docker compose -f deploy/local/docker-compose.yml down -v",
-    "local:ps": "docker compose -f deploy/local/docker-compose.yml ps"
+    "local:ps": "docker compose -f deploy/local/docker-compose.yml ps",
+    "local:db:migrate": "node tools/scripts/local-db-migrate.mjs",
+    "local:db:seed": "node tools/scripts/local-db-seed.mjs",
+    "local:db:setup": "npm run local:db:migrate && npm run local:db:seed"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
