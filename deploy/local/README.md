@@ -48,6 +48,22 @@ npm run local:up
 npm run local:db:setup
 ```
 
+## Local smoke (deterministic PASS/FAIL)
+```bash
+npm run smoke:local
+```
+
+The smoke command performs:
+1. stack boot
+2. seed user+problem
+3. login simulation
+4. python submission simulation
+5. terminal result wait
+
+Expected terminal end line:
+- success: `SMOKE PASS`
+- failure: `SMOKE FAIL: <reason>`
+
 ## Stop
 ```bash
 npm run local:down
