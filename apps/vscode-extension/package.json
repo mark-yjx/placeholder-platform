@@ -18,7 +18,7 @@
     "onCommand:oj.stats.show",
     "onCommand:oj.ranking.show"
   ],
-  "main": "./main.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -59,6 +59,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "node -e \"console.log('lint @apps/vscode-extension')\"",
     "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/__tests__/*.test.js",
-    "build": "node -e \"console.log('build @apps/vscode-extension')\""
+    "build": "rm -rf dist && tsc -p tsconfig.build.json"
   }
 }

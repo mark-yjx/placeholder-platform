@@ -1,3 +1,4 @@
 node_modules/
 *.tsbuildinfo
 .tmp-test/
+apps/vscode-extension/dist/
