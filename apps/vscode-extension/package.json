@@ -1,7 +1,60 @@
 {
   "name": "@apps/vscode-extension",
+  "displayName": "OJ VSCode",
+  "description": "COMP9021 practice extension scaffold",
   "private": true,
+  "publisher": "local",
   "version": "0.0.0",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "activationEvents": [
+    "onCommand:oj.login",
+    "onCommand:oj.practice.fetchProblems",
+    "onCommand:oj.practice.submitCode",
+    "onCommand:oj.practice.viewResult",
+    "onCommand:oj.engagement.favoriteProblem",
+    "onCommand:oj.engagement.submitReview",
+    "onCommand:oj.stats.show",
+    "onCommand:oj.ranking.show"
+  ],
+  "main": "./main.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "oj.login",
+        "title": "OJ: Login"
+      },
+      {
+        "command": "oj.practice.fetchProblems",
+        "title": "OJ: Fetch Problems"
+      },
+      {
+        "command": "oj.practice.submitCode",
+        "title": "OJ: Submit Code"
+      },
+      {
+        "command": "oj.practice.viewResult",
+        "title": "OJ: View Result"
+      },
+      {
+        "command": "oj.engagement.favoriteProblem",
+        "title": "OJ: Favorite Problem"
+      },
+      {
+        "command": "oj.engagement.submitReview",
+        "title": "OJ: Submit Review"
+      },
+      {
+        "command": "oj.stats.show",
+        "title": "OJ: Show Public Stats"
+      },
+      {
+        "command": "oj.ranking.show",
+        "title": "OJ: Show Public Ranking"
+      }
+    ]
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "node -e \"console.log('lint @apps/vscode-extension')\"",
