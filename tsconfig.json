@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./apps/api" },
+    { "path": "./apps/judge-worker" },
+    { "path": "./apps/vscode-extension" },
+    { "path": "./packages/application" },
+    { "path": "./packages/config" },
+    { "path": "./packages/contracts" },
+    { "path": "./packages/domain" },
+    { "path": "./packages/infrastructure" }
+  ]
+}
