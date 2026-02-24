@@ -16,7 +16,10 @@
     "lint": "npm run check:boundaries && npm run check:openapi && npm run -ws lint",
     "test": "npm run -ws test",
     "build": "npm run -ws build",
-    "quality": "npm run lint && npm run test && npm run build"
+    "quality": "npm run lint && npm run test && npm run build",
+    "local:up": "docker compose -f deploy/local/docker-compose.yml up -d --wait",
+    "local:down": "docker compose -f deploy/local/docker-compose.yml down -v",
+    "local:ps": "docker compose -f deploy/local/docker-compose.yml ps"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

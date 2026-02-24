@@ -1,0 +1,67 @@
+name: oj-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: oj-local-postgres
+    environment:
+      POSTGRES_USER: oj
+      POSTGRES_PASSWORD: oj
+      POSTGRES_DB: oj
+    ports:
+      - "5432:5432"
+    volumes:
+      - oj_local_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oj -d oj"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    image: node:22-alpine
+    container_name: oj-local-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: "3000"
+      DATABASE_URL: "postgresql://oj:oj@postgres:5432/oj"
+      JWT_SECRET: "local-dev-secret"
+      JWT_EXPIRES_IN: "1h"
+    command:
+      - sh
+      - -lc
+      - |
+        node -e "const http=require('http');http.createServer((req,res)=>{if(req.url==='/health'){res.statusCode=200;res.end('ok');return;}res.statusCode=404;res.end('not found');}).listen(3000,'0.0.0.0')"
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/health >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  worker:
+    image: node:22-alpine
+    container_name: oj-local-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://oj:oj@postgres:5432/oj"
+      DOCKER_HOST: "unix:///var/run/docker.sock"
+      DOCKER_IMAGE_PYTHON: "python:3.12-alpine"
+    command:
+      - sh
+      - -lc
+      - |
+        touch /tmp/healthy && node -e "setInterval(() => {}, 1000)"
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/healthy"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  oj_local_postgres_data:
