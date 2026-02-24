@@ -10,7 +10,7 @@
     "start": "npm run validate:env && node -e \"console.log('start @apps/judge-worker')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "node -e \"console.log('lint @apps/judge-worker')\"",
-    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/sandbox/__tests__/dockerSandboxAdapter.test.js",
+    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/sandbox/__tests__/*.test.js",
     "build": "node -e \"console.log('build @apps/judge-worker')\""
   }
 }

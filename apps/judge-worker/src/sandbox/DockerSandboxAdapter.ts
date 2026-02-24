@@ -1,4 +1,5 @@
 import { CONTAINER_SECURITY_FLAGS } from './containerPolicy';
+import { ResourceLimits } from './judgePolicy';
 
 type RunCommand = {
   command: string;
@@ -9,6 +10,7 @@ type RunCommand = {
 export type DockerSandboxInput = {
   image: string;
   sourceCode: string;
+  limits: ResourceLimits;
   runArgs?: readonly string[];
 };
 
@@ -23,6 +25,10 @@ export class DockerSandboxAdapter {
       args: [
         'run',
         '--rm',
+        '--cpus',
+        String(input.limits.cpuCores),
+        '--memory',
+        `${input.limits.memoryMb}m`,
         ...CONTAINER_SECURITY_FLAGS,
         input.image,
         ...(input.runArgs ?? ['python', '/sandbox/main.py'])
