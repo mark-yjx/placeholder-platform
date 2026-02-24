@@ -17,6 +17,7 @@ export function createSubmissionStudentRoutes(createSubmission: CreateSubmission
       status: string;
       ownerUserId: string;
       problemVersionId: string;
+      enqueueAccepted: true;
     }> {
       const record = await createSubmission.execute({
         submissionId: request.submissionId,
@@ -31,7 +32,8 @@ export function createSubmissionStudentRoutes(createSubmission: CreateSubmission
         submissionId: record.id,
         status: record.status,
         ownerUserId: record.ownerUserId,
-        problemVersionId: record.problemVersionId
+        problemVersionId: record.problemVersionId,
+        enqueueAccepted: true
       };
     }
   };

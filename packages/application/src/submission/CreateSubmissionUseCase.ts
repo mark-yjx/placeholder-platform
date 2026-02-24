@@ -36,6 +36,11 @@ export class CreateSubmissionUseCase {
   ) {}
 
   async execute(command: CreateSubmissionCommand): Promise<SubmissionRecord> {
+    const commandValidationError = this.validateCommand(command);
+    if (commandValidationError) {
+      throw new Error(commandValidationError);
+    }
+
     const problem = await this.problems.findById(command.problemId);
     if (!problem) {
       throw new Error('Problem not found');
@@ -66,5 +71,18 @@ export class CreateSubmissionUseCase {
     };
     await this.submissions.save(record);
     return record;
+  }
+
+  private validateCommand(command: CreateSubmissionCommand): string | null {
+    if (command.actorUserId.trim().length === 0) {
+      return 'Authentication required';
+    }
+    if (command.problemId.trim().length === 0) {
+      return 'Problem id is required';
+    }
+    if (command.sourceCode.trim().length === 0) {
+      return 'Source code is required';
+    }
+    return null;
   }
 }

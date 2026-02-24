@@ -29,6 +29,14 @@ test('SubmissionPolicyService enforces role, publication and language checks', (
     service.evaluate({ actorRoles: [Role.ADMIN], isProblemPublished: true, language: 'python' }),
     { allowed: false, reason: 'Only students may submit solutions' }
   );
+  assert.deepEqual(
+    service.evaluate({ actorRoles: [Role.STUDENT], isProblemPublished: false, language: 'python' }),
+    { allowed: false, reason: 'Problem must be published' }
+  );
+  assert.deepEqual(
+    service.evaluate({ actorRoles: [Role.STUDENT], isProblemPublished: true, language: 'javascript' }),
+    { allowed: false, reason: 'Unsupported language' }
+  );
   assert.equal(service.isPublishedState(PublicationState.PUBLISHED), true);
 });
 
