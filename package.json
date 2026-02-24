@@ -23,7 +23,8 @@
     "local:db:migrate": "node tools/scripts/local-db-migrate.mjs",
     "local:db:seed": "node tools/scripts/local-db-seed.mjs",
     "local:db:setup": "npm run local:db:migrate && npm run local:db:seed",
-    "api:start": "npm -w @apps/api run start"
+    "api:start": "npm -w @apps/api run start",
+    "worker:start": "npm -w @apps/judge-worker run start"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
