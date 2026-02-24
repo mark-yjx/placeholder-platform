@@ -1,8 +1,10 @@
 import {
   AuthProvisioningService,
-  PasswordCredentialAuthService
+  PasswordCredentialAuthService,
+  RbacAuthorizationService
 } from '@packages/application/src/auth';
 import { Role } from '@packages/domain/src/identity';
+import { AUTH_ROUTE_PERMISSIONS } from './permissionMapping';
 
 type IssueInviteRequest = {
   actorRoles: readonly Role[];
@@ -23,13 +25,16 @@ type PasswordLoginRequest = {
 
 export function createAuthRoutes(
   inviteService: AuthProvisioningService,
-  passwordAuthService: PasswordCredentialAuthService
+  passwordAuthService: PasswordCredentialAuthService,
+  rbacAuthorizationService: RbacAuthorizationService
 ) {
   return {
     async issueInvite(request: IssueInviteRequest): Promise<void> {
-      if (!request.actorRoles.includes(Role.ADMIN)) {
-        throw new Error('Forbidden');
-      }
+      await rbacAuthorizationService.assertAdminAccess({
+        actorUserId: request.actorUserId,
+        actorRoles: request.actorRoles,
+        action: AUTH_ROUTE_PERMISSIONS.issueInvite
+      });
       await inviteService.issueInvite({
         token: request.inviteToken,
         email: request.email,
