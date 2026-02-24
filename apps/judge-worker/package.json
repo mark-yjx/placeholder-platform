@@ -1,5 +1,10 @@
 {
   "name": "@apps/judge-worker",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "scripts": {
+    "lint": "node -e \"console.log('lint @apps/judge-worker')\"",
+    "test": "node -e \"console.log('test @apps/judge-worker')\"",
+    "build": "node -e \"console.log('build @apps/judge-worker')\""
+  }
 }

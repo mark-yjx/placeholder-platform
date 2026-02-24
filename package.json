@@ -5,5 +5,11 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "lint": "npm run -ws lint",
+    "test": "npm run -ws test",
+    "build": "npm run -ws build",
+    "quality": "npm run lint && npm run test && npm run build"
+  }
 }

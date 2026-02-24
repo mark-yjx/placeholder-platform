@@ -1,5 +1,10 @@
 {
   "name": "@packages/infrastructure",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "scripts": {
+    "lint": "node -e \"console.log('lint @packages/infrastructure')\"",
+    "test": "node -e \"console.log('test @packages/infrastructure')\"",
+    "build": "node -e \"console.log('build @packages/infrastructure')\""
+  }
 }

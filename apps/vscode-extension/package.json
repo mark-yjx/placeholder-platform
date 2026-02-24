@@ -1,5 +1,10 @@
 {
   "name": "@apps/vscode-extension",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "scripts": {
+    "lint": "node -e \"console.log('lint @apps/vscode-extension')\"",
+    "test": "node -e \"console.log('test @apps/vscode-extension')\"",
+    "build": "node -e \"console.log('build @apps/vscode-extension')\""
+  }
 }

@@ -1,5 +1,10 @@
 {
   "name": "@packages/application",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "scripts": {
+    "lint": "node -e \"console.log('lint @packages/application')\"",
+    "test": "node -e \"console.log('test @packages/application')\"",
+    "build": "node -e \"console.log('build @packages/application')\""
+  }
 }
