@@ -55,10 +55,13 @@ npm run smoke:local
 
 The smoke command performs:
 1. stack boot
-2. seed user+problem
-3. login simulation
-4. python submission simulation
-5. terminal result wait
+2. seed DB
+3. start local API runtime on `localhost:3100`
+4. login using fixture token flow
+5. admin create problem
+6. student fetch + favorite + review
+7. restart api container + local api runtime
+8. fetch again and assert persistence
 
 Expected terminal end line:
 - success: `SMOKE PASS`
