@@ -1,23 +1,41 @@
 import { Problem, Submission } from '@packages/domain/src';
-import { ProblemRepository, SubmissionRepository } from '@packages/domain/src/ports';
+import { ProblemRepository } from '@packages/domain/src/ports';
 import { SubmissionPolicyService } from '@packages/domain/src/services';
 import { Role } from '@packages/domain/src/identity';
+import { SubmissionStatus } from '@packages/domain/src/submission';
+
+export type SubmissionRecord = {
+  id: string;
+  ownerUserId: string;
+  problemId: string;
+  problemVersionId: string;
+  language: string;
+  sourceCode: string;
+  status: SubmissionStatus;
+};
+
+export interface SubmissionCreationRepository {
+  findById(id: string): Promise<SubmissionRecord | null>;
+  save(record: SubmissionRecord): Promise<void>;
+}
 
 type CreateSubmissionCommand = {
   submissionId: string;
+  actorUserId: string;
   problemId: string;
   actorRoles: readonly Role[];
   language: string;
+  sourceCode: string;
 };
 
 export class CreateSubmissionUseCase {
   constructor(
     private readonly problems: ProblemRepository,
-    private readonly submissions: SubmissionRepository,
+    private readonly submissions: SubmissionCreationRepository,
     private readonly submissionPolicy: SubmissionPolicyService
   ) {}
 
-  async execute(command: CreateSubmissionCommand): Promise<Submission.Submission> {
+  async execute(command: CreateSubmissionCommand): Promise<SubmissionRecord> {
     const problem = await this.problems.findById(command.problemId);
     if (!problem) {
       throw new Error('Problem not found');
@@ -37,7 +55,16 @@ export class CreateSubmissionUseCase {
     }
 
     const submission = Submission.Submission.createQueued(command.submissionId);
-    await this.submissions.save(submission);
-    return submission;
+    const record: SubmissionRecord = {
+      id: submission.id,
+      ownerUserId: command.actorUserId,
+      problemId: problem.id,
+      problemVersionId: problem.latestVersion.id,
+      language: command.language,
+      sourceCode: command.sourceCode,
+      status: submission.status
+    };
+    await this.submissions.save(record);
+    return record;
   }
 }
