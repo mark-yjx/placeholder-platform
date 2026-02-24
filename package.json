@@ -8,11 +8,12 @@
   ],
   "scripts": {
     "check:boundaries": "node tools/scripts/check-boundaries.mjs",
+    "check:openapi": "node tools/scripts/validate-openapi.mjs",
     "check:env:api": "npm -w @apps/api run validate:env",
     "check:env:worker": "npm -w @apps/judge-worker run validate:env",
     "check:env": "npm run check:env:api && npm run check:env:worker",
     "typecheck": "npm run -ws --if-present typecheck",
-    "lint": "npm run check:boundaries && npm run -ws lint",
+    "lint": "npm run check:boundaries && npm run check:openapi && npm run -ws lint",
     "test": "npm run -ws test",
     "build": "npm run -ws build",
     "quality": "npm run lint && npm run test && npm run build"
