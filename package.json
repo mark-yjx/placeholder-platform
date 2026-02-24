@@ -7,7 +7,8 @@
     "packages/*"
   ],
   "scripts": {
-    "lint": "npm run -ws lint",
+    "check:boundaries": "node tools/scripts/check-boundaries.mjs",
+    "lint": "npm run check:boundaries && npm run -ws lint",
     "test": "npm run -ws test",
     "build": "npm run -ws build",
     "quality": "npm run lint && npm run test && npm run build"

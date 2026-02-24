@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "apps": {
+      "allowWorkspaceImports": [
+        "@packages/application",
+        "@packages/domain",
+        "@packages/contracts",
+        "@packages/infrastructure",
+        "@packages/config"
+      ]
+    },
+    "packages/domain": {
+      "allowWorkspaceImports": []
+    }
+  }
+}

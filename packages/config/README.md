@@ -1,5 +1,5 @@
 # @packages/config
 
-Placeholder package for shared lint, test, and build configuration artifacts.
+Shared workspace config artifacts.
 
-Task 0.2 scope: establish common quality script conventions only.
+- `dependency-boundaries.json`: dependency direction rules for workspace imports.
