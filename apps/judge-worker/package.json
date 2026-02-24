@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "scripts": {
     "validate:env": "node ../../tools/scripts/validate-env.mjs worker",
+    "start": "npm run validate:env && node -e \"console.log('start @apps/judge-worker')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "node -e \"console.log('lint @apps/judge-worker')\"",
     "test": "node -e \"console.log('test @apps/judge-worker')\"",
