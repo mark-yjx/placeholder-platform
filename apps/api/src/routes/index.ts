@@ -3,6 +3,7 @@ export * from './judgeCallbackRoutes';
 export * from './permissionMapping';
 export * from './problemAdminRoutes';
 export * from './problemStudentRoutes';
+export * from './rankingRoutes';
 export * from './resultRoutes';
 export * from './statsRoutes';
 export * from './submissionAdminRoutes';

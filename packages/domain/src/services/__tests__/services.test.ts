@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { Role } from '../../identity';
+import { Verdict } from '../../judge';
 import { PublicationState } from '../../problem';
 import { Submission } from '../../submission';
 import {
@@ -51,13 +52,84 @@ test('JudgePolicyService allows only queued start and running finalize', () => {
   assert.equal(service.canFinalize(running), true);
 });
 
-test('RankingPolicyService sorts by score then solved count then user id', () => {
+test('RankingPolicyService ranks by composite score using best submissions only', () => {
   const service = new RankingPolicyService();
   const ranked = service.rank([
-    { userId: 'u3', score: 100, solvedCount: 2 },
-    { userId: 'u1', score: 200, solvedCount: 1 },
-    { userId: 'u2', score: 100, solvedCount: 3 }
+    {
+      submissionId: 's-1',
+      userId: 'u1',
+      problemId: 'p1',
+      verdict: Verdict.WA,
+      timeMs: 20,
+      createdAtEpochMs: 1
+    },
+    {
+      submissionId: 's-2',
+      userId: 'u1',
+      problemId: 'p1',
+      verdict: Verdict.AC,
+      timeMs: 200,
+      createdAtEpochMs: 2
+    },
+    {
+      submissionId: 's-3',
+      userId: 'u1',
+      problemId: 'p2',
+      verdict: Verdict.AC,
+      timeMs: 320,
+      createdAtEpochMs: 3
+    },
+    {
+      submissionId: 's-4',
+      userId: 'u2',
+      problemId: 'p1',
+      verdict: Verdict.AC,
+      timeMs: 100,
+      createdAtEpochMs: 1
+    },
+    {
+      submissionId: 's-5',
+      userId: 'u2',
+      problemId: 'p2',
+      verdict: Verdict.AC,
+      timeMs: 150,
+      createdAtEpochMs: 2
+    },
+    {
+      submissionId: 's-6',
+      userId: 'u3',
+      problemId: 'p1',
+      verdict: Verdict.AC,
+      timeMs: 90,
+      createdAtEpochMs: 1
+    }
   ]);
 
-  assert.deepEqual(ranked.map((entry) => entry.userId), ['u1', 'u2', 'u3']);
+  assert.deepEqual(ranked.map((entry) => entry.userId), ['u2', 'u1', 'u3']);
+  assert.equal(ranked[0]?.bestSubmissionCount, 2);
+  assert.equal(ranked[1]?.bestSubmissionCount, 2);
+});
+
+test('RankingPolicyService uses tie-break policy for equal composite scores', () => {
+  const service = new RankingPolicyService();
+  const ranked = service.rank([
+    {
+      submissionId: 's-a',
+      userId: 'uA',
+      problemId: 'p1',
+      verdict: Verdict.AC,
+      timeMs: 100,
+      createdAtEpochMs: 1
+    },
+    {
+      submissionId: 's-b',
+      userId: 'uB',
+      problemId: 'p1',
+      verdict: Verdict.AC,
+      timeMs: 100,
+      createdAtEpochMs: 1
+    }
+  ]);
+
+  assert.deepEqual(ranked.map((entry) => entry.userId), ['uA', 'uB']);
 });
