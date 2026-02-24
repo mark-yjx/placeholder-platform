@@ -7,5 +7,6 @@ export const PROBLEM_ADMIN_ROUTE_PERMISSIONS = {
   updateProblem: 'problem:update',
   deleteProblem: 'problem:delete',
   publishProblem: 'problem:publish',
-  unpublishProblem: 'problem:unpublish'
+  unpublishProblem: 'problem:unpublish',
+  inspectVersionHistory: 'problem:version_history:read'
 } as const;

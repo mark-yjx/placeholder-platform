@@ -1,7 +1,10 @@
+import { ProblemVersionTimelineEntry } from '@packages/application/src/problem';
 import { Problem } from '@packages/domain/src/problem';
-import { ProblemCrudRepository } from '@packages/application/src/problem';
+import { ProblemCrudRepository, ProblemVersionHistoryRepository } from '@packages/application/src/problem';
 
-export class InMemoryProblemRepository implements ProblemCrudRepository {
+export class InMemoryProblemRepository
+  implements ProblemCrudRepository, ProblemVersionHistoryRepository
+{
   private readonly problems = new Map<string, Problem>();
 
   async findById(id: string): Promise<Problem | null> {
@@ -18,5 +21,18 @@ export class InMemoryProblemRepository implements ProblemCrudRepository {
 
   async listAll(): Promise<readonly Problem[]> {
     return Array.from(this.problems.values());
+  }
+
+  async findVersionTimeline(problemId: string): Promise<readonly ProblemVersionTimelineEntry[]> {
+    const problem = this.problems.get(problemId);
+    if (!problem) {
+      return [];
+    }
+    return problem.versions.map((version) => ({
+      versionId: version.id,
+      versionNumber: version.versionNumber,
+      title: version.title,
+      publicationState: version.publicationState
+    }));
   }
 }

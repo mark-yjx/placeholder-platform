@@ -1,4 +1,8 @@
-import { ProblemAdminCrudService, ProblemPublicationService } from '@packages/application/src/problem';
+import {
+  ProblemAdminCrudService,
+  ProblemPublicationService,
+  ProblemVersionHistoryQueryService
+} from '@packages/application/src/problem';
 import { RbacAuthorizationService } from '@packages/application/src/auth';
 import { Role } from '@packages/domain/src/identity';
 import { PROBLEM_ADMIN_ROUTE_PERMISSIONS } from './permissionMapping';
@@ -38,6 +42,7 @@ type DeleteProblemRequest = AdminActor & {
 export function createProblemAdminRoutes(
   service: ProblemAdminCrudService,
   publicationService: ProblemPublicationService,
+  versionHistoryService: ProblemVersionHistoryQueryService,
   rbac: RbacAuthorizationService
 ) {
   return {
@@ -104,6 +109,23 @@ export function createProblemAdminRoutes(
       });
       const problem = await publicationService.unpublish(request.problemId);
       return { problemId: problem.id };
+    },
+    async getProblemVersionHistory(
+      request: DeleteProblemRequest
+    ): Promise<
+      readonly {
+        versionId: string;
+        versionNumber: number;
+        title: string;
+        publicationState: string;
+      }[]
+    > {
+      await rbac.assertAdminAccess({
+        actorUserId: request.actorUserId,
+        actorRoles: request.actorRoles,
+        action: PROBLEM_ADMIN_ROUTE_PERMISSIONS.inspectVersionHistory
+      });
+      return versionHistoryService.getVersionHistory(request.problemId);
     }
   };
 }
