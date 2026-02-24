@@ -8,6 +8,9 @@
   ],
   "scripts": {
     "check:boundaries": "node tools/scripts/check-boundaries.mjs",
+    "check:env:api": "npm -w @apps/api run validate:env",
+    "check:env:worker": "npm -w @apps/judge-worker run validate:env",
+    "check:env": "npm run check:env:api && npm run check:env:worker",
     "lint": "npm run check:boundaries && npm run -ws lint",
     "test": "npm run -ws test",
     "build": "npm run -ws build",
