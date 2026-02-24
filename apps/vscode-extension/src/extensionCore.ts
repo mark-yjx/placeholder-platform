@@ -15,6 +15,7 @@ export type OutputChannelLike = {
 
 export type WindowLike = {
   showErrorMessage: (message: string) => void;
+  showInformationMessage: (message: string) => void;
 };
 
 export type ExtensionCommandDependencies = {
@@ -34,6 +35,7 @@ export function registerExtensionCommands(
     try {
       await run();
       dependencies.output.appendLine(`[${commandId}] success`);
+      dependencies.window.showInformationMessage(`[${commandId}] success`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       dependencies.output.appendLine(`[${commandId}] error: ${message}`);

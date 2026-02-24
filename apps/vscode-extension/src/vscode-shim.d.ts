@@ -7,7 +7,12 @@ declare module 'vscode' {
   };
 
   export const window: {
-    createOutputChannel(name: string): { appendLine(value: string): void; dispose(): void };
+    createOutputChannel(name: string): {
+      appendLine(value: string): void;
+      show(preserveFocus?: boolean): void;
+      dispose(): void;
+    };
     showErrorMessage(message: string): void;
+    showInformationMessage(message: string): void;
   };
 }

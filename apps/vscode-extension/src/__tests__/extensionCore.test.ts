@@ -25,7 +25,10 @@ test('registered command writes to output channel on success', async () => {
     practiceCommands,
     engagementCommands,
     output: { appendLine: (line) => outputLines.push(line) },
-    window: { showErrorMessage: () => undefined },
+    window: {
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined
+    },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
       return { dispose: () => undefined };
@@ -54,7 +57,10 @@ test('command error is reported cleanly', async () => {
     practiceCommands,
     engagementCommands,
     output: { appendLine: (line) => outputLines.push(line) },
-    window: { showErrorMessage: (message) => shownErrors.push(message) },
+    window: {
+      showErrorMessage: (message) => shownErrors.push(message),
+      showInformationMessage: () => undefined
+    },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
       return { dispose: () => undefined };
@@ -79,7 +85,10 @@ test('command error is reported cleanly', async () => {
     practiceCommands: failingPractice,
     engagementCommands: failingEngagement,
     output: { appendLine: (line) => outputLines.push(line) },
-    window: { showErrorMessage: (message) => shownErrors.push(message) },
+    window: {
+      showErrorMessage: (message) => shownErrors.push(message),
+      showInformationMessage: () => undefined
+    },
     registerCommand: (commandId, callback) => {
       failingHandlers.set(commandId, callback);
       return { dispose: () => undefined };

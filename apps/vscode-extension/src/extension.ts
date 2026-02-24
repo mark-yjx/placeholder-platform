@@ -12,6 +12,7 @@ import {
 
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel('OJ VSCode');
+  output.show(true);
   const tokenStore = new SessionTokenStore();
 
   const authCommands = new AuthCommands(new InMemoryAuthClient(), tokenStore);
