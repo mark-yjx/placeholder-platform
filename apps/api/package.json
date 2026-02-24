@@ -2,6 +2,11 @@
   "name": "@apps/api",
   "private": true,
   "version": "0.0.0",
+  "dependencies": {
+    "@packages/application": "*",
+    "@packages/domain": "*",
+    "@packages/infrastructure": "*"
+  },
   "scripts": {
     "validate:env": "node ../../tools/scripts/validate-env.mjs api",
     "start": "npm run validate:env && node -e \"console.log('start @apps/api')\"",
