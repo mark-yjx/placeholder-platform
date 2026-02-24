@@ -1,4 +1,5 @@
 import { Judge } from '@packages/contracts/src';
+import { RunnerRegistry } from './runner';
 import { ExecutionPlanner } from './sandbox/ExecutionPlanner';
 
 export function consumeJudgeJob(job: Judge.JudgeJob): Judge.JudgeJob {
@@ -16,4 +17,12 @@ export async function planJudgeExecution(
     problemId: plan.job.problemId,
     limits: plan.limits
   };
+}
+
+export function resolveRunnerForJob(
+  registry: RunnerRegistry,
+  job: Judge.JudgeJob
+): { language: string; runArgs: readonly string[] } {
+  Judge.validateJudgeJob(job);
+  return registry.resolve(job.language).resolve();
 }
