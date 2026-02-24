@@ -13,6 +13,7 @@ export const PROBLEM_ADMIN_ROUTE_PERMISSIONS = {
 
 export const SUBMISSION_ADMIN_ROUTE_PERMISSIONS = {
   viewSubmissions: 'submission:admin:view',
+  viewSubmissionResult: 'submission:admin:view_result',
   rejudgeSubmission: 'submission:admin:rejudge',
   deleteSubmission: 'submission:admin:delete',
   exportSubmissions: 'submission:admin:export'
