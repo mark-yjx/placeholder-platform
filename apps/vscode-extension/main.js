@@ -1,12 +1,18 @@
-function activate() {
-  return;
-}
+const fs = require('node:fs');
+const ts = require('typescript');
 
-function deactivate() {
-  return;
-}
+require.extensions['.ts'] = function registerTs(module, filename) {
+  const source = fs.readFileSync(filename, 'utf8');
+  const transpiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+      esModuleInterop: true
+    },
+    fileName: filename
+  });
 
-module.exports = {
-  activate,
-  deactivate
+  module._compile(transpiled.outputText, filename);
 };
+
+module.exports = require('./src/extension.ts');
