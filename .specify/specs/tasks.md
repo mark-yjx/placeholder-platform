@@ -167,3 +167,53 @@ Acceptance checks: fresh database can be migrated and seeded from zero with no m
 Goal: Enforce structured logs, request ID propagation, and health/readiness endpoints across API and worker.  
 Files/areas touched: logging middleware, worker logging context, health endpoints, ops docs.  
 Acceptance checks: logs include request/job IDs; readiness endpoints report dependency status correctly.
+
+35. **VSCode Extension: Minimal runnable manifest**  
+Goal: Add proper extension metadata for runtime loading in VS Code.  
+Files/areas touched: `apps/vscode-extension/package.json`.  
+Acceptance checks: extension can be loaded in Extension Development Host; commands appear in Command Palette.
+
+36. **VSCode Extension: Activation entrypoint**  
+Goal: Add activation/deactivation entrypoint and wire command registrations to existing command modules.  
+Files/areas touched: `apps/vscode-extension/src/extension.ts`, extension command wiring.  
+Acceptance checks: running any command writes to Output Channel and handles errors cleanly.
+
+37. **VSCode Extension: Build pipeline to dist/**  
+Goal: Add bundler to emit runnable extension artifact.  
+Files/areas touched: extension build config/scripts, `dist/` output mapping, extension `main` path.  
+Acceptance checks: `npm run build` produces runnable artifact; extension loads without TS runtime.
+
+38. **VSCode Extension: Debug profile**  
+Goal: Add VS Code debug profile and recommended settings for extension development.  
+Files/areas touched: `.vscode/launch.json`, `.vscode/extensions.json` (or equivalent recommendations).  
+Acceptance checks: `F5` launches Extension Host successfully.
+
+39. **API: Real HTTP runtime entrypoint**  
+Goal: Replace placeholder API start with actual HTTP server runtime and health endpoints.  
+Files/areas touched: API runtime entrypoint/start scripts, health route wiring.  
+Acceptance checks: `npm run api:start` serves `/healthz` and `/readyz`.
+
+40. **Worker: Real runtime entrypoint**  
+Goal: Replace placeholder worker start with actual long-running worker runtime loop.  
+Files/areas touched: worker runtime entrypoint/start scripts.  
+Acceptance checks: `npm run worker:start` starts and idles without crashing.
+
+41. **End-to-end smoke test (local)**  
+Goal: Add deterministic local smoke script covering boot, seed, login, submit, and terminal result.  
+Files/areas touched: local smoke script(s), runbook/docs, supporting test fixture wiring.  
+Acceptance checks: one command produces deterministic PASS/FAIL output.
+
+42. **Docker sandbox "hello world" contract**  
+Goal: Add minimal judge job contract execution for known Python snippet in sandbox.  
+Files/areas touched: worker sandbox/runner contract test path, fixture judge job input.  
+Acceptance checks: worker returns consistent verdict + time + memory.
+
+43. **CI pipeline**  
+Goal: Add automated CI checks for core quality gates.  
+Files/areas touched: GitHub Actions workflow(s).  
+Acceptance checks: PR/push triggers typecheck + test + build (and smoke if enabled) automatically.
+
+44. **VSIX packaging**  
+Goal: Add VS Code extension packaging command.  
+Files/areas touched: extension packaging scripts/config (`vsce` integration).  
+Acceptance checks: `npm run extension:package` outputs `.vsix` and installs locally.
