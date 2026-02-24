@@ -22,7 +22,8 @@
     "local:ps": "docker compose -f deploy/local/docker-compose.yml ps",
     "local:db:migrate": "node tools/scripts/local-db-migrate.mjs",
     "local:db:seed": "node tools/scripts/local-db-seed.mjs",
-    "local:db:setup": "npm run local:db:migrate && npm run local:db:seed"
+    "local:db:setup": "npm run local:db:migrate && npm run local:db:seed",
+    "api:start": "npm -w @apps/api run start"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
