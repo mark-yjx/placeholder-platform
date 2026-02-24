@@ -52,6 +52,16 @@ export class ProblemVersion {
     });
   }
 
+  unpublish(): ProblemVersion {
+    return new ProblemVersion({
+      id: this.id,
+      versionNumber: this.versionNumber,
+      title: this.title,
+      statement: this.statement,
+      publicationState: PublicationState.UNPUBLISHED
+    });
+  }
+
   fork(
     nextVersionId: string,
     changes: Partial<Pick<ProblemVersion, 'title' | 'statement'>>

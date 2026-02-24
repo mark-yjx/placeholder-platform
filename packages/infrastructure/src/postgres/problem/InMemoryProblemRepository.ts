@@ -15,4 +15,8 @@ export class InMemoryProblemRepository implements ProblemCrudRepository {
   async deleteById(id: string): Promise<void> {
     this.problems.delete(id);
   }
+
+  async listAll(): Promise<readonly Problem[]> {
+    return Array.from(this.problems.values());
+  }
 }

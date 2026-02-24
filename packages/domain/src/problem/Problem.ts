@@ -31,6 +31,13 @@ export class Problem {
     return published;
   }
 
+  unpublishLatestVersion(): ProblemVersion {
+    const latestIndex = this.versionsList.length - 1;
+    const unpublished = this.versionsList[latestIndex].unpublish();
+    this.versionsList[latestIndex] = unpublished;
+    return unpublished;
+  }
+
   createEditedVersion(
     nextVersionId: string,
     changes: Partial<Pick<ProblemVersion, 'title' | 'statement'>>

@@ -5,5 +5,7 @@ export const AUTH_ROUTE_PERMISSIONS = {
 export const PROBLEM_ADMIN_ROUTE_PERMISSIONS = {
   createProblem: 'problem:create',
   updateProblem: 'problem:update',
-  deleteProblem: 'problem:delete'
+  deleteProblem: 'problem:delete',
+  publishProblem: 'problem:publish',
+  unpublishProblem: 'problem:unpublish'
 } as const;
