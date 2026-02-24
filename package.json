@@ -26,10 +26,11 @@
     "smoke:local": "node tools/scripts/local-smoke.mjs",
     "api:start": "npm -w @apps/api run start",
     "worker:start": "npm -w @apps/judge-worker run start",
-    "extension:package": "mkdir -p dist && npm -w oj-vscode-extension run build && npm -w oj-vscode-extension run package:vsix"
+    "extension:package": "mkdir -p dist && npm -w oj-vscode-extension run build && npm -w oj-vscode-extension run package:vsix && cp apps/vscode-extension/oj-vscode-extension-0.0.0.vsix dist/oj-vscode.vsix"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "@vscode/vsce": "^3.7.1",
     "typescript": "^5.9.2"
   }
 }

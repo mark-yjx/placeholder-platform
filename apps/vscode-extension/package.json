@@ -55,11 +55,17 @@
       }
     ]
   },
+  "files": [
+    "dist/**",
+    "package.json",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "node -e \"console.log('lint @apps/vscode-extension')\"",
     "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/__tests__/*.test.js",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "package:vsix": "npx --yes @vscode/vsce package --out ../../dist/oj-vscode.vsix"
+    "package:vsix": "npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository --out oj-vscode-extension-0.0.0.vsix"
   }
 }
