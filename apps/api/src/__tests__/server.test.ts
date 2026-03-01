@@ -135,6 +135,53 @@ test('api errors use unified auth and not-found structure', async () => {
   });
 });
 
+test('protected endpoints return 401 for missing or invalid tokens and 403 for insufficient role', async () => {
+  const missingToken = await invoke({
+    path: '/favorites',
+    runtime: createRuntime()
+  });
+  assert.equal(missingToken.statusCode, 401);
+  assert.deepEqual(missingToken.body, {
+    error: {
+      code: 'AUTH_MISSING_TOKEN',
+      message: 'Authentication token is required'
+    }
+  });
+
+  const invalidToken = await invoke({
+    path: '/favorites',
+    headers: { authorization: 'Bearer not-a-real-token' },
+    runtime: createRuntime()
+  });
+  assert.equal(invalidToken.statusCode, 401);
+  assert.deepEqual(invalidToken.body, {
+    error: {
+      code: 'AUTH_INVALID_TOKEN',
+      message: 'Authentication token is invalid'
+    }
+  });
+
+  const insufficientRole = await invoke({
+    path: '/problems',
+    method: 'POST',
+    headers: { authorization: 'Bearer token-student-1' },
+    body: {
+      problemId: 'problem-1',
+      versionId: 'problem-1-v1',
+      title: 'Two Sum',
+      statement: 'Solve it'
+    },
+    runtime: createRuntime()
+  });
+  assert.equal(insufficientRole.statusCode, 403);
+  assert.deepEqual(insufficientRole.body, {
+    error: {
+      code: 'FORBIDDEN',
+      message: 'Forbidden'
+    }
+  });
+});
+
 test('validation errors expose consistent field-level details', async () => {
   const invalidProblem = await invoke({
     path: '/problems',

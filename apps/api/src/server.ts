@@ -91,6 +91,16 @@ type LocalApiRuntime = {
   };
 };
 
+type AuthenticatedActor = {
+  userId: string;
+  role: 'admin' | 'student';
+};
+
+type AuthorizationResolution =
+  | { kind: 'authenticated'; actor: AuthenticatedActor }
+  | { kind: 'missing' }
+  | { kind: 'invalid' };
+
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
   response.statusCode = statusCode;
   response.setHeader('content-type', 'application/json; charset=utf-8');
@@ -115,26 +125,38 @@ async function readJsonBody(request: IncomingMessage): Promise<Record<string, un
 
 function resolveActorFromAuthorizationHeader(
   headerValue: string | undefined
-): { userId: string; role: 'admin' | 'student' } | null {
-  if (!headerValue?.startsWith('Bearer ')) {
-    return null;
+): AuthorizationResolution {
+  if (!headerValue) {
+    return { kind: 'missing' };
+  }
+  if (!headerValue.startsWith('Bearer ')) {
+    return { kind: 'invalid' };
   }
   const token = headerValue.slice('Bearer '.length).trim();
   if (token === 'token-admin-1') {
-    return { userId: 'admin-1', role: 'admin' };
+    return { kind: 'authenticated', actor: { userId: 'admin-1', role: 'admin' } };
   }
   if (token === 'token-student-1') {
-    return { userId: 'student-1', role: 'student' };
+    return { kind: 'authenticated', actor: { userId: 'student-1', role: 'student' } };
   }
-  return null;
+  return { kind: 'invalid' };
 }
 
-function ensureRole(
-  actor: { userId: string; role: 'admin' | 'student' } | null,
-  role: 'admin' | 'student'
-): asserts actor is { userId: string; role: 'admin' | 'student' } {
-  if (!actor || actor.role !== role) {
-    throw new Error('Forbidden');
+function requireAuthenticatedActor(resolution: AuthorizationResolution): AuthenticatedActor {
+  if (resolution.kind === 'authenticated') {
+    return resolution.actor;
+  }
+
+  if (resolution.kind === 'missing') {
+    throw new ApiError(401, 'AUTH_MISSING_TOKEN', 'Authentication token is required');
+  }
+
+  throw new ApiError(401, 'AUTH_INVALID_TOKEN', 'Authentication token is invalid');
+}
+
+function ensureRole(actor: AuthenticatedActor, role: 'admin' | 'student'): void {
+  if (actor.role !== role) {
+    throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
   }
 }
 
@@ -226,8 +248,10 @@ export function createApiRequestHandler(
 
     if (path === '/problems' && method === 'POST') {
       try {
-        const actor = resolveActorFromAuthorizationHeader(
-          typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+          )
         );
         ensureRole(actor, 'admin');
         const body = await readJsonBody(request);
@@ -264,22 +288,28 @@ export function createApiRequestHandler(
     }
 
     if (path === '/problems' && method === 'GET') {
-      const actor = resolveActorFromAuthorizationHeader(
-        typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
-      );
-      if (!actor) {
-        sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
-        return;
+      try {
+        requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string'
+              ? request.headers.authorization
+              : undefined
+          )
+        );
+        const problems = await persistence.studentProblemQuery.listPublishedProblems();
+        sendJson(response, 200, { problems });
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
       }
-      const problems = await persistence.studentProblemQuery.listPublishedProblems();
-      sendJson(response, 200, { problems });
       return;
     }
 
     if (path === '/submissions' && method === 'POST') {
       try {
-        const actor = resolveActorFromAuthorizationHeader(
-          typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+          )
         );
         ensureRole(actor, 'student');
         const body = await readJsonBody(request);
@@ -325,13 +355,11 @@ export function createApiRequestHandler(
     const submissionResultMatch = path.match(/^\/submissions\/([^/]+)\/result$/);
     if (submissionResultMatch && method === 'GET') {
       try {
-        const actor = resolveActorFromAuthorizationHeader(
-          typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+          )
         );
-        if (!actor) {
-          sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
-          return;
-        }
 
         const view = await persistence.submissionResults.getBySubmissionId(submissionResultMatch[1]);
         if (actor.role === 'student' && view.ownerUserId !== actor.userId) {
@@ -348,71 +376,83 @@ export function createApiRequestHandler(
 
     const favoriteMatch = path.match(/^\/favorites\/([^/]+)$/);
     if (favoriteMatch && method === 'PUT') {
-      const actor = resolveActorFromAuthorizationHeader(
-        typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
-      );
-      if (!actor) {
-        sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
-        return;
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string'
+              ? request.headers.authorization
+              : undefined
+          )
+        );
+        const problemId = favoriteMatch[1];
+        await persistence.favorites.favorite(actor.userId, problemId);
+        sendJson(response, 200, { ok: true });
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
       }
-      const problemId = favoriteMatch[1];
-      await persistence.favorites.favorite(actor.userId, problemId);
-      sendJson(response, 200, { ok: true });
       return;
     }
 
     if (path === '/favorites' && method === 'GET') {
-      const actor = resolveActorFromAuthorizationHeader(
-        typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
-      );
-      if (!actor) {
-        sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
-        return;
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string'
+              ? request.headers.authorization
+              : undefined
+          )
+        );
+        const favorites = await persistence.favorites.list(actor.userId);
+        sendJson(response, 200, { favorites });
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
       }
-      const favorites = await persistence.favorites.list(actor.userId);
-      sendJson(response, 200, { favorites });
       return;
     }
 
     const reviewMatch = path.match(/^\/reviews\/([^/]+)$/);
     if (reviewMatch && method === 'PUT') {
-      const actor = resolveActorFromAuthorizationHeader(
-        typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
-      );
-      if (!actor) {
-        sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
-        return;
-      }
-      const body = await readJsonBody(request);
-      const sentiment = String(body.sentiment ?? '');
-      const content = String(body.content ?? '');
-      if ((sentiment !== 'like' && sentiment !== 'dislike') || content.trim().length === 0) {
-        sendError(
-          response,
-          createValidationError('invalid review payload', [
-            ...(sentiment !== 'like' && sentiment !== 'dislike'
-              ? [
-                  {
-                    field: 'sentiment',
-                    code: 'INVALID_VALUE',
-                    message: 'sentiment must be like or dislike'
-                  }
-                ]
-              : []),
-            ...(content.trim().length === 0
-              ? [missingFieldDetail('content')]
-              : [])
-          ])
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string'
+              ? request.headers.authorization
+              : undefined
+          )
         );
-        return;
+        const body = await readJsonBody(request);
+        const sentiment = String(body.sentiment ?? '');
+        const content = String(body.content ?? '');
+        if ((sentiment !== 'like' && sentiment !== 'dislike') || content.trim().length === 0) {
+          sendError(
+            response,
+            createValidationError('invalid review payload', [
+              ...(sentiment !== 'like' && sentiment !== 'dislike'
+                ? [
+                    {
+                      field: 'sentiment',
+                      code: 'INVALID_VALUE',
+                      message: 'sentiment must be like or dislike'
+                    }
+                  ]
+                : []),
+              ...(content.trim().length === 0
+                ? [missingFieldDetail('content')]
+                : [])
+            ])
+          );
+          return;
+        }
+        await persistence.reviews.submitReview({
+          userId: actor.userId,
+          problemId: reviewMatch[1],
+          sentiment,
+          content
+        });
+        sendJson(response, 200, { ok: true });
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
       }
-      await persistence.reviews.submitReview({
-        userId: actor.userId,
-        problemId: reviewMatch[1],
-        sentiment,
-        content
-      });
-      sendJson(response, 200, { ok: true });
       return;
     }
 
