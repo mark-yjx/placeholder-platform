@@ -131,6 +131,24 @@ test('local runtime routes problem, favorites, and reviews through injected pers
             }
           ];
         }
+      },
+      submissionStudent: {
+        async create(input: {
+          submissionId: string;
+          actorUserId: string;
+          problemId: string;
+          language: string;
+        }) {
+          calls.push(
+            `submissionStudent.create:${input.submissionId}:${input.actorUserId}:${input.problemId}:${input.language}`
+          );
+          return {
+            id: input.submissionId,
+            ownerUserId: input.actorUserId,
+            problemVersionId: 'problem-1-v1',
+            status: 'queued'
+          };
+        }
       }
     }
   };
@@ -207,6 +225,27 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     ]
   });
 
+  const submission = await invoke({
+    path: '/submissions',
+    method: 'POST',
+    headers: { authorization: 'Bearer token-student-1' },
+    body: {
+      submissionId: 'submission-1',
+      problemId: 'problem-1',
+      language: 'python',
+      sourceCode: 'print(42)'
+    },
+    runtime
+  });
+  assert.equal(submission.statusCode, 201);
+  assert.deepEqual(submission.body, {
+    submissionId: 'submission-1',
+    status: 'queued',
+    ownerUserId: 'student-1',
+    problemVersionId: 'problem-1-v1',
+    enqueueAccepted: true
+  });
+
   assert.deepEqual(calls, [
     'problemAdmin.create:problem-1',
     'problemPublication.publish:problem-1',
@@ -214,6 +253,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     'favorites.favorite:student-1:problem-1',
     'favorites.list:student-1',
     'reviews.submitReview:student-1:problem-1:like',
-    'reviews.listReviews:problem-1'
+    'reviews.listReviews:problem-1',
+    'submissionStudent.create:submission-1:student-1:problem-1:python'
   ]);
 });

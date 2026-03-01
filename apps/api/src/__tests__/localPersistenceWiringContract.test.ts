@@ -26,11 +26,13 @@ test('local runtime wiring defaults to Postgres adapter selection', () => {
   assert.match(source, /runtimeEnv === 'local' \? 'postgres' : 'in-memory'/);
 });
 
-test('local runtime wiring binds problem, favorites, and reviews to Postgres adapters', () => {
+test('local runtime wiring binds problem, favorites, reviews, submissions, and queue to Postgres adapters', () => {
   const source = readLocalWiringSource();
   assert.match(source, /new PostgresProblemRepository/);
   assert.match(source, /new PostgresFavoritesRepository/);
   assert.match(source, /new PostgresReviewsRepository/);
+  assert.match(source, /new PostgresSubmissionRepository/);
+  assert.match(source, /new PostgresJudgeJobQueue/);
 });
 
 test('local runtime wiring composes existing services without business logic changes', () => {
@@ -39,6 +41,8 @@ test('local runtime wiring composes existing services without business logic cha
   assert.match(source, /new StudentProblemQueryService\(problems\)/);
   assert.match(source, /new FavoritesService\(favorites\)/);
   assert.match(source, /new ReviewsService\(reviews\)/);
+  assert.match(source, /new CreateSubmissionUseCase\(/);
+  assert.match(source, /new SubmissionPolicyService\(\)/);
 });
 
 test('wiring remains restart-safe through injected persistent sql clients', () => {
@@ -46,4 +50,3 @@ test('wiring remains restart-safe through injected persistent sql clients', () =
   assert.match(source, /sqlClients\?: PersistenceSqlClients/);
   assert.match(source, /requirePostgresClient/);
 });
-

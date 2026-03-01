@@ -1,4 +1,5 @@
 import {
+  CreateSubmissionUseCase,
   FavoritesService,
   ProblemAdminCrudService,
   ProblemPublicationService,
@@ -6,15 +7,20 @@ import {
   ReviewsService,
   StudentProblemQueryService
 } from '@packages/application/src';
+import { SubmissionPolicyService } from '@packages/domain/src/services';
 import {
   InMemoryProblemRepository,
   PostgresFavoritesRepository,
+  PostgresJudgeJobQueue,
   PostgresProblemRepository,
+  PostgresSubmissionRepository,
   PostgresReviewsRepository
 } from '@packages/infrastructure/src';
 import type { PostgresSqlClient } from '@packages/infrastructure/src/postgres/problem';
 import type { PostgresFavoritesSqlClient } from '@packages/infrastructure/src/postgres/favorites';
 import type { PostgresReviewsSqlClient } from '@packages/infrastructure/src/postgres/reviews';
+import type { PostgresSubmissionSqlClient } from '@packages/infrastructure/src/postgres/submission';
+import type { PostgresJudgeJobQueueSqlClient } from '@packages/infrastructure/src/queue';
 
 export type PersistenceMode = 'in-memory' | 'postgres';
 
@@ -22,6 +28,8 @@ export type PersistenceSqlClients = {
   problemClient?: PostgresSqlClient;
   favoritesClient?: PostgresFavoritesSqlClient;
   reviewsClient?: PostgresReviewsSqlClient;
+  submissionClient?: PostgresSubmissionSqlClient;
+  judgeQueueClient?: PostgresJudgeJobQueueSqlClient;
 };
 
 export type LocalPersistenceServices = {
@@ -31,6 +39,9 @@ export type LocalPersistenceServices = {
   problemVersionHistory: ProblemVersionHistoryQueryService;
   favorites: FavoritesService;
   reviews: ReviewsService;
+  submissionStudent: {
+    create: CreateSubmissionUseCase['execute'];
+  };
 };
 
 function requirePostgresClient<T>(client: T | undefined, name: string): T {
@@ -59,6 +70,18 @@ export function createLocalPersistenceServices(options: {
     const reviews = new PostgresReviewsRepository(
       requirePostgresClient(sqlClients.reviewsClient, 'reviews')
     );
+    const submissions = new PostgresSubmissionRepository(
+      requirePostgresClient(sqlClients.submissionClient, 'submissions')
+    );
+    const judgeQueue = new PostgresJudgeJobQueue(
+      requirePostgresClient(sqlClients.judgeQueueClient, 'judge queue')
+    );
+    const createSubmission = new CreateSubmissionUseCase(
+      problems,
+      submissions,
+      judgeQueue,
+      new SubmissionPolicyService()
+    );
 
     return {
       problemAdmin: new ProblemAdminCrudService(problems),
@@ -66,7 +89,10 @@ export function createLocalPersistenceServices(options: {
       studentProblemQuery: new StudentProblemQueryService(problems),
       problemVersionHistory: new ProblemVersionHistoryQueryService(problems),
       favorites: new FavoritesService(favorites),
-      reviews: new ReviewsService(reviews)
+      reviews: new ReviewsService(reviews),
+      submissionStudent: {
+        create: createSubmission.execute.bind(createSubmission)
+      }
     };
   }
 
@@ -90,4 +116,3 @@ export function createDefaultLocalProblemRepository(options: {
 
   return new InMemoryProblemRepository();
 }
-

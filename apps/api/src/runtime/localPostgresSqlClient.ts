@@ -4,10 +4,14 @@ import path from 'node:path';
 import type { PostgresFavoritesSqlClient } from '@packages/infrastructure/src/postgres/favorites';
 import type { PostgresSqlClient } from '@packages/infrastructure/src/postgres/problem';
 import type { PostgresReviewsSqlClient } from '@packages/infrastructure/src/postgres/reviews';
+import type { PostgresSubmissionSqlClient } from '@packages/infrastructure/src/postgres/submission';
+import type { PostgresJudgeJobQueueSqlClient } from '@packages/infrastructure/src/queue';
 
 type LocalPostgresSqlClient = PostgresSqlClient &
   PostgresFavoritesSqlClient &
-  PostgresReviewsSqlClient;
+  PostgresReviewsSqlClient &
+  PostgresSubmissionSqlClient &
+  PostgresJudgeJobQueueSqlClient;
 
 function resolveComposeFile(): string {
   const candidates = [

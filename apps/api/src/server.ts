@@ -1,5 +1,6 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { URL } from 'node:url';
+import type { Role } from '@packages/domain/src/identity';
 
 export type ReadinessDependency = {
   name: string;
@@ -55,6 +56,21 @@ type LocalApiRuntime = {
           updatedAt: string;
         }[]
       >;
+    };
+    submissionStudent: {
+      create: (input: {
+        submissionId: string;
+        actorUserId: string;
+        actorRoles: readonly Role[];
+        problemId: string;
+        language: string;
+        sourceCode: string;
+      }) => Promise<{
+        id: string;
+        ownerUserId: string;
+        problemVersionId: string;
+        status: string;
+      }>;
     };
   };
 };
@@ -130,7 +146,9 @@ function createLocalApiRuntime(): LocalApiRuntime {
       sqlClients: {
         problemClient: sqlClient,
         favoritesClient: sqlClient,
-        reviewsClient: sqlClient
+        reviewsClient: sqlClient,
+        submissionClient: sqlClient,
+        judgeQueueClient: sqlClient
       }
     })
   };
@@ -232,6 +250,44 @@ export function createApiRequestHandler(
       }
       const problems = await persistence.studentProblemQuery.listPublishedProblems();
       sendJson(response, 200, { problems });
+      return;
+    }
+
+    if (path === '/submissions' && method === 'POST') {
+      try {
+        const actor = resolveActorFromAuthorizationHeader(
+          typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+        );
+        ensureRole(actor, 'student');
+        const body = await readJsonBody(request);
+        const submissionId = String(body.submissionId ?? '');
+        const problemId = String(body.problemId ?? '');
+        const language = String(body.language ?? '');
+        const sourceCode = String(body.sourceCode ?? '');
+        if (!submissionId || !problemId || !language || !sourceCode) {
+          sendJson(response, 400, { error: 'invalid submission payload' });
+          return;
+        }
+
+        const record = await persistence.submissionStudent.create({
+          submissionId,
+          actorUserId: actor.userId,
+          actorRoles: ['student' as Role],
+          problemId,
+          language,
+          sourceCode
+        });
+        sendJson(response, 201, {
+          submissionId: record.id,
+          status: record.status,
+          ownerUserId: record.ownerUserId,
+          problemVersionId: record.problemVersionId,
+          enqueueAccepted: true
+        });
+      } catch (error) {
+        const failure = toErrorResponse(error);
+        sendJson(response, failure.statusCode, failure.payload);
+      }
       return;
     }
 
