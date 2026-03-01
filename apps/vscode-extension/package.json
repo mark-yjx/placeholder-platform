@@ -13,6 +13,8 @@
     "onCommand:oj.practice.fetchProblems",
     "onCommand:oj.practice.submitCode",
     "onCommand:oj.practice.viewResult",
+    "onView:ojProblems",
+    "onView:ojSubmissions",
     "onCommand:oj.engagement.favoriteProblem",
     "onCommand:oj.engagement.submitReview",
     "onCommand:oj.stats.show",
@@ -48,6 +50,10 @@
         "title": "OJ: View Result"
       },
       {
+        "command": "oj.practice.selectSubmission",
+        "title": "OJ: Show Submission Detail"
+      },
+      {
         "command": "oj.engagement.favoriteProblem",
         "title": "OJ: Favorite Problem"
       },
@@ -63,7 +69,19 @@
         "command": "oj.ranking.show",
         "title": "OJ: Show Public Ranking"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "ojProblems",
+          "name": "OJ Problems"
+        },
+        {
+          "id": "ojSubmissions",
+          "name": "OJ Submissions"
+        }
+      ]
+    }
   },
   "files": [
     "dist/**",

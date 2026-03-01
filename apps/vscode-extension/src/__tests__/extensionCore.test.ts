@@ -14,7 +14,18 @@ import { ExtensionApiError } from '../errors/ExtensionErrorMapper';
 
 test('registered command writes to output channel on success', async () => {
   const outputLines: string[] = [];
+  const infoMessages: string[] = [];
   const handlers = new Map<string, () => Promise<void>>();
+  const practiceViewCalls = {
+    problems: [] as readonly { problemId: string; title: string }[],
+    results: [] as readonly {
+      submissionId: string;
+      verdict: string;
+      timeMs: number;
+      memoryKb: number;
+    }[],
+    revealed: [] as string[]
+  };
 
   const tokenStore = new SessionTokenStore();
   const authCommands = new AuthCommands(new InMemoryAuthClient(), tokenStore);
@@ -25,10 +36,21 @@ test('registered command writes to output channel on success', async () => {
     authCommands,
     practiceCommands,
     engagementCommands,
+    practiceViews: {
+      showProblems: (problems) => {
+        practiceViewCalls.problems = problems;
+      },
+      showSubmissionResult: (result) => {
+        practiceViewCalls.results = [...practiceViewCalls.results, result];
+      },
+      revealSubmission: (submissionId) => {
+        practiceViewCalls.revealed.push(submissionId);
+      }
+    },
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
       showErrorMessage: () => undefined,
-      showInformationMessage: () => undefined
+      showInformationMessage: (message) => infoMessages.push(message)
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -38,9 +60,17 @@ test('registered command writes to output channel on success', async () => {
 
   await handlers.get('oj.login')?.();
   await handlers.get('oj.practice.fetchProblems')?.();
+  await handlers.get('oj.practice.submitCode')?.();
+  await handlers.get('oj.practice.viewResult')?.();
 
   assert.ok(outputLines.some((line) => line.includes('[oj.login] success')));
-  assert.ok(outputLines.some((line) => line.includes('Problems loaded:')));
+  assert.deepEqual(practiceViewCalls.problems, [
+    { problemId: 'problem-1', title: 'Two Sum' },
+    { problemId: 'problem-2', title: 'FizzBuzz' }
+  ]);
+  assert.equal(practiceViewCalls.results.length, 1);
+  assert.deepEqual(practiceViewCalls.revealed, ['submission-1']);
+  assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
 });
 
 test('command error is reported cleanly', async () => {

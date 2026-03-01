@@ -2,6 +2,8 @@ import { EngagementCommands } from './engagement/EngagementCommands';
 import { AuthCommands } from './auth/AuthCommands';
 import { PracticeCommands } from './practice/PracticeCommands';
 import { mapExtensionError } from './errors/ExtensionErrorMapper';
+import { PublishedProblem, SubmissionResult } from './api/PracticeApiClient';
+import { formatSubmissionDetail } from './ui/PracticeViewState';
 
 export type DisposableLike = { dispose: () => void };
 
@@ -23,6 +25,11 @@ export type ExtensionCommandDependencies = {
   authCommands: AuthCommands;
   practiceCommands: PracticeCommands;
   engagementCommands: EngagementCommands;
+  practiceViews?: {
+    showProblems: (problems: readonly PublishedProblem[]) => void;
+    showSubmissionResult: (result: SubmissionResult) => void;
+    revealSubmission: (submissionId: string) => void;
+  };
   output: OutputChannelLike;
   window: WindowLike;
   registerCommand: RegisterCommand;
@@ -61,7 +68,8 @@ export function registerExtensionCommands(
       'oj.practice.fetchProblems',
       runWithHandling('oj.practice.fetchProblems', async () => {
         const problems = await dependencies.practiceCommands.fetchPublishedProblems();
-        dependencies.output.appendLine(`Problems loaded: ${problems.length}`);
+        dependencies.practiceViews?.showProblems(problems);
+        dependencies.window.showInformationMessage(`Loaded ${problems.length} problems.`);
       })
     ),
     dependencies.registerCommand(
@@ -81,11 +89,13 @@ export function registerExtensionCommands(
       'oj.practice.viewResult',
       runWithHandling('oj.practice.viewResult', async () => {
         if (!latestSubmissionId) {
-          dependencies.output.appendLine('No submission yet');
+          dependencies.window.showInformationMessage('No submission selected yet.');
           return;
         }
-        const view = await dependencies.practiceCommands.viewSubmissionResult(latestSubmissionId);
-        dependencies.output.appendLine(view);
+        const result = await dependencies.practiceCommands.pollSubmissionResult(latestSubmissionId);
+        dependencies.practiceViews?.showSubmissionResult(result);
+        dependencies.practiceViews?.revealSubmission(result.submissionId);
+        dependencies.output.appendLine(formatSubmissionDetail(result));
       })
     ),
     dependencies.registerCommand(

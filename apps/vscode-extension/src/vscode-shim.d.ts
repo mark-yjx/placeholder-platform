@@ -1,5 +1,31 @@
 declare module 'vscode' {
+  export type Event<T> = (listener: (event: T) => unknown) => Disposable;
   export type Disposable = { dispose(): unknown };
+  export class EventEmitter<T> {
+    readonly event: Event<T>;
+    fire(data: T): void;
+    dispose(): void;
+  }
+  export type TreeDataProvider<T> = {
+    getTreeItem(element: T): T | Thenable<T>;
+    getChildren(element?: T): T[] | Thenable<T[] | readonly T[]> | readonly T[];
+    onDidChangeTreeData?: Event<T | void>;
+  };
+  export const TreeItemCollapsibleState: {
+    None: 0;
+  };
+  export class TreeItem {
+    constructor(label: string, collapsibleState?: number);
+    id?: string;
+    label: string;
+    description?: string;
+    tooltip?: string;
+    command?: {
+      command: string;
+      title: string;
+      arguments?: readonly unknown[];
+    };
+  }
   export type SecretStorage = {
     get(key: string): Promise<string | undefined>;
     store(key: string, value: string): Promise<void>;
@@ -11,7 +37,7 @@ declare module 'vscode' {
   };
 
   export const commands: {
-    registerCommand(commandId: string, callback: () => Promise<void>): Disposable;
+    registerCommand(commandId: string, callback: (...args: unknown[]) => unknown): Disposable;
   };
 
   export const workspace: {
@@ -21,6 +47,7 @@ declare module 'vscode' {
   };
 
   export const window: {
+    registerTreeDataProvider(viewId: string, provider: TreeDataProvider<TreeItem>): Disposable;
     createOutputChannel(name: string): {
       appendLine(value: string): void;
       show(preserveFocus?: boolean): void;
