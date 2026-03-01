@@ -60,7 +60,7 @@ The smoke command performs:
 4. login using fixture token flow
 5. admin create problem
 6. student fetch + favorite + review
-7. restart api container + local api runtime
+7. restart the same local API runtime under test
 8. fetch again and assert persistence
 
 Expected terminal end line:

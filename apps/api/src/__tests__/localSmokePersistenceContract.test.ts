@@ -20,6 +20,9 @@ function readSmokeScript(): string {
 
 test('local smoke talks to live API endpoints for login, problem, favorites, and reviews', () => {
   const script = readSmokeScript();
+  assert.match(script, /spawn\('npm', \['run', 'api:start'\]/);
+  assert.match(script, /waitForApiHealthy/);
+  assert.match(script, /\/healthz/);
   assert.match(script, /\/auth\/login/);
   assert.match(script, /\/problems/);
   assert.match(script, /\/favorites\//);
@@ -28,8 +31,8 @@ test('local smoke talks to live API endpoints for login, problem, favorites, and
 
 test('local smoke verifies persistence after API restart', () => {
   const script = readSmokeScript();
-  assert.match(script, /restart api container/);
-  assert.match(script, /docker compose -f deploy\/local\/docker-compose\.yml restart api/);
+  assert.match(script, /restart local api runtime/);
+  assert.match(script, /await restartLocalApiProcess\(\)/);
   assert.match(script, /fetch persisted data after restart/);
+  assert.match(script, /assertReviewPresent\(reviewsAfter, problemId, 'review list after restart'\)/);
 });
-

@@ -80,6 +80,26 @@ function assertIncludes(list, item, label) {
   }
 }
 
+function assertReviewPresent(reviewsResponse, problemId, label) {
+  const reviews = reviewsResponse.reviews ?? [];
+  if (!Array.isArray(reviews) || reviews.length === 0) {
+    throw new Error(`${label} is empty`);
+  }
+
+  const matchingReview = reviews.find(
+    (review) =>
+      review &&
+      review.problemId === problemId &&
+      review.userId === 'student-1' &&
+      review.sentiment === 'like' &&
+      review.content === 'smoke review'
+  );
+
+  if (!matchingReview) {
+    throw new Error(`${label} missing expected review`);
+  }
+}
+
 async function runFlow() {
   process.stdout.write('[smoke] wait for API health... ');
   const healthy = await waitForApiHealthy(40, 250);
@@ -140,17 +160,12 @@ async function runFlow() {
   const favoritesBefore = await apiRequest('GET', '/favorites', undefined, studentToken);
   const reviewsBefore = await apiRequest('GET', `/reviews/${problemId}`, undefined, studentToken);
   assertIncludes(favoritesBefore.favorites ?? [], problemId, 'favorites');
-  if (!Array.isArray(reviewsBefore.reviews) || reviewsBefore.reviews.length === 0) {
-    throw new Error('review list is empty before restart');
-  }
+  assertReviewPresent(reviewsBefore, problemId, 'review list before restart');
   console.log('ok');
 
-  runStep(
-    'restart api container',
-    'docker compose -f deploy/local/docker-compose.yml restart api >/dev/null'
-  );
-  runStep('restart local api process', 'echo restarting api process');
+  process.stdout.write('[smoke] restart local api runtime... ');
   await restartLocalApiProcess();
+  console.log('ok');
 
   process.stdout.write('[smoke] fetch persisted data after restart... ');
   const healthyAfterRestart = await waitForApiHealthy(40, 250);
@@ -167,9 +182,7 @@ async function runFlow() {
     'problem list after restart'
   );
   assertIncludes(favoritesAfter.favorites ?? [], problemId, 'favorites after restart');
-  if (!Array.isArray(reviewsAfter.reviews) || reviewsAfter.reviews.length === 0) {
-    throw new Error('review list is empty after restart');
-  }
+  assertReviewPresent(reviewsAfter, problemId, 'review list after restart');
   console.log('ok');
 }
 
