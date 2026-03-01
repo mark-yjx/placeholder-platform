@@ -1,8 +1,5 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { URL } from 'node:url';
-import { execFileSync } from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
 
 export type ReadinessDependency = {
   name: string;
@@ -12,6 +9,54 @@ export type ReadinessDependency = {
 export type ApiServerInstance = {
   close: () => Promise<void>;
   port: number;
+};
+
+type LocalApiRuntime = {
+  persistence: {
+    problemAdmin: {
+      create: (input: {
+        problemId: string;
+        versionId: string;
+        title: string;
+        statement: string;
+      }) => Promise<unknown>;
+    };
+    problemPublication: {
+      publish: (problemId: string) => Promise<unknown>;
+    };
+    studentProblemQuery: {
+      listPublishedProblems: () => Promise<
+        readonly {
+          problemId: string;
+          versionId: string;
+          title: string;
+          statement: string;
+        }[]
+      >;
+    };
+    favorites: {
+      favorite: (userId: string, problemId: string) => Promise<readonly string[]>;
+      list: (userId: string) => Promise<readonly string[]>;
+    };
+    reviews: {
+      submitReview: (input: {
+        userId: string;
+        problemId: string;
+        sentiment: 'like' | 'dislike';
+        content: string;
+      }) => Promise<unknown>;
+      listReviews: (problemId: string) => Promise<
+        readonly {
+          userId: string;
+          problemId: string;
+          sentiment: string;
+          content: string;
+          createdAt: string;
+          updatedAt: string;
+        }[]
+      >;
+    };
+  };
 };
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
@@ -48,61 +93,6 @@ function resolveActorFromAuthorizationHeader(
   return null;
 }
 
-function sqlLiteral(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`;
-}
-
-function runPsql(sql: string): string {
-  const composeFile = resolveComposeFile();
-  const output = execFileSync(
-    'docker',
-    [
-      'compose',
-      '-f',
-      composeFile,
-      'exec',
-      '-T',
-      'postgres',
-      'psql',
-      '-U',
-      'oj',
-      '-d',
-      'oj',
-      '-At',
-      '-F',
-      '\t',
-      '-c',
-      sql
-    ],
-    { encoding: 'utf8' }
-  );
-  return output;
-}
-
-function resolveComposeFile(): string {
-  const candidates = [
-    path.resolve(process.cwd(), 'deploy/local/docker-compose.yml'),
-    path.resolve(process.cwd(), '../../deploy/local/docker-compose.yml')
-  ];
-  for (const file of candidates) {
-    if (fs.existsSync(file)) {
-      return file;
-    }
-  }
-  return candidates[0];
-}
-
-function runPsqlRows(sql: string): readonly string[][] {
-  const output = runPsql(sql).trim();
-  if (output.length === 0) {
-    return [];
-  }
-  return output
-    .split('\n')
-    .filter((line) => line.length > 0)
-    .map((line) => line.split('\t'));
-}
-
 function ensureRole(
   actor: { userId: string; role: 'admin' | 'student' } | null,
   role: 'admin' | 'student'
@@ -129,9 +119,40 @@ async function handleReadiness(
   });
 }
 
+function createLocalApiRuntime(): LocalApiRuntime {
+  // Load workspace-bound adapters only when the local Postgres runtime is enabled.
+  const { createLocalPersistenceServices } = require('./runtime/localPersistenceWiring') as typeof import('./runtime/localPersistenceWiring');
+  const { createLocalPostgresSqlClient } = require('./runtime/localPostgresSqlClient') as typeof import('./runtime/localPostgresSqlClient');
+  const sqlClient = createLocalPostgresSqlClient();
+  return {
+    persistence: createLocalPersistenceServices({
+      mode: 'postgres',
+      sqlClients: {
+        problemClient: sqlClient,
+        favoritesClient: sqlClient,
+        reviewsClient: sqlClient
+      }
+    })
+  };
+}
+
+function toErrorResponse(error: unknown): { statusCode: number; payload: { error: string } } {
+  if (error instanceof Error) {
+    if (error.message === 'Forbidden') {
+      return { statusCode: 403, payload: { error: error.message } };
+    }
+    if (error.message === 'Problem not found') {
+      return { statusCode: 404, payload: { error: error.message } };
+    }
+    return { statusCode: 400, payload: { error: error.message } };
+  }
+
+  return { statusCode: 500, payload: { error: 'Internal Server Error' } };
+}
+
 export function createApiRequestHandler(
   dependencies: readonly ReadinessDependency[],
-  useLocalPostgres = false
+  localRuntime?: LocalApiRuntime
 ): (request: IncomingMessage, response: ServerResponse) => void | Promise<void> {
   return async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
@@ -148,10 +169,12 @@ export function createApiRequestHandler(
       return;
     }
 
-    if (!useLocalPostgres) {
+    if (!localRuntime) {
       sendJson(response, 404, { error: 'Not Found' });
       return;
     }
+
+    const { persistence } = localRuntime;
 
     if (path === '/auth/login' && method === 'POST') {
       const body = await readJsonBody(request);
@@ -184,28 +207,17 @@ export function createApiRequestHandler(
           return;
         }
 
-        runPsql(`
-          INSERT INTO problems (id, title, publication_state)
-          VALUES (${sqlLiteral(problemId)}, ${sqlLiteral(title)}, 'published')
-          ON CONFLICT (id) DO UPDATE
-          SET title = EXCLUDED.title,
-              publication_state = EXCLUDED.publication_state;
-        `);
-        runPsql(`
-          INSERT INTO problem_versions (id, problem_id, version_number, title, statement, publication_state)
-          VALUES (
-            ${sqlLiteral(versionId)},
-            ${sqlLiteral(problemId)},
-            1,
-            ${sqlLiteral(title)},
-            ${sqlLiteral(statement)},
-            'published'
-          )
-          ON CONFLICT (id) DO NOTHING;
-        `);
+        await persistence.problemAdmin.create({
+          problemId,
+          versionId,
+          title,
+          statement
+        });
+        await persistence.problemPublication.publish(problemId);
         sendJson(response, 201, { problemId });
       } catch (error) {
-        sendJson(response, 403, { error: error instanceof Error ? error.message : 'Forbidden' });
+        const failure = toErrorResponse(error);
+        sendJson(response, failure.statusCode, failure.payload);
       }
       return;
     }
@@ -218,31 +230,8 @@ export function createApiRequestHandler(
         sendJson(response, 403, { error: 'Forbidden' });
         return;
       }
-      const rows = runPsqlRows(`
-        SELECT
-          p.id,
-          pv.id,
-          pv.title,
-          pv.statement
-        FROM problems p
-        JOIN LATERAL (
-          SELECT id, title, statement, publication_state
-          FROM problem_versions
-          WHERE problem_id = p.id
-          ORDER BY version_number DESC
-          LIMIT 1
-        ) pv ON true
-        WHERE pv.publication_state = 'published'
-        ORDER BY p.id ASC
-        `);
-      sendJson(response, 200, {
-        problems: rows.map((row) => ({
-          problemId: row[0],
-          versionId: row[1],
-          title: row[2],
-          statement: row[3]
-        }))
-      });
+      const problems = await persistence.studentProblemQuery.listPublishedProblems();
+      sendJson(response, 200, { problems });
       return;
     }
 
@@ -256,11 +245,7 @@ export function createApiRequestHandler(
         return;
       }
       const problemId = favoriteMatch[1];
-      runPsql(`
-        INSERT INTO favorites (user_id, problem_id)
-        VALUES (${sqlLiteral(actor.userId)}, ${sqlLiteral(problemId)})
-        ON CONFLICT (user_id, problem_id) DO NOTHING;
-      `);
+      await persistence.favorites.favorite(actor.userId, problemId);
       sendJson(response, 200, { ok: true });
       return;
     }
@@ -273,13 +258,8 @@ export function createApiRequestHandler(
         sendJson(response, 403, { error: 'Forbidden' });
         return;
       }
-      const rows = runPsqlRows(`
-        SELECT problem_id
-        FROM favorites
-        WHERE user_id = ${sqlLiteral(actor.userId)}
-        ORDER BY problem_id ASC
-      `);
-      sendJson(response, 200, { favorites: rows.map((row) => row[0]) });
+      const favorites = await persistence.favorites.list(actor.userId);
+      sendJson(response, 200, { favorites });
       return;
     }
 
@@ -299,42 +279,19 @@ export function createApiRequestHandler(
         sendJson(response, 400, { error: 'invalid review payload' });
         return;
       }
-      runPsql(`
-        INSERT INTO reviews (user_id, problem_id, sentiment, content)
-        VALUES (
-          ${sqlLiteral(actor.userId)},
-          ${sqlLiteral(reviewMatch[1])},
-          ${sqlLiteral(sentiment)},
-          ${sqlLiteral(content)}
-        )
-        ON CONFLICT (user_id, problem_id) DO UPDATE
-        SET sentiment = EXCLUDED.sentiment,
-            content = EXCLUDED.content,
-            updated_at = NOW();
-      `);
+      await persistence.reviews.submitReview({
+        userId: actor.userId,
+        problemId: reviewMatch[1],
+        sentiment,
+        content
+      });
       sendJson(response, 200, { ok: true });
       return;
     }
 
     if (reviewMatch && method === 'GET') {
-      const rows = runPsqlRows(`
-        SELECT
-          user_id,
-          problem_id,
-          sentiment,
-          content
-        FROM reviews
-        WHERE problem_id = ${sqlLiteral(reviewMatch[1])}
-        ORDER BY updated_at DESC, user_id ASC
-      `);
-      sendJson(response, 200, {
-        reviews: rows.map((row) => ({
-          userId: row[0],
-          problemId: row[1],
-          sentiment: row[2],
-          content: row[3]
-        }))
-      });
+      const reviews = await persistence.reviews.listReviews(reviewMatch[1]);
+      sendJson(response, 200, { reviews });
       return;
     }
 
@@ -350,10 +307,10 @@ export async function startApiServer(options?: {
   const port = options?.port ?? Number(process.env.PORT ?? 3000);
   const host = options?.host ?? '0.0.0.0';
   const dependencies = options?.dependencies ?? [{ name: 'runtime', check: async () => true }];
-  const useLocalPostgres = Boolean(process.env.DATABASE_URL);
+  const localRuntime = process.env.DATABASE_URL ? createLocalApiRuntime() : undefined;
 
   const server = createServer((request, response) => {
-    void createApiRequestHandler(dependencies, useLocalPostgres)(request, response);
+    void createApiRequestHandler(dependencies, localRuntime)(request, response);
   });
 
   await new Promise<void>((resolve, reject) => {
