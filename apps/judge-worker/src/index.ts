@@ -3,4 +3,5 @@ export * from './health';
 export * from './observability/WorkerLogger';
 export * from './runner';
 export * from './sandbox';
+export * from './WorkerStateTransitionHandler';
 export * from './workerRuntime';
