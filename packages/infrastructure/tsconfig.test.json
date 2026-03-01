@@ -9,5 +9,5 @@
     "composite": false,
     "rootDir": "src"
   },
-  "include": ["src/postgres/submission/__tests__/**/*.ts"]
+  "include": ["src/postgres/submission/__tests__/**/*.ts", "src/postgres/results/__tests__/**/*.ts"]
 }
