@@ -259,3 +259,103 @@ Files/areas touched: smoke script(s), local run docs, API test fixtures/tokens a
 Acceptance checks: smoke performs login (or explicit test token fixture), admin create problem, student fetch problems, favorite + review, restart stack (or API container), fetch again and assert persisted state; smoke fails if persistence breaks.  
 Scope (IN): implement/adjust smoke script to call live API endpoints (not in-process stubs).  
 Scope (OUT): no judge submission E2E in this phase.
+
+# Phase 4 – Real Judge Execution
+
+Goal:
+Transform the submission pipeline into a fully real execution loop:
+Submission → Queue → Worker → Docker Sandbox → Result Persist → Query
+
+## 51. Submission State Machine Hardening
+
+Acceptance checks:
+- Submission status defaults to `queued` on creation.
+- Valid transitions ONLY:
+  queued → running
+  running → finished | failed
+- Terminal states (`finished`, `failed`) are immutable.
+- Restarting the system does not change submission state.
+- DB layer enforces transition correctness (constraint or guarded update).
+
+Scope:
+IN:
+- Domain model
+- Repository adapter
+- DB-level constraint or guarded update
+OUT:
+- Worker execution logic
+- Queue logic
+
+## 52. Queue Integration (Real Enqueue)
+
+Acceptance checks:
+- Creating a submission inserts a job into the queue.
+- Submission remains `queued` if worker is offline.
+- Submission does NOT auto-transition to `finished`.
+- Queue entry references submission id.
+
+Scope:
+IN:
+- Judge coordination adapter
+- Queue adapter implementation
+OUT:
+- Docker sandbox execution
+
+## 53. Worker State Transition Handling
+
+Acceptance checks:
+- Worker consumes job and sets status to `running`.
+- On execution completion, worker updates to `finished` or `failed`.
+- Worker crash does not incorrectly mark submission as finished.
+- State transitions respect constitution terminology exactly.
+
+Scope:
+IN:
+- Worker process
+- Submission repository update logic
+OUT:
+- Docker execution internals
+
+## 54. Real Docker Python Execution
+
+Acceptance checks:
+- Correct Python code results in `finished` with verdict AC.
+- Wrong output results in `finished` with verdict WA.
+- Runtime exception results in `finished` with verdict RE.
+- Execution time and memory are recorded.
+- Network access is disabled in sandbox.
+
+Scope:
+IN:
+- Docker runner adapter
+- Python execution environment
+OUT:
+- Ranking/statistics logic
+
+## 55. Result Persistence Idempotency
+
+Acceptance checks:
+- Duplicate result ingestion does not overwrite terminal state.
+- Terminal state remains immutable.
+- Result API returns persisted verdict/time/memory.
+
+Scope:
+IN:
+- Result ingestion service
+- Repository guarded update
+OUT:
+- Worker execution
+
+## 56. True End-to-End Smoke
+
+Acceptance checks:
+- If worker is stopped, submission remains `queued`.
+- Starting worker processes queued submission.
+- Result persists across system restart.
+- Querying submission returns correct verdict/time/memory.
+
+Scope:
+IN:
+- Full pipeline integration
+OUT:
+- UI/Extension enhancements
