@@ -1,6 +1,12 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 import type { Role } from '@packages/domain/src/identity';
+import {
+  ApiError,
+  createErrorPayload,
+  createValidationError,
+  mapUnknownError
+} from './errorResponses';
 
 export type ReadinessDependency = {
   name: string;
@@ -91,6 +97,10 @@ function sendJson(response: ServerResponse, statusCode: number, payload: unknown
   response.end(JSON.stringify(payload));
 }
 
+function sendError(response: ServerResponse, error: ApiError): void {
+  sendJson(response, error.statusCode, createErrorPayload(error));
+}
+
 async function readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Uint8Array[] = [];
   for await (const chunk of request) {
@@ -165,18 +175,12 @@ function createLocalApiRuntime(): LocalApiRuntime {
   };
 }
 
-function toErrorResponse(error: unknown): { statusCode: number; payload: { error: string } } {
-  if (error instanceof Error) {
-    if (error.message === 'Forbidden') {
-      return { statusCode: 403, payload: { error: error.message } };
-    }
-    if (error.message === 'Problem not found') {
-      return { statusCode: 404, payload: { error: error.message } };
-    }
-    return { statusCode: 400, payload: { error: error.message } };
-  }
-
-  return { statusCode: 500, payload: { error: 'Internal Server Error' } };
+function missingFieldDetail(field: string): { field: string; code: string; message: string } {
+  return {
+    field,
+    code: 'REQUIRED',
+    message: `${field} is required`
+  };
 }
 
 export function createApiRequestHandler(
@@ -199,7 +203,7 @@ export function createApiRequestHandler(
     }
 
     if (!localRuntime) {
-      sendJson(response, 404, { error: 'Not Found' });
+      sendError(response, new ApiError(404, 'NOT_FOUND', 'Not Found'));
       return;
     }
 
@@ -216,7 +220,7 @@ export function createApiRequestHandler(
         sendJson(response, 200, { accessToken: 'token-student-1', role: 'student' });
         return;
       }
-      sendJson(response, 401, { error: 'invalid credentials' });
+      sendError(response, new ApiError(401, 'AUTH_INVALID_CREDENTIALS', 'invalid credentials'));
       return;
     }
 
@@ -231,8 +235,17 @@ export function createApiRequestHandler(
         const versionId = String(body.versionId ?? '');
         const title = String(body.title ?? '');
         const statement = String(body.statement ?? '');
-        if (!problemId || !versionId || !title || !statement) {
-          sendJson(response, 400, { error: 'invalid problem payload' });
+        const missingFields = [
+          !problemId ? missingFieldDetail('problemId') : null,
+          !versionId ? missingFieldDetail('versionId') : null,
+          !title ? missingFieldDetail('title') : null,
+          !statement ? missingFieldDetail('statement') : null
+        ].filter((detail): detail is NonNullable<typeof detail> => detail !== null);
+        if (missingFields.length > 0) {
+          sendError(
+            response,
+            createValidationError('invalid problem payload', missingFields)
+          );
           return;
         }
 
@@ -245,8 +258,7 @@ export function createApiRequestHandler(
         await persistence.problemPublication.publish(problemId);
         sendJson(response, 201, { problemId });
       } catch (error) {
-        const failure = toErrorResponse(error);
-        sendJson(response, failure.statusCode, failure.payload);
+        sendError(response, mapUnknownError(error));
       }
       return;
     }
@@ -256,7 +268,7 @@ export function createApiRequestHandler(
         typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
       );
       if (!actor) {
-        sendJson(response, 403, { error: 'Forbidden' });
+        sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
         return;
       }
       const problems = await persistence.studentProblemQuery.listPublishedProblems();
@@ -275,8 +287,17 @@ export function createApiRequestHandler(
         const problemId = String(body.problemId ?? '');
         const language = String(body.language ?? '');
         const sourceCode = String(body.sourceCode ?? '');
-        if (!submissionId || !problemId || !language || !sourceCode) {
-          sendJson(response, 400, { error: 'invalid submission payload' });
+        const missingFields = [
+          !submissionId ? missingFieldDetail('submissionId') : null,
+          !problemId ? missingFieldDetail('problemId') : null,
+          !language ? missingFieldDetail('language') : null,
+          !sourceCode ? missingFieldDetail('sourceCode') : null
+        ].filter((detail): detail is NonNullable<typeof detail> => detail !== null);
+        if (missingFields.length > 0) {
+          sendError(
+            response,
+            createValidationError('invalid submission payload', missingFields)
+          );
           return;
         }
 
@@ -296,8 +317,7 @@ export function createApiRequestHandler(
           enqueueAccepted: true
         });
       } catch (error) {
-        const failure = toErrorResponse(error);
-        sendJson(response, failure.statusCode, failure.payload);
+        sendError(response, mapUnknownError(error));
       }
       return;
     }
@@ -309,20 +329,19 @@ export function createApiRequestHandler(
           typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
         );
         if (!actor) {
-          sendJson(response, 403, { error: 'Forbidden' });
+          sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
           return;
         }
 
         const view = await persistence.submissionResults.getBySubmissionId(submissionResultMatch[1]);
         if (actor.role === 'student' && view.ownerUserId !== actor.userId) {
-          sendJson(response, 403, { error: 'Forbidden' });
+          sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
           return;
         }
 
         sendJson(response, 200, view);
       } catch (error) {
-        const failure = toErrorResponse(error);
-        sendJson(response, failure.statusCode, failure.payload);
+        sendError(response, mapUnknownError(error));
       }
       return;
     }
@@ -333,7 +352,7 @@ export function createApiRequestHandler(
         typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
       );
       if (!actor) {
-        sendJson(response, 403, { error: 'Forbidden' });
+        sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
         return;
       }
       const problemId = favoriteMatch[1];
@@ -347,7 +366,7 @@ export function createApiRequestHandler(
         typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
       );
       if (!actor) {
-        sendJson(response, 403, { error: 'Forbidden' });
+        sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
         return;
       }
       const favorites = await persistence.favorites.list(actor.userId);
@@ -361,14 +380,30 @@ export function createApiRequestHandler(
         typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
       );
       if (!actor) {
-        sendJson(response, 403, { error: 'Forbidden' });
+        sendError(response, new ApiError(403, 'FORBIDDEN', 'Forbidden'));
         return;
       }
       const body = await readJsonBody(request);
       const sentiment = String(body.sentiment ?? '');
       const content = String(body.content ?? '');
       if ((sentiment !== 'like' && sentiment !== 'dislike') || content.trim().length === 0) {
-        sendJson(response, 400, { error: 'invalid review payload' });
+        sendError(
+          response,
+          createValidationError('invalid review payload', [
+            ...(sentiment !== 'like' && sentiment !== 'dislike'
+              ? [
+                  {
+                    field: 'sentiment',
+                    code: 'INVALID_VALUE',
+                    message: 'sentiment must be like or dislike'
+                  }
+                ]
+              : []),
+            ...(content.trim().length === 0
+              ? [missingFieldDetail('content')]
+              : [])
+          ])
+        );
         return;
       }
       await persistence.reviews.submitReview({
@@ -387,7 +422,7 @@ export function createApiRequestHandler(
       return;
     }
 
-    sendJson(response, 404, { error: 'Not Found' });
+    sendError(response, new ApiError(404, 'NOT_FOUND', 'Not Found'));
   };
 }
 

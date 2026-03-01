@@ -2,6 +2,43 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiRequestHandler } from '../server';
 
+function createRuntime() {
+  return {
+    persistence: {
+      problemAdmin: { async create() {} },
+      problemPublication: { async publish() {} },
+      studentProblemQuery: { async listPublishedProblems() { return []; } },
+      favorites: {
+        async favorite() { return []; },
+        async list() { return []; }
+      },
+      reviews: {
+        async submitReview() {},
+        async listReviews() { return []; }
+      },
+      submissionStudent: {
+        async create() {
+          return {
+            id: 'submission-1',
+            ownerUserId: 'student-1',
+            problemVersionId: 'problem-1-v1',
+            status: 'queued'
+          };
+        }
+      },
+      submissionResults: {
+        async getBySubmissionId() {
+          return {
+            submissionId: 'submission-1',
+            ownerUserId: 'student-1',
+            status: 'finished'
+          };
+        }
+      }
+    }
+  };
+}
+
 function createRequest(options: {
   path: string;
   method?: string;
@@ -71,6 +108,95 @@ test('/healthz and /readyz are served by api:start runtime', async () => {
       { name: 'queue', status: 'up' }
     ]
   });
+});
+
+test('api errors use unified auth and not-found structure', async () => {
+  const invalidLogin = await invoke({
+    path: '/auth/login',
+    method: 'POST',
+    body: { email: 'nobody@example.com', password: 'wrong' },
+    runtime: createRuntime()
+  });
+  assert.equal(invalidLogin.statusCode, 401);
+  assert.deepEqual(invalidLogin.body, {
+    error: {
+      code: 'AUTH_INVALID_CREDENTIALS',
+      message: 'invalid credentials'
+    }
+  });
+
+  const notFound = await invoke({ path: '/missing-route' });
+  assert.equal(notFound.statusCode, 404);
+  assert.deepEqual(notFound.body, {
+    error: {
+      code: 'NOT_FOUND',
+      message: 'Not Found'
+    }
+  });
+});
+
+test('validation errors expose consistent field-level details', async () => {
+  const invalidProblem = await invoke({
+    path: '/problems',
+    method: 'POST',
+    headers: { authorization: 'Bearer token-admin-1' },
+    body: {
+      problemId: 'problem-1'
+    },
+    runtime: createRuntime()
+  });
+
+  assert.equal(invalidProblem.statusCode, 400);
+  assert.deepEqual(invalidProblem.body, {
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: 'invalid problem payload',
+      details: [
+        { field: 'versionId', code: 'REQUIRED', message: 'versionId is required' },
+        { field: 'title', code: 'REQUIRED', message: 'title is required' },
+        { field: 'statement', code: 'REQUIRED', message: 'statement is required' }
+      ]
+    }
+  });
+});
+
+test('production errors do not expose raw stack traces', async () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+
+  try {
+    const failure = await invoke({
+      path: '/problems',
+      method: 'POST',
+      headers: { authorization: 'Bearer token-admin-1' },
+      body: {
+        problemId: 'problem-1',
+        versionId: 'problem-1-v1',
+        title: 'Two Sum',
+        statement: 'Solve it'
+      },
+      runtime: {
+        persistence: {
+          ...createRuntime().persistence,
+          problemAdmin: {
+            async create() {
+              throw { stack: 'sensitive trace' };
+            }
+          }
+        }
+      }
+    });
+
+    assert.equal(failure.statusCode, 500);
+    assert.deepEqual(failure.body, {
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Internal Server Error'
+      }
+    });
+  } finally {
+    process.env.NODE_ENV = previousNodeEnv;
+  }
 });
 
 test('local runtime routes problem, favorites, and reviews through injected persistence services', async () => {
