@@ -452,3 +452,76 @@ IN:
 OUT:
 - Ranking recalculation logic
 - Domain state machine changes
+
+# Phase 6 – VSCode Extension Productionization
+
+Goal:
+Stabilize and harden the VSCode extension so it behaves like a usable product
+on top of the already-stable API (Phase 5).
+
+The focus is UX stability, configuration safety, and clear error reporting.
+
+## 62. Extension Configuration Stabilization
+
+Acceptance checks:
+- `oj.apiBaseUrl` is configurable via VSCode settings.
+- Authentication token is stored using VSCode SecretStorage.
+- Login state persists across VSCode reload.
+- No sensitive data is stored in plain globalState.
+
+Scope:
+IN:
+- VSCode extension configuration handling
+- SecretStorage integration
+OUT:
+- Backend API changes
+- Domain or worker modifications
+
+## 63. User-Facing Error Handling
+
+Acceptance checks:
+- API unreachable shows user-friendly error notification.
+- 401 triggers clear "Please login" prompt.
+- 403 shows permission message.
+- 404 resource errors show readable message.
+- No raw stack traces shown to end user.
+
+Scope:
+IN:
+- Extension error handling layer
+- Mapping API error structure to UI notifications
+OUT:
+- API contract changes
+- Worker logic
+
+## 64. Problem & Submission UI Stabilization
+
+Acceptance checks:
+- Problems TreeView loads real data reliably.
+- Submissions list displays verdict, time, memory.
+- Selecting a submission shows detailed result.
+- UI does not depend on console logs.
+
+Scope:
+IN:
+- TreeView data providers
+- Result rendering logic
+OUT:
+- API refactor
+- Ranking redesign
+
+## 65. Extension Packaging Hardening
+
+Acceptance checks:
+- VSIX builds without warnings.
+- No unnecessary files included in VSIX.
+- Fresh VSCode instance can install and use extension.
+- Extension activates correctly on supported events.
+
+Scope:
+IN:
+- package.json (extension)
+- Packaging scripts
+- .vscodeignore or files whitelist
+OUT:
+- Backend changes
