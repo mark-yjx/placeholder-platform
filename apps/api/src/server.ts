@@ -1,6 +1,9 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 import type { Role } from '@packages/domain/src/identity';
+import { createApiRequestContext } from './observability/requestContext';
+import { createHealthRoutes } from './routes/healthRoutes';
+import { createLocalPostgresSqlClient } from './runtime/localPostgresSqlClient';
 import {
   ApiError,
   createErrorPayload,
@@ -16,6 +19,10 @@ export type ReadinessDependency = {
 export type ApiServerInstance = {
   close: () => Promise<void>;
   port: number;
+};
+
+type ReadinessSqlClient = {
+  query: <T>(sql: string, params?: readonly unknown[]) => Promise<readonly T[]>;
 };
 
 type LocalApiRuntime = {
@@ -167,20 +174,50 @@ function ensureRole(actor: AuthenticatedActor, role: 'admin' | 'student'): void 
 }
 
 async function handleReadiness(
+  request: IncomingMessage,
   response: ServerResponse,
   dependencies: readonly ReadinessDependency[]
 ): Promise<void> {
-  const checks: { name: string; status: 'up' | 'down' }[] = [];
-  for (const dependency of dependencies) {
-    const ok = await dependency.check();
-    checks.push({ name: dependency.name, status: ok ? 'up' : 'down' });
+  const context = createApiRequestContext({
+    'x-request-id':
+      typeof request.headers['x-request-id'] === 'string' ? request.headers['x-request-id'] : undefined
+  });
+  const readiness = await createHealthRoutes(dependencies).readiness(context);
+  sendJson(response, readiness.status === 'ready' ? 200 : 503, readiness);
+}
+
+function createDefaultReadinessDependencies(sqlClient?: ReadinessSqlClient): readonly ReadinessDependency[] {
+  if (!sqlClient) {
+    return [
+      { name: 'postgres', check: async () => true },
+      { name: 'queue', check: async () => true }
+    ];
   }
 
-  const ready = checks.every((item) => item.status === 'up');
-  sendJson(response, ready ? 200 : 503, {
-    status: ready ? 'ready' : 'not_ready',
-    dependencies: checks
-  });
+  return [
+    {
+      name: 'postgres',
+      check: async () => {
+        try {
+          await sqlClient.query<{ ready: number }>('SELECT 1 AS ready');
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    },
+    {
+      name: 'queue',
+      check: async () => {
+        try {
+          await sqlClient.query<{ submission_id: string }>('SELECT submission_id FROM judge_jobs LIMIT 1');
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    }
+  ];
 }
 
 function createLocalApiRuntime(): LocalApiRuntime {
@@ -221,12 +258,19 @@ export function createApiRequestHandler(
     const method = request.method ?? 'GET';
 
     if (path === '/healthz') {
-      sendJson(response, 200, { status: 'ok' });
+      const context = createApiRequestContext({
+        'x-request-id':
+          typeof request.headers['x-request-id'] === 'string'
+            ? request.headers['x-request-id']
+            : undefined
+      });
+      const liveness = await createHealthRoutes(dependencies).liveness(context);
+      sendJson(response, 200, liveness);
       return;
     }
 
     if (path === '/readyz') {
-      await handleReadiness(response, dependencies);
+      await handleReadiness(request, response, dependencies);
       return;
     }
 
@@ -499,7 +543,8 @@ export async function startApiServer(options?: {
 }): Promise<ApiServerInstance> {
   const port = options?.port ?? Number(process.env.PORT ?? 3000);
   const host = options?.host ?? '0.0.0.0';
-  const dependencies = options?.dependencies ?? [{ name: 'runtime', check: async () => true }];
+  const sqlClient = process.env.DATABASE_URL ? createLocalPostgresSqlClient() : undefined;
+  const dependencies = options?.dependencies ?? createDefaultReadinessDependencies(sqlClient);
   const localRuntime = process.env.DATABASE_URL ? createLocalApiRuntime() : undefined;
 
   const server = createServer((request, response) => {
