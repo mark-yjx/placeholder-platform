@@ -10,6 +10,7 @@ import {
   InMemoryEngagementApiClient,
   InMemoryPracticeApiClient
 } from '../runtime/InMemoryExtensionClients';
+import { ExtensionApiError } from '../errors/ExtensionErrorMapper';
 
 test('registered command writes to output channel on success', async () => {
   const outputLines: string[] = [];
@@ -71,7 +72,12 @@ test('command error is reported cleanly', async () => {
 
   class FailingPracticeCommands extends PracticeCommands {
     override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
-      throw new Error('boom');
+      throw new ExtensionApiError(404, {
+        error: {
+          code: 'PROBLEM_NOT_FOUND',
+          message: 'Problem not found'
+        }
+      });
     }
   }
 
@@ -97,6 +103,52 @@ test('command error is reported cleanly', async () => {
 
   await failingHandlers.get('oj.practice.fetchProblems')?.();
 
-  assert.ok(outputLines.some((line) => line.includes('[oj.practice.fetchProblems] error: boom')));
-  assert.ok(shownErrors.some((line) => line.includes('boom')));
+  assert.ok(
+    outputLines.some((line) => line.includes('[oj.practice.fetchProblems] error: API 404 PROBLEM_NOT_FOUND'))
+  );
+  assert.ok(shownErrors.some((line) => line.includes('Problem not found')));
+});
+
+test('auth failures prompt login instead of showing raw auth error text', async () => {
+  const outputLines: string[] = [];
+  const shownErrors: string[] = [];
+  const handlers = new Map<string, () => Promise<void>>();
+
+  class UnauthorizedPracticeCommands extends PracticeCommands {
+    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
+      throw new ExtensionApiError(401, {
+        error: {
+          code: 'AUTH_INVALID_TOKEN',
+          message: 'Authentication token is invalid'
+        }
+      });
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new UnauthorizedPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    output: { appendLine: (line) => outputLines.push(line) },
+    window: {
+      showErrorMessage: (message) => shownErrors.push(message),
+      showInformationMessage: () => undefined
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.fetchProblems')?.();
+
+  assert.ok(outputLines.some((line) => line.includes('API 401 AUTH_INVALID_TOKEN')));
+  assert.ok(shownErrors.some((line) => line.includes('Please login to continue.')));
+  assert.equal(shownErrors.some((line) => line.includes('Authentication token is invalid')), false);
 });

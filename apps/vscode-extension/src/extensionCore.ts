@@ -1,6 +1,7 @@
 import { EngagementCommands } from './engagement/EngagementCommands';
 import { AuthCommands } from './auth/AuthCommands';
 import { PracticeCommands } from './practice/PracticeCommands';
+import { mapExtensionError } from './errors/ExtensionErrorMapper';
 
 export type DisposableLike = { dispose: () => void };
 
@@ -37,9 +38,9 @@ export function registerExtensionCommands(
       dependencies.output.appendLine(`[${commandId}] success`);
       dependencies.window.showInformationMessage(`[${commandId}] success`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      dependencies.output.appendLine(`[${commandId}] error: ${message}`);
-      dependencies.window.showErrorMessage(`[${commandId}] ${message}`);
+      const mapped = mapExtensionError(error);
+      dependencies.output.appendLine(`[${commandId}] error: ${mapped.logMessage}`);
+      dependencies.window.showErrorMessage(`[${commandId}] ${mapped.userMessage}`);
     }
   };
 
