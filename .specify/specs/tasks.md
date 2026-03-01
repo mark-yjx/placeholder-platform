@@ -359,3 +359,96 @@ IN:
 - Full pipeline integration
 OUT:
 - UI/Extension enhancements
+
+# Phase 5 – API Stabilization & Error Mapping
+
+Goal:
+Stabilize public API contracts and error semantics so the VSCode extension and external clients can rely on consistent behavior.
+
+## 57. Error Normalization
+
+Acceptance checks:
+- All API error responses follow a unified JSON structure:
+  {
+    "error": {
+      "code": "<STRING_CODE>",
+      "message": "<human_readable_message>"
+    }
+  }
+- No raw stack traces are exposed in production mode.
+- 400 validation errors return consistent field-level detail (if applicable).
+- Existing success response formats remain unchanged.
+
+Scope:
+IN:
+- API layer error mapping
+- Global error handler/middleware
+OUT:
+- Domain model changes
+- Submission execution logic
+
+## 58. Authentication & Authorization Error Mapping
+
+Acceptance checks:
+- Missing/invalid token returns 401.
+- Authenticated but insufficient role returns 403.
+- No endpoint returns 500 for authentication failures.
+- Error codes are deterministic and documented.
+
+Scope:
+IN:
+- Auth middleware
+- Role guard logic
+OUT:
+- Token generation logic
+- User persistence refactor
+
+## 59. Resource Not Found Semantics
+
+Acceptance checks:
+- Non-existent problem returns 404.
+- Non-existent submission returns 404.
+- No 200 responses for missing resources.
+- Error structure matches unified error format (Task 57).
+
+Scope:
+IN:
+- API controllers
+- Repository result handling
+OUT:
+- DB schema changes
+- Worker logic
+
+## 60. Health & Readiness Hardening
+
+Acceptance checks:
+- /healthz returns 200 if process is alive.
+- /readyz returns:
+  - 200 only if DB and queue dependencies are reachable.
+  - 503 if critical dependency unavailable.
+- Readiness check does not mutate system state.
+- Response structure is stable and documented.
+
+Scope:
+IN:
+- Health endpoint implementation
+- Dependency checks (DB/queue)
+OUT:
+- Worker execution changes
+- Submission state machine
+
+## 61. Submission Query Stability
+
+Acceptance checks:
+- Submission list endpoint returns deterministic ordering (e.g., newest first).
+- Fields returned are stable and documented.
+- Only `finished` submissions are considered in result-based views (if applicable).
+- No breaking changes to existing extension contract.
+
+Scope:
+IN:
+- API query layer
+- Sorting logic
+OUT:
+- Ranking recalculation logic
+- Domain state machine changes
