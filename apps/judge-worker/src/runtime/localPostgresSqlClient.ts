@@ -1,17 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { PostgresFavoritesSqlClient } from '@packages/infrastructure/src/postgres/favorites';
-import type { PostgresSqlClient } from '@packages/infrastructure/src/postgres/problem';
-import type { PostgresReviewsSqlClient } from '@packages/infrastructure/src/postgres/reviews';
-import type { PostgresSubmissionSqlClient } from '@packages/infrastructure/src/postgres/submission';
 import type { PostgresJudgeResultSqlClient } from '@packages/infrastructure/src/postgres/results';
+import type { PostgresSubmissionSqlClient } from '@packages/infrastructure/src/postgres/submission';
 import type { PostgresJudgeJobQueueSqlClient } from '@packages/infrastructure/src/queue';
 
-type LocalPostgresSqlClient = PostgresSqlClient &
-  PostgresFavoritesSqlClient &
-  PostgresReviewsSqlClient &
-  PostgresSubmissionSqlClient &
+type LocalPostgresSqlClient = PostgresSubmissionSqlClient &
   PostgresJudgeResultSqlClient &
   PostgresJudgeJobQueueSqlClient;
 
@@ -96,10 +90,6 @@ export function createLocalPostgresSqlClient(): LocalPostgresSqlClient {
 
     async execute(sql: string, params?: readonly unknown[]): Promise<void> {
       runPsql(applySqlParams(sql, params));
-    },
-
-    async withTransaction<T>(work: (client: PostgresSqlClient) => Promise<T>): Promise<T> {
-      return work(this);
     }
   };
 }

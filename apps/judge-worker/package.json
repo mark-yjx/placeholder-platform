@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "@packages/contracts": "*"
+    "@packages/contracts": "*",
+    "@packages/infrastructure": "*"
   },
   "scripts": {
     "validate:env": "node ../../tools/scripts/validate-env.mjs worker",

@@ -1,3 +1,13 @@
+import { spawn } from 'node:child_process';
+import { PostgresJudgeResultRepository, PostgresJudgeJobQueue, PostgresSubmissionRepository } from '@packages/infrastructure/src';
+import type { Verdict } from '@packages/domain/src/judge';
+import type { SubmissionStatus } from '@packages/domain/src/submission';
+import { PythonRunnerPlugin } from './runner/PythonRunnerPlugin';
+import { RunnerRegistry } from './runner/RunnerRegistry';
+import { createLocalPostgresSqlClient } from './runtime/localPostgresSqlClient';
+import { DockerSandboxAdapter } from './sandbox/DockerSandboxAdapter';
+import { runPythonJudgeExecution } from './sandbox/PythonJudgeExecution';
+
 export type WorkerRuntimeOptions = {
   pollIntervalMs?: number;
   onTick?: () => Promise<void> | void;
@@ -10,6 +20,100 @@ export type WorkerRuntimeOptions = {
 export type WorkerRuntimeHandle = {
   stop: () => Promise<void>;
 };
+
+async function executeDockerCommand(command: {
+  command: string;
+  args: readonly string[];
+  stdin: string;
+}): Promise<{ stdout: string; stderr: string; exitCode: number; timeMs: number; memoryKb: number }> {
+  const imageIndex = command.args.findIndex((part) => part.includes(':'));
+  if (imageIndex < 0) {
+    throw new Error('Docker image is required for worker execution');
+  }
+
+  const image = command.args[imageIndex];
+  const prefixArgs = command.args.slice(0, imageIndex);
+  const startedAt = Date.now();
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      command.command,
+      [...prefixArgs, image, 'sh', '-lc', 'cat >/tmp/main.py && python /tmp/main.py'],
+      {
+        stdio: 'pipe'
+      }
+    );
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      resolve({
+        stdout,
+        stderr,
+        exitCode: code ?? 1,
+        timeMs: Math.max(Date.now() - startedAt, 0),
+        memoryKb: 0
+      });
+    });
+    child.stdin.write(command.stdin);
+    child.stdin.end();
+  });
+}
+
+export function createLocalWorkerTick(): () => Promise<void> {
+  const sqlClient = createLocalPostgresSqlClient();
+  const queue = new PostgresJudgeJobQueue(sqlClient);
+  const submissions = new PostgresSubmissionRepository(sqlClient);
+  const results = new PostgresJudgeResultRepository(sqlClient);
+  const sandbox = new DockerSandboxAdapter(executeDockerCommand);
+  const runners = new RunnerRegistry([new PythonRunnerPlugin()]);
+  const image = process.env.DOCKER_IMAGE_PYTHON ?? 'python:3.12-alpine';
+
+  return async () => {
+    const job = await queue.claimNext();
+    if (!job) {
+      return;
+    }
+
+    const submission = await submissions.findById(job.submissionId);
+    if (!submission) {
+      throw new Error(`Submission not found for job ${job.submissionId}`);
+    }
+
+    await submissions.save({
+      ...submission,
+      status: 'running' as SubmissionStatus
+    });
+
+    const result = await runPythonJudgeExecution({
+      sandbox,
+      runners,
+      image,
+      sourceCode: job.sourceCode,
+      expectedStdout: '42\n'
+    });
+
+    await submissions.save({
+      ...submission,
+      status: result.status as SubmissionStatus
+    });
+    await results.save({
+      submissionId: job.submissionId,
+      verdict: result.verdict as Verdict,
+      timeMs: result.timeMs,
+      memoryKb: result.memoryKb
+    });
+    await queue.acknowledge(job.submissionId);
+  };
+}
 
 export function startWorkerRuntime(options?: WorkerRuntimeOptions): WorkerRuntimeHandle {
   const pollIntervalMs = options?.pollIntervalMs ?? 1000;
@@ -46,7 +150,9 @@ export function startWorkerRuntime(options?: WorkerRuntimeOptions): WorkerRuntim
 }
 
 export function runWorkerProcess(): void {
-  const runtime = startWorkerRuntime();
+  const runtime = startWorkerRuntime({
+    onTick: createLocalWorkerTick()
+  });
 
   const shutdown = async () => {
     await runtime.stop();

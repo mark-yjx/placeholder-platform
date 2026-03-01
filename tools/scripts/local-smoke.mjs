@@ -11,6 +11,7 @@ const LOCAL_API_PORT = 3100;
 const LOCAL_API_BASE = `http://127.0.0.1:${LOCAL_API_PORT}`;
 
 let apiProcess = null;
+let workerProcess = null;
 
 function startLocalApiProcess() {
   apiProcess = spawn('npm', ['run', 'api:start'], {
@@ -42,6 +43,33 @@ async function stopLocalApiProcess() {
 async function restartLocalApiProcess() {
   await stopLocalApiProcess();
   startLocalApiProcess();
+}
+
+function startLocalWorkerProcess() {
+  workerProcess = spawn('npm', ['run', 'worker:start'], {
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      DATABASE_URL: 'postgresql://oj:oj@127.0.0.1:5432/oj',
+      DOCKER_IMAGE_PYTHON: 'python:3.12-alpine'
+    }
+  });
+}
+
+async function stopLocalWorkerProcess() {
+  if (!workerProcess) {
+    return;
+  }
+  await new Promise((resolve) => {
+    workerProcess.once('exit', () => resolve(undefined));
+    workerProcess.kill('SIGTERM');
+    setTimeout(() => {
+      if (workerProcess && !workerProcess.killed) {
+        workerProcess.kill('SIGKILL');
+      }
+    }, 1500);
+  });
+  workerProcess = null;
 }
 
 async function apiRequest(method, path, body, token) {
@@ -98,6 +126,31 @@ function assertReviewPresent(reviewsResponse, problemId, label) {
   if (!matchingReview) {
     throw new Error(`${label} missing expected review`);
   }
+}
+
+function assertSubmissionResult(view, expectedStatus, expectedVerdict) {
+  if (!view || view.status !== expectedStatus) {
+    throw new Error(`submission status mismatch: expected ${expectedStatus}`);
+  }
+  if (expectedVerdict) {
+    if (view.verdict !== expectedVerdict) {
+      throw new Error(`submission verdict mismatch: expected ${expectedVerdict}`);
+    }
+    if (typeof view.timeMs !== 'number' || typeof view.memoryKb !== 'number') {
+      throw new Error('submission result missing time/memory');
+    }
+  }
+}
+
+async function waitForSubmissionResult(submissionId, token, expectedStatus, expectedVerdict, attempts, intervalMs) {
+  for (let i = 0; i < attempts; i += 1) {
+    const result = await apiRequest('GET', `/submissions/${submissionId}/result`, undefined, token);
+    if (result.status === expectedStatus && (!expectedVerdict || result.verdict === expectedVerdict)) {
+      return result;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error(`submission ${submissionId} did not reach ${expectedStatus}`);
 }
 
 async function runFlow() {
@@ -163,6 +216,40 @@ async function runFlow() {
   assertReviewPresent(reviewsBefore, problemId, 'review list before restart');
   console.log('ok');
 
+  const submissionId = `smoke-submission-${Date.now()}`;
+
+  process.stdout.write('[smoke] submit while worker stopped and verify queued... ');
+  const submission = await apiRequest(
+    'POST',
+    '/submissions',
+    {
+      submissionId,
+      problemId,
+      language: 'python',
+      sourceCode: 'print(42)'
+    },
+    studentToken
+  );
+  if (submission.status !== 'queued') {
+    throw new Error('submission was not queued');
+  }
+  const queuedView = await apiRequest('GET', `/submissions/${submissionId}/result`, undefined, studentToken);
+  assertSubmissionResult(queuedView, 'queued');
+  console.log('ok');
+
+  process.stdout.write('[smoke] start worker and wait for finished result... ');
+  startLocalWorkerProcess();
+  const finishedView = await waitForSubmissionResult(
+    submissionId,
+    studentToken,
+    'finished',
+    'AC',
+    40,
+    250
+  );
+  assertSubmissionResult(finishedView, 'finished', 'AC');
+  console.log('ok');
+
   process.stdout.write('[smoke] restart local api runtime... ');
   await restartLocalApiProcess();
   console.log('ok');
@@ -175,6 +262,12 @@ async function runFlow() {
   const problemsAfter = await apiRequest('GET', '/problems', undefined, studentToken);
   const favoritesAfter = await apiRequest('GET', '/favorites', undefined, studentToken);
   const reviewsAfter = await apiRequest('GET', `/reviews/${problemId}`, undefined, studentToken);
+  const resultAfterRestart = await apiRequest(
+    'GET',
+    `/submissions/${submissionId}/result`,
+    undefined,
+    studentToken
+  );
 
   assertIncludes(
     (problemsAfter.problems ?? []).map((item) => item.problemId),
@@ -183,6 +276,7 @@ async function runFlow() {
   );
   assertIncludes(favoritesAfter.favorites ?? [], problemId, 'favorites after restart');
   assertReviewPresent(reviewsAfter, problemId, 'review list after restart');
+  assertSubmissionResult(resultAfterRestart, 'finished', 'AC');
   console.log('ok');
 }
 
@@ -192,9 +286,11 @@ async function main() {
     runStep('seed user+problem', 'npm run local:db:setup');
     startLocalApiProcess();
     await runFlow();
+    await stopLocalWorkerProcess();
     await stopLocalApiProcess();
     console.log('SMOKE PASS');
   } catch (error) {
+    await stopLocalWorkerProcess();
     await stopLocalApiProcess();
     const message = error instanceof Error ? error.message : String(error);
     console.error(`SMOKE FAIL: ${message}`);

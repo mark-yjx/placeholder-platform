@@ -40,6 +40,24 @@ FROM judge_jobs
 ORDER BY created_at ASC, submission_id ASC
 `;
 
+const CLAIM_NEXT_JUDGE_JOB_SQL = `
+SELECT
+  submission_id,
+  owner_user_id,
+  problem_id,
+  problem_version_id,
+  language,
+  source_code
+FROM judge_jobs
+ORDER BY created_at ASC, submission_id ASC
+LIMIT 1
+`;
+
+const DELETE_JUDGE_JOB_SQL = `
+DELETE FROM judge_jobs
+WHERE submission_id = $1
+`;
+
 function toJudgeJob(row: JudgeJobRow): Judge.JudgeJob {
   return {
     submissionId: row.submission_id,
@@ -69,5 +87,14 @@ export class PostgresJudgeJobQueue implements JudgeJobQueue {
   async listJobs(): Promise<readonly Judge.JudgeJob[]> {
     const rows = await this.client.query<JudgeJobRow>(LIST_JUDGE_JOBS_SQL);
     return rows.map(toJudgeJob);
+  }
+
+  async claimNext(): Promise<Judge.JudgeJob | null> {
+    const rows = await this.client.query<JudgeJobRow>(CLAIM_NEXT_JUDGE_JOB_SQL);
+    return rows[0] ? toJudgeJob(rows[0]) : null;
+  }
+
+  async acknowledge(submissionId: string): Promise<void> {
+    await this.client.execute(DELETE_JUDGE_JOB_SQL, [submissionId]);
   }
 }

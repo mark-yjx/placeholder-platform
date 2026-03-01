@@ -72,6 +72,16 @@ type LocalApiRuntime = {
         status: string;
       }>;
     };
+    submissionResults: {
+      getBySubmissionId: (submissionId: string) => Promise<{
+        submissionId: string;
+        ownerUserId: string;
+        status: string;
+        verdict?: string;
+        timeMs?: number;
+        memoryKb?: number;
+      }>;
+    };
   };
 };
 
@@ -148,6 +158,7 @@ function createLocalApiRuntime(): LocalApiRuntime {
         favoritesClient: sqlClient,
         reviewsClient: sqlClient,
         submissionClient: sqlClient,
+        resultClient: sqlClient,
         judgeQueueClient: sqlClient
       }
     })
@@ -284,6 +295,31 @@ export function createApiRequestHandler(
           problemVersionId: record.problemVersionId,
           enqueueAccepted: true
         });
+      } catch (error) {
+        const failure = toErrorResponse(error);
+        sendJson(response, failure.statusCode, failure.payload);
+      }
+      return;
+    }
+
+    const submissionResultMatch = path.match(/^\/submissions\/([^/]+)\/result$/);
+    if (submissionResultMatch && method === 'GET') {
+      try {
+        const actor = resolveActorFromAuthorizationHeader(
+          typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+        );
+        if (!actor) {
+          sendJson(response, 403, { error: 'Forbidden' });
+          return;
+        }
+
+        const view = await persistence.submissionResults.getBySubmissionId(submissionResultMatch[1]);
+        if (actor.role === 'student' && view.ownerUserId !== actor.userId) {
+          sendJson(response, 403, { error: 'Forbidden' });
+          return;
+        }
+
+        sendJson(response, 200, view);
       } catch (error) {
         const failure = toErrorResponse(error);
         sendJson(response, failure.statusCode, failure.payload);
