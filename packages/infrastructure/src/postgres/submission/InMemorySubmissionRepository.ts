@@ -3,6 +3,10 @@ import {
   SubmissionCreationRepository,
   SubmissionRecord
 } from '@packages/application/src/submission/CreateSubmissionUseCase';
+import {
+  assertSubmissionStartsQueued,
+  assertValidSubmissionTransition
+} from './submissionStateGuard';
 
 export class InMemorySubmissionRepository
   implements SubmissionCreationRepository, SubmissionAdminRepository
@@ -14,6 +18,24 @@ export class InMemorySubmissionRepository
   }
 
   async save(record: SubmissionRecord): Promise<void> {
+    const existing = this.submissions.get(record.id);
+    if (!existing) {
+      assertSubmissionStartsQueued(record.status);
+      this.submissions.set(record.id, { ...record });
+      return;
+    }
+
+    if (
+      existing.ownerUserId !== record.ownerUserId ||
+      existing.problemId !== record.problemId ||
+      existing.problemVersionId !== record.problemVersionId ||
+      existing.language !== record.language ||
+      existing.sourceCode !== record.sourceCode
+    ) {
+      throw new Error('Submission identity is immutable');
+    }
+
+    assertValidSubmissionTransition(existing.status, record.status);
     this.submissions.set(record.id, { ...record });
   }
 

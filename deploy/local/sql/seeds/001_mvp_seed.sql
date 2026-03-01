@@ -17,14 +17,15 @@ ON CONFLICT (id) DO UPDATE
 SET title = EXCLUDED.title,
     publication_state = EXCLUDED.publication_state;
 
-INSERT INTO submissions (id, user_id, problem_id, language, status, source_code)
+INSERT INTO submissions (id, user_id, problem_id, problem_version_id, language, status, source_code)
 VALUES
-  ('sub-1', 'student-1', 'problem-1', 'python', 'finished', 'print(42)'),
-  ('sub-2', 'student-1', 'problem-2', 'python', 'finished', 'print(1)'),
-  ('sub-3', 'student-2', 'problem-1', 'python', 'finished', 'print(2)')
+  ('sub-1', 'student-1', 'problem-1', 'problem-1-v1', 'python', 'finished', 'print(42)'),
+  ('sub-2', 'student-1', 'problem-2', 'problem-2-v1', 'python', 'finished', 'print(1)'),
+  ('sub-3', 'student-2', 'problem-1', 'problem-1-v1', 'python', 'finished', 'print(2)')
 ON CONFLICT (id) DO UPDATE
 SET user_id = EXCLUDED.user_id,
     problem_id = EXCLUDED.problem_id,
+    problem_version_id = EXCLUDED.problem_version_id,
     language = EXCLUDED.language,
     status = EXCLUDED.status,
     source_code = EXCLUDED.source_code;
