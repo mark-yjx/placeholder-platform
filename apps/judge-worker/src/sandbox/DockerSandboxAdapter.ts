@@ -14,7 +14,15 @@ export type DockerSandboxInput = {
   runArgs?: readonly string[];
 };
 
-export type CommandExecutor = (command: RunCommand) => Promise<{ stdout: string; stderr: string }>;
+export type DockerSandboxExecution = {
+  stdout: string;
+  stderr: string;
+  exitCode?: number;
+  timeMs?: number;
+  memoryKb?: number;
+};
+
+export type CommandExecutor = (command: RunCommand) => Promise<DockerSandboxExecution>;
 
 export class DockerSandboxAdapter {
   constructor(private readonly executeCommand: CommandExecutor) {}
@@ -37,8 +45,16 @@ export class DockerSandboxAdapter {
     };
   }
 
-  async execute(input: DockerSandboxInput): Promise<{ stdout: string; stderr: string }> {
+  async execute(input: DockerSandboxInput): Promise<Required<DockerSandboxExecution>> {
     const command = this.buildRunCommand(input);
-    return this.executeCommand(command);
+    const startedAt = Date.now();
+    const execution = await this.executeCommand(command);
+    return {
+      stdout: execution.stdout,
+      stderr: execution.stderr,
+      exitCode: execution.exitCode ?? 0,
+      timeMs: execution.timeMs ?? Math.max(Date.now() - startedAt, 0),
+      memoryKb: execution.memoryKb ?? 0
+    };
   }
 }
