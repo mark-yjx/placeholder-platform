@@ -20,6 +20,16 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "OJ VSCode",
+      "properties": {
+        "oj.apiBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "Base URL for the OJ API used by the extension."
+        }
+      }
+    },
     "commands": [
       {
         "command": "oj.login",

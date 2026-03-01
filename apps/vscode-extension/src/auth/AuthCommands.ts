@@ -11,10 +11,10 @@ export class AuthCommands {
   async login(request: LoginRequest): Promise<void> {
     validateLoginInput(request);
     const response = await this.authClient.login(request);
-    this.tokenStore.setAccessToken(response.accessToken);
+    await this.tokenStore.setAccessToken(response.accessToken);
   }
 
-  logout(): void {
-    this.tokenStore.clear();
+  async logout(): Promise<void> {
+    await this.tokenStore.clear();
   }
 }

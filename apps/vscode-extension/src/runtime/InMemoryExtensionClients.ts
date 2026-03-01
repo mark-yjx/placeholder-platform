@@ -8,13 +8,21 @@ import {
   SubmissionResult
 } from '../api/PracticeApiClient';
 
+export type ExtensionApiClientConfig = {
+  apiBaseUrl: string;
+};
+
 export class InMemoryAuthClient implements AuthClient {
+  constructor(readonly config: ExtensionApiClientConfig = { apiBaseUrl: 'http://localhost:3000' }) {}
+
   async login(_request: LoginRequest): Promise<LoginResponse> {
     return { accessToken: 'dev-student-token' };
   }
 }
 
 export class InMemoryPracticeApiClient implements PracticeApiClient {
+  constructor(readonly config: ExtensionApiClientConfig = { apiBaseUrl: 'http://localhost:3000' }) {}
+
   private readonly problems: readonly PublishedProblem[] = [
     { problemId: 'problem-1', title: 'Two Sum' },
     { problemId: 'problem-2', title: 'FizzBuzz' }
@@ -54,6 +62,8 @@ export class InMemoryPracticeApiClient implements PracticeApiClient {
 }
 
 export class InMemoryEngagementApiClient implements EngagementApiClient {
+  constructor(readonly config: ExtensionApiClientConfig = { apiBaseUrl: 'http://localhost:3000' }) {}
+
   private readonly favorites = new Set<string>();
   private readonly reviews = new Map<string, ProblemReview[]>();
   private reviewCounter = 0;
