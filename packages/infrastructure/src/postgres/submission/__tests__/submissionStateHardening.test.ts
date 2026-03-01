@@ -58,8 +58,15 @@ class FakePostgresSubmissionSqlClient {
       return row ? [row as T] : [];
     }
 
-    if (sql.includes('FROM submissions') && sql.includes('ORDER BY created_at ASC, id ASC')) {
-      return Array.from(this.rows.values()) as T[];
+    if (sql.includes('FROM submissions') && sql.includes('ORDER BY created_at DESC, id DESC')) {
+      return Array.from(this.rows.values()).sort((left, right) => {
+        const createdAtDiff =
+          Date.parse(right.created_at) - Date.parse(left.created_at);
+        if (createdAtDiff !== 0) {
+          return createdAtDiff;
+        }
+        return right.id.localeCompare(left.id);
+      }) as T[];
     }
 
     throw new Error(`Unsupported query SQL in fake client: ${sql}`);

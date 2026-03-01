@@ -14,6 +14,7 @@ type SubmissionReadModel = {
   id: string;
   ownerUserId: string;
   status: SubmissionStatus;
+  createdAt: string;
 };
 
 export interface SubmissionResultReadRepository {
@@ -33,7 +34,17 @@ export class ResultQueryService {
 
   async getStudentSubmissionHistory(actorUserId: string): Promise<readonly SubmissionResultView[]> {
     const items = await this.submissions.listAll();
-    const owned = items.filter((submission) => submission.ownerUserId === actorUserId);
+    const owned = items
+      .filter((submission) => submission.ownerUserId === actorUserId)
+      .sort((left, right) => {
+        const createdAtDiff =
+          Date.parse(right.createdAt) - Date.parse(left.createdAt);
+        if (createdAtDiff !== 0) {
+          return createdAtDiff;
+        }
+
+        return right.id.localeCompare(left.id);
+      });
     const views: SubmissionResultView[] = [];
     for (const submission of owned) {
       views.push(await this.toView(submission));
@@ -56,7 +67,7 @@ export class ResultQueryService {
       status: submission.status
     };
 
-    if (submission.status === SubmissionStatus.FINISHED || submission.status === SubmissionStatus.FAILED) {
+    if (submission.status === SubmissionStatus.FINISHED) {
       const result = await this.results.findBySubmissionId(submission.id);
       if (!result) {
         throw new Error('Result missing for finished submission');

@@ -57,6 +57,7 @@ class InMemorySubmissionStateRepository {
       language: string;
       sourceCode: string;
       status: SubmissionStatusValue;
+      createdAt: string;
     }
   >();
 
@@ -68,8 +69,12 @@ class InMemorySubmissionStateRepository {
     language: string;
     sourceCode: string;
     status: SubmissionStatusValue;
+    createdAt?: string;
   }) {
-    this.records.set(seed.id, { ...seed });
+    this.records.set(seed.id, {
+      ...seed,
+      createdAt: seed.createdAt ?? new Date().toISOString()
+    });
   }
 
   async findById(id: string) {
@@ -84,11 +89,23 @@ class InMemorySubmissionStateRepository {
     language: string;
     sourceCode: string;
     status: SubmissionStatusValue;
+    createdAt?: string;
   }) {
-    this.records.set(record.id, { ...record });
+    const existing = this.records.get(record.id);
+    this.records.set(record.id, {
+      ...record,
+      createdAt: record.createdAt ?? existing?.createdAt ?? new Date().toISOString()
+    });
   }
 
-  async listAll() {
+  async listAll(): Promise<
+    readonly {
+      id: string;
+      ownerUserId: string;
+      status: SubmissionStatusValue;
+      createdAt: string;
+    }[]
+  > {
     return Array.from(this.records.values());
   }
 }
@@ -135,7 +152,8 @@ test('duplicate judge callback ingestion does not overwrite terminal state and r
     problemVersionId: 'problem-1-v1',
     language: 'python',
     sourceCode: 'print(42)',
-    status: 'running'
+    status: 'running',
+    createdAt: '2026-02-25T00:00:00.000Z'
   });
   const results = new GuardedInMemoryJudgeResultRepository();
   const ingestion = new JudgeCallbackIngestionService(submissions as never, results as never);
@@ -169,6 +187,62 @@ test('duplicate judge callback ingestion does not overwrite terminal state and r
       verdict: 'AC',
       timeMs: 120,
       memoryKb: 2048
+    }
+  ]);
+});
+
+test('result query keeps newest submissions first and does not require judge results for failed submissions', async () => {
+  const { ResultQueryService } = loadModule<typeof import('@packages/application/src/results')>([
+    'packages',
+    'application',
+    'src',
+    'results',
+    'index.ts'
+  ]);
+  const submissions = new InMemorySubmissionStateRepository({
+    id: 'submission-old',
+    ownerUserId: 'student-1',
+    problemId: 'problem-1',
+    problemVersionId: 'problem-1-v1',
+    language: 'python',
+    sourceCode: 'print(1)',
+    status: 'failed',
+    createdAt: '2026-02-24T00:00:00.000Z'
+  });
+  await submissions.save({
+    id: 'submission-new',
+    ownerUserId: 'student-1',
+    problemId: 'problem-1',
+    problemVersionId: 'problem-1-v1',
+    language: 'python',
+    sourceCode: 'print(2)',
+    status: 'finished',
+    createdAt: '2026-02-25T00:00:00.000Z'
+  });
+  const results = new GuardedInMemoryJudgeResultRepository();
+  await results.save({
+    submissionId: 'submission-new',
+    verdict: 'AC' as Verdict,
+    timeMs: 101,
+    memoryKb: 1024
+  });
+
+  const history = await new ResultQueryService(submissions as never, results as never)
+    .getStudentSubmissionHistory('student-1');
+
+  assert.deepEqual(history, [
+    {
+      submissionId: 'submission-new',
+      ownerUserId: 'student-1',
+      status: 'finished',
+      verdict: 'AC',
+      timeMs: 101,
+      memoryKb: 1024
+    },
+    {
+      submissionId: 'submission-old',
+      ownerUserId: 'student-1',
+      status: 'failed'
     }
   ]);
 });

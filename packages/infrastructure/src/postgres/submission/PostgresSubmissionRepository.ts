@@ -24,6 +24,7 @@ type SubmissionRow = {
   language: string;
   source_code: string;
   status: SubmissionStatus;
+  created_at: string;
 };
 
 const FIND_SUBMISSION_BY_ID_SQL = `
@@ -34,7 +35,8 @@ SELECT
   problem_version_id,
   language,
   source_code,
-  status
+  status,
+  created_at
 FROM submissions
 WHERE id = $1
 `;
@@ -47,9 +49,10 @@ SELECT
   problem_version_id,
   language,
   source_code,
-  status
+  status,
+  created_at
 FROM submissions
-ORDER BY created_at ASC, id ASC
+ORDER BY created_at DESC, id DESC
 `;
 
 const INSERT_SUBMISSION_SQL = `
@@ -76,7 +79,11 @@ DELETE FROM submissions
 WHERE id = $1
 `;
 
-function toSubmissionRecord(row: SubmissionRow): SubmissionRecord {
+type SubmissionReadRecord = SubmissionRecord & {
+  createdAt: string;
+};
+
+function toSubmissionRecord(row: SubmissionRow): SubmissionReadRecord {
   return {
     id: row.id,
     ownerUserId: row.owner_user_id,
@@ -84,7 +91,8 @@ function toSubmissionRecord(row: SubmissionRow): SubmissionRecord {
     problemVersionId: row.problem_version_id,
     language: row.language,
     sourceCode: row.source_code,
-    status: row.status
+    status: row.status,
+    createdAt: row.created_at
   };
 }
 
@@ -112,7 +120,7 @@ export class PostgresSubmissionRepository
 {
   constructor(private readonly client: PostgresSubmissionSqlClient) {}
 
-  async findById(id: string): Promise<SubmissionRecord | null> {
+  async findById(id: string): Promise<SubmissionReadRecord | null> {
     const rows = await this.client.query<SubmissionRow>(FIND_SUBMISSION_BY_ID_SQL, [id]);
     return rows[0] ? toSubmissionRecord(rows[0]) : null;
   }
@@ -144,7 +152,7 @@ export class PostgresSubmissionRepository
     await this.client.execute(UPDATE_SUBMISSION_STATUS_SQL, [record.id, record.status]);
   }
 
-  async listAll(): Promise<readonly SubmissionRecord[]> {
+  async listAll(): Promise<readonly SubmissionReadRecord[]> {
     const rows = await this.client.query<SubmissionRow>(LIST_SUBMISSIONS_SQL);
     return rows.map(toSubmissionRecord);
   }
