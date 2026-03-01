@@ -48,6 +48,7 @@ export type LocalPersistenceServices = {
   };
   submissionResults: {
     getBySubmissionId: ResultQueryService['getAdminSubmissionDetail'];
+    listByActorUserId: ResultQueryService['getStudentSubmissionHistory'];
   };
 };
 
@@ -105,7 +106,8 @@ export function createLocalPersistenceServices(options: {
         create: createSubmission.execute.bind(createSubmission)
       },
       submissionResults: {
-        getBySubmissionId: resultQuery.getAdminSubmissionDetail.bind(resultQuery)
+        getBySubmissionId: resultQuery.getAdminSubmissionDetail.bind(resultQuery),
+        listByActorUserId: resultQuery.getStudentSubmissionHistory.bind(resultQuery)
       }
     };
   }

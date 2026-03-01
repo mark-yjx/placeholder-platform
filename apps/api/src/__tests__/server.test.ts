@@ -49,6 +49,23 @@ function createRuntime() {
             ownerUserId: 'student-1',
             status: 'finished'
           };
+        },
+        async listByActorUserId(actorUserId: string) {
+          return [
+            {
+              submissionId: 'submission-older',
+              ownerUserId: actorUserId,
+              status: 'queued'
+            },
+            {
+              submissionId: 'submission-1',
+              ownerUserId: actorUserId,
+              status: 'finished',
+              verdict: 'AC',
+              timeMs: 120,
+              memoryKb: 2048
+            }
+          ];
         }
       }
     }
@@ -286,6 +303,33 @@ test('missing problem and submission resources return normalized 404 responses',
   });
 });
 
+test('submission list returns deterministic ordering with stable fields', async () => {
+  const submissions = await invoke({
+    path: '/submissions',
+    headers: { authorization: 'Bearer token-student-1' },
+    runtime: createRuntime()
+  });
+
+  assert.equal(submissions.statusCode, 200);
+  assert.deepEqual(submissions.body, {
+    submissions: [
+      {
+        submissionId: 'submission-1',
+        ownerUserId: 'student-1',
+        status: 'finished',
+        verdict: 'AC',
+        timeMs: 120,
+        memoryKb: 2048
+      },
+      {
+        submissionId: 'submission-older',
+        ownerUserId: 'student-1',
+        status: 'queued'
+      }
+    ]
+  });
+});
+
 test('validation errors expose consistent field-level details', async () => {
   const invalidProblem = await invoke({
     path: '/problems',
@@ -437,6 +481,24 @@ test('local runtime routes problem, favorites, and reviews through injected pers
         }
       },
       submissionResults: {
+        async listByActorUserId(actorUserId: string) {
+          calls.push(`submissionResults.listByActorUserId:${actorUserId}`);
+          return [
+            {
+              submissionId: 'submission-1',
+              ownerUserId: actorUserId,
+              status: 'finished',
+              verdict: 'AC',
+              timeMs: 120,
+              memoryKb: 2048
+            },
+            {
+              submissionId: 'submission-0',
+              ownerUserId: actorUserId,
+              status: 'queued'
+            }
+          ];
+        },
         async getBySubmissionId(submissionId: string) {
           calls.push(`submissionResults.getBySubmissionId:${submissionId}`);
           return {
@@ -558,6 +620,30 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     enqueueAccepted: true
   });
 
+  const studentSubmissionHistory = await invoke({
+    path: '/submissions',
+    headers: { authorization: 'Bearer token-student-1' },
+    runtime
+  });
+  assert.equal(studentSubmissionHistory.statusCode, 200);
+  assert.deepEqual(studentSubmissionHistory.body, {
+    submissions: [
+      {
+        submissionId: 'submission-1',
+        ownerUserId: 'student-1',
+        status: 'finished',
+        verdict: 'AC',
+        timeMs: 120,
+        memoryKb: 2048
+      },
+      {
+        submissionId: 'submission-0',
+        ownerUserId: 'student-1',
+        status: 'queued'
+      }
+    ]
+  });
+
   const submissionResult = await invoke({
     path: '/submissions/submission-1/result',
     headers: { authorization: 'Bearer token-student-1' },
@@ -583,6 +669,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     'reviews.submitReview:student-1:problem-1:like',
     'reviews.listReviews:problem-1',
     'submissionStudent.create:submission-1:student-1:problem-1:python',
+    'submissionResults.listByActorUserId:student-1',
     'submissionResults.getBySubmissionId:submission-1'
   ]);
 });

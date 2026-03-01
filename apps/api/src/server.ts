@@ -100,6 +100,16 @@ type LocalApiRuntime = {
         timeMs?: number;
         memoryKb?: number;
       }>;
+      listByActorUserId: (actorUserId: string) => Promise<
+        readonly {
+          submissionId: string;
+          ownerUserId: string;
+          status: string;
+          verdict?: string;
+          timeMs?: number;
+          memoryKb?: number;
+        }[]
+      >;
     };
   };
 };
@@ -246,6 +256,31 @@ function missingFieldDetail(field: string): { field: string; code: string; messa
     code: 'REQUIRED',
     message: `${field} is required`
   };
+}
+
+function compareSubmissionViews(
+  left: {
+    submissionId: string;
+    status: string;
+  },
+  right: {
+    submissionId: string;
+    status: string;
+  }
+): number {
+  if (left.status === right.status) {
+    return right.submissionId.localeCompare(left.submissionId);
+  }
+
+  if (left.status === 'finished' && right.status !== 'finished') {
+    return -1;
+  }
+
+  if (left.status !== 'finished' && right.status === 'finished') {
+    return 1;
+  }
+
+  return right.submissionId.localeCompare(left.submissionId);
 }
 
 export function createApiRequestHandler(
@@ -416,6 +451,25 @@ export function createApiRequestHandler(
           problemVersionId: record.problemVersionId,
           enqueueAccepted: true
         });
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
+
+    if (path === '/submissions' && method === 'GET') {
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string'
+              ? request.headers.authorization
+              : undefined
+          )
+        );
+        ensureRole(actor, 'student');
+        const submissions = await persistence.submissionResults.listByActorUserId(actor.userId);
+        const ordered = [...submissions].sort(compareSubmissionViews);
+        sendJson(response, 200, { submissions: ordered });
       } catch (error) {
         sendError(response, mapUnknownError(error));
       }
