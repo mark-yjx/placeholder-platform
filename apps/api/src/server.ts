@@ -40,6 +40,12 @@ type LocalApiRuntime = {
           statement: string;
         }[]
       >;
+      getPublishedProblemDetail: (problemId: string) => Promise<{
+        problemId: string;
+        versionId: string;
+        title: string;
+        statement: string;
+      }>;
     };
     favorites: {
       favorite: (userId: string, problemId: string) => Promise<readonly string[]>;
@@ -298,6 +304,26 @@ export function createApiRequestHandler(
         );
         const problems = await persistence.studentProblemQuery.listPublishedProblems();
         sendJson(response, 200, { problems });
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
+
+    const problemDetailMatch = path.match(/^\/problems\/([^/]+)$/);
+    if (problemDetailMatch && method === 'GET') {
+      try {
+        requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string'
+              ? request.headers.authorization
+              : undefined
+          )
+        );
+        const problem = await persistence.studentProblemQuery.getPublishedProblemDetail(
+          problemDetailMatch[1]
+        );
+        sendJson(response, 200, problem);
       } catch (error) {
         sendError(response, mapUnknownError(error));
       }

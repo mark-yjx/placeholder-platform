@@ -7,7 +7,20 @@ function createRuntime() {
     persistence: {
       problemAdmin: { async create() {} },
       problemPublication: { async publish() {} },
-      studentProblemQuery: { async listPublishedProblems() { return []; } },
+      studentProblemQuery: {
+        async listPublishedProblems() { return []; },
+        async getPublishedProblemDetail(problemId: string) {
+          if (problemId !== 'problem-1') {
+            throw new Error('Problem not found');
+          }
+          return {
+            problemId,
+            versionId: 'problem-1-v1',
+            title: 'Two Sum',
+            statement: 'Solve it'
+          };
+        }
+      },
       favorites: {
         async favorite() { return []; },
         async list() { return []; }
@@ -27,9 +40,12 @@ function createRuntime() {
         }
       },
       submissionResults: {
-        async getBySubmissionId() {
+        async getBySubmissionId(submissionId: string) {
+          if (submissionId !== 'submission-1') {
+            throw new Error('Submission not found');
+          }
           return {
-            submissionId: 'submission-1',
+            submissionId,
             ownerUserId: 'student-1',
             status: 'finished'
           };
@@ -182,6 +198,34 @@ test('protected endpoints return 401 for missing or invalid tokens and 403 for i
   });
 });
 
+test('missing problem and submission resources return normalized 404 responses', async () => {
+  const missingProblem = await invoke({
+    path: '/problems/problem-missing',
+    headers: { authorization: 'Bearer token-student-1' },
+    runtime: createRuntime()
+  });
+  assert.equal(missingProblem.statusCode, 404);
+  assert.deepEqual(missingProblem.body, {
+    error: {
+      code: 'PROBLEM_NOT_FOUND',
+      message: 'Problem not found'
+    }
+  });
+
+  const missingSubmission = await invoke({
+    path: '/submissions/submission-missing/result',
+    headers: { authorization: 'Bearer token-admin-1' },
+    runtime: createRuntime()
+  });
+  assert.equal(missingSubmission.statusCode, 404);
+  assert.deepEqual(missingSubmission.body, {
+    error: {
+      code: 'SUBMISSION_NOT_FOUND',
+      message: 'Submission not found'
+    }
+  });
+});
+
 test('validation errors expose consistent field-level details', async () => {
   const invalidProblem = await invoke({
     path: '/problems',
@@ -273,6 +317,15 @@ test('local runtime routes problem, favorites, and reviews through injected pers
               statement: 'Solve it'
             }
           ];
+        },
+        async getPublishedProblemDetail(problemId: string) {
+          calls.push(`studentProblemQuery.getPublishedProblemDetail:${problemId}`);
+          return {
+            problemId,
+            versionId: 'problem-1-v1',
+            title: 'Two Sum',
+            statement: 'Solve it'
+          };
         }
       },
       problemVersionHistory: {},
@@ -370,6 +423,19 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     ]
   });
 
+  const studentProblemDetail = await invoke({
+    path: '/problems/problem-1',
+    headers: { authorization: 'Bearer token-student-1' },
+    runtime
+  });
+  assert.equal(studentProblemDetail.statusCode, 200);
+  assert.deepEqual(studentProblemDetail.body, {
+    problemId: 'problem-1',
+    versionId: 'problem-1-v1',
+    title: 'Two Sum',
+    statement: 'Solve it'
+  });
+
   const favorite = await invoke({
     path: '/favorites/problem-1',
     method: 'PUT',
@@ -451,6 +517,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     'problemAdmin.create:problem-1',
     'problemPublication.publish:problem-1',
     'studentProblemQuery.listPublishedProblems',
+    'studentProblemQuery.getPublishedProblemDetail:problem-1',
     'favorites.favorite:student-1:problem-1',
     'favorites.list:student-1',
     'reviews.submitReview:student-1:problem-1:like',

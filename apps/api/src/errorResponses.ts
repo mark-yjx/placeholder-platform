@@ -62,6 +62,9 @@ export function mapUnknownError(error: unknown): ApiError {
     if (error.message === 'Problem not found') {
       return new ApiError(404, 'PROBLEM_NOT_FOUND', 'Problem not found');
     }
+    if (error.message === 'Submission not found') {
+      return new ApiError(404, 'SUBMISSION_NOT_FOUND', 'Submission not found');
+    }
     if (process.env.NODE_ENV === 'production') {
       return new ApiError(500, 'INTERNAL_SERVER_ERROR', 'Internal Server Error');
     }
