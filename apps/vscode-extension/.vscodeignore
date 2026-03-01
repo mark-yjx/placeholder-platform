@@ -1,0 +1,7 @@
+.tmp-test/**
+src/**
+tsconfig*.json
+*.tsbuildinfo
+main.js
+oj-vscode-extension-*.vsix
+dist/__tests__/**

@@ -8,5 +8,6 @@
     "sourceMap": false,
     "composite": false
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/__tests__/**"]
 }
