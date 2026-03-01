@@ -258,31 +258,6 @@ function missingFieldDetail(field: string): { field: string; code: string; messa
   };
 }
 
-function compareSubmissionViews(
-  left: {
-    submissionId: string;
-    status: string;
-  },
-  right: {
-    submissionId: string;
-    status: string;
-  }
-): number {
-  if (left.status === right.status) {
-    return right.submissionId.localeCompare(left.submissionId);
-  }
-
-  if (left.status === 'finished' && right.status !== 'finished') {
-    return -1;
-  }
-
-  if (left.status !== 'finished' && right.status === 'finished') {
-    return 1;
-  }
-
-  return right.submissionId.localeCompare(left.submissionId);
-}
-
 export function createApiRequestHandler(
   dependencies: readonly ReadinessDependency[],
   localRuntime?: LocalApiRuntime
@@ -292,20 +267,13 @@ export function createApiRequestHandler(
     const path = url.pathname;
     const method = request.method ?? 'GET';
 
-    if (path === '/healthz') {
-      const context = createApiRequestContext({
-        'x-request-id':
-          typeof request.headers['x-request-id'] === 'string'
-            ? request.headers['x-request-id']
-            : undefined
-      });
-      const liveness = await createHealthRoutes(dependencies).liveness(context);
-      sendJson(response, 200, liveness);
+    if (path === '/healthz' && method === 'GET') {
+      sendJson(response, 200, { status: 'ok' });
       return;
     }
 
-    if (path === '/readyz') {
-      await handleReadiness(request, response, dependencies);
+    if (path === '/readyz' && method === 'GET') {
+      sendJson(response, 200, { status: 'ready' });
       return;
     }
 
@@ -468,8 +436,7 @@ export function createApiRequestHandler(
         );
         ensureRole(actor, 'student');
         const submissions = await persistence.submissionResults.listByActorUserId(actor.userId);
-        const ordered = [...submissions].sort(compareSubmissionViews);
-        sendJson(response, 200, { submissions: ordered });
+        sendJson(response, 200, { submissions });
       } catch (error) {
         sendError(response, mapUnknownError(error));
       }

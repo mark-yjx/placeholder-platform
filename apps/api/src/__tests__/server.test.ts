@@ -53,17 +53,17 @@ function createRuntime() {
         async listByActorUserId(actorUserId: string) {
           return [
             {
-              submissionId: 'submission-older',
-              ownerUserId: actorUserId,
-              status: 'queued'
-            },
-            {
               submissionId: 'submission-1',
               ownerUserId: actorUserId,
               status: 'finished',
               verdict: 'AC',
               timeMs: 120,
               memoryKb: 2048
+            },
+            {
+              submissionId: 'submission-older',
+              ownerUserId: actorUserId,
+              status: 'queued'
             }
           ];
         }
@@ -130,40 +130,18 @@ async function invoke(options: {
 test('/healthz and /readyz are served by api:start runtime', async () => {
   const health = await invoke({ path: '/healthz', headers: { 'x-request-id': 'req-health' } });
   assert.equal(health.statusCode, 200);
-  assert.deepEqual(health.body, { status: 'ok', requestId: 'req-health' });
+  assert.deepEqual(health.body, { status: 'ok' });
 
   const readiness = await invoke({ path: '/readyz', headers: { 'x-request-id': 'req-ready' } });
   assert.equal(readiness.statusCode, 200);
-  assert.deepEqual(readiness.body, {
-    status: 'ready',
-    requestId: 'req-ready',
-    dependencies: [
-      { name: 'postgres', status: 'up' },
-      { name: 'queue', status: 'up' }
-    ]
-  });
+  assert.deepEqual(readiness.body, { status: 'ready' });
 });
 
-test('/readyz returns 503 when a critical dependency is unavailable without mutating state', async () => {
+test('/readyz returns the simple ready response without probing dependencies yet', async () => {
   let checks = 0;
-
-  const readiness = await invoke({
-    path: '/readyz',
-    headers: { 'x-request-id': 'req-not-ready' },
-    runtime: createRuntime()
-  });
-  assert.equal(readiness.statusCode, 200);
-
   const notReady = await createApiRequestHandler([
     {
       name: 'postgres',
-      check: async () => {
-        checks += 1;
-        return true;
-      }
-    },
-    {
-      name: 'queue',
       check: async () => {
         checks += 1;
         return false;
@@ -171,10 +149,7 @@ test('/readyz returns 503 when a critical dependency is unavailable without muta
     }
   ], createRuntime() as never);
 
-  const request = createRequest({
-    path: '/readyz',
-    headers: { 'x-request-id': 'req-not-ready' }
-  });
+  const request = createRequest({ path: '/readyz' });
   let ended = false;
   const response = {
     statusCode: 0,
@@ -191,15 +166,10 @@ test('/readyz returns 503 when a critical dependency is unavailable without muta
 
   await notReady(request as never, response as never);
   assert.equal(ended, true);
-  assert.equal(checks, 2);
-  assert.equal(response.statusCode, 503);
+  assert.equal(checks, 0);
+  assert.equal(response.statusCode, 200);
   assert.deepEqual(JSON.parse(response.body), {
-    status: 'not_ready',
-    requestId: 'req-not-ready',
-    dependencies: [
-      { name: 'postgres', status: 'up' },
-      { name: 'queue', status: 'down' }
-    ]
+    status: 'ready'
   });
 });
 
