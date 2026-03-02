@@ -1,81 +1,108 @@
 # OJ VSCode Monorepo
 
-## What Has Been Implemented
-This repository has been implemented through the full task list in `.specify/specs/tasks.md` (tasks 1-34), including:
-- Monorepo/workspace setup, quality gates, boundaries, env/openapi checks.
-- Domain modeling (identity, problem versioning, submission lifecycle, judge result, repository ports/services).
-- Auth flow + RBAC enforcement.
-- Problem CRUD/publication/version history.
-- Submission creation, policy checks, admin submission management.
-- Judge queue contract, worker sandbox adapter, runner plugin architecture, limit planning.
-- Result ingestion (idempotent) and result query APIs.
-- Public stats and ranking projection/query routes.
-- VSCode-side auth/practice/engagement command modules and tests.
-- Local deployment compose stack, DB migration/seed scripts.
-- Observability utilities (structured logging with request/job context) and readiness/liveness contracts.
+Online judge platform with:
+- a Node API
+- a judge worker
+- a VS Code extension
+- shared domain, application, contract, config, and infrastructure packages
 
-## Current Project State
-This is currently a **spec-first implementation scaffold with strong tests and module contracts**.
-- Many workspace `build`/`start` scripts are placeholders (they validate flow, not full production runtime behavior).
-- The VSCode app contains extension logic modules/tests, but is **not yet packaged as a loadable VS Code extension manifest**.
+## Workspace Layout
+
+- `apps/api`: HTTP API runtime
+- `apps/judge-worker`: background judge worker
+- `apps/vscode-extension`: VS Code extension package
+- `packages/domain`: core domain models
+- `packages/application`: application services and use cases
+- `packages/contracts`: cross-process contracts
+- `packages/infrastructure`: Postgres and queue adapters
+- `packages/config`: shared config artifacts
+- `deploy/local`: local Docker topology, SQL migrations, and seeds
+- `docs`: user QA, environment setup, and release runbooks
+
+## What Works
+
+- Real extension-to-API HTTP integration
+- Login, fetch problems, submit code, and view results from the extension
+- Problems and submissions Explorer views in VS Code
+- Local Postgres migration and seed pipeline
+- Local smoke flow for API-backed practice scenarios
+- CI workflows for checks and release packaging
 
 ## Quick Start
-### 1. Install
+
+Install dependencies:
+
 ```bash
 npm install
 ```
 
-### 2. Validate project
+Run the main quality gate:
+
 ```bash
 npm run typecheck
-npm run test
-npm run build
+npm run -ws --if-present test
+npm run -ws --if-present build
 ```
 
-### 3. Local stack (offline topology)
+## Local Development
+
+Start local containers:
+
 ```bash
 npm run local:up
-npm run local:ps
 npm run local:db:setup
 ```
 
-Stop stack:
+Start the real API runtime:
+
 ```bash
-npm run local:down
+DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj PORT=3100 npm run api:start
+```
+
+Start the worker runtime:
+
+```bash
+DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj DOCKER_IMAGE_PYTHON=python:3.12-alpine npm run worker:start
+```
+
+Package the extension:
+
+```bash
+npm run extension:package
+```
+
+## Important Local Ports
+
+- `5432`: Postgres
+- `3000`: placeholder compose health service
+- `3100`: real API runtime expected by the extension
+
+For the extension, set:
+
+```json
+{
+  "oj.apiBaseUrl": "http://localhost:3100"
+}
 ```
 
 ## Useful Commands
+
 ```bash
 npm run check:boundaries
 npm run check:openapi
 npm run check:env
-npm run quality
+npm run local:reset
+npm run smoke:local
 ```
 
-## User Demo Guide
+## Documentation
+
 - [OJ VSCode Demo Checklist](./docs/extension-demo-checklist.md)
-
-## Environment Guide
 - [Environment And Local Setup](./docs/environment-and-local-setup.md)
-
-## Release Guide
 - [Release Runbook](./docs/release-runbook.md)
 
-## Local DB Pipeline
-- Migration SQL: `deploy/local/sql/migrations/001_init.sql`
-- Seed SQL: `deploy/local/sql/seeds/001_mvp_seed.sql`
-- Commands:
-  - `npm run local:db:migrate`
-  - `npm run local:db:seed`
-  - `npm run local:db:setup`
+## Notes
 
-## Observability Contracts
-- API request context supports `x-request-id` and structured log entries include `requestId`.
-- Worker structured log entries include `jobId` context.
-- Readiness/liveness contracts exist in API and worker modules.
-
-## Known Limitation (Extension Loading)
-You cannot directly load `apps/vscode-extension` as a VS Code extension yet because extension manifest/runtime wiring is not scaffolded (`package.json` extension metadata, activation/contributions, debug launch setup).
-
-## Next Practical Step
-Scaffold a minimal runnable extension host setup and real API/worker runtime entrypoints if you want interactive usage instead of module-level tests.
+- The local compose service on port `3000` is not the real API runtime.
+- In Remote SSH setups, `localhost` resolves on the remote host where the extension runs.
+- The current extension package version is `0.1.0`.
