@@ -25,7 +25,7 @@
     "local:db:seed": "node tools/scripts/local-db-seed.mjs",
     "local:db:setup": "npm run local:db:migrate && npm run local:db:seed",
     "smoke:local": "node tools/scripts/local-smoke.mjs",
-    "api:start": "npm -w @apps/api run start",
+    "api:start": "PORT=${PORT:-3100} DATABASE_URL=${DATABASE_URL:-postgresql://oj:oj@127.0.0.1:5432/oj} npm -w @apps/api run start",
     "worker:start": "npm -w @apps/judge-worker run start",
     "extension:package": "mkdir -p dist && npm -w oj-vscode-extension run build && npm -w oj-vscode-extension run package:vsix && cp apps/vscode-extension/oj-vscode-extension-0.1.0.vsix dist/oj-vscode.vsix"
   },

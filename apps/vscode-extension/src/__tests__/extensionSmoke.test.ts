@@ -9,7 +9,8 @@ import { HttpAuthClient, HttpPracticeApiClient } from '../runtime/HttpExtensionC
 import {
   PracticeViewsLike,
   probeApiHealth,
-  restorePracticeState
+  restorePracticeState,
+  restorePracticeStateOnStartup
 } from '../runtime/ExtensionRuntimeBootstrap';
 import { PracticeViewState } from '../ui/PracticeViewState';
 
@@ -231,4 +232,62 @@ test('extension runtime wiring keeps http clients and no in-memory fallback impo
   assert.doesNotMatch(source, /InMemoryAuthClient/);
   assert.doesNotMatch(source, /InMemoryPracticeApiClient/);
   assert.doesNotMatch(source, /InMemoryEngagementApiClient/);
+});
+
+test('startup skips practice restore when the API is unavailable', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error('fetch failed');
+  };
+
+  try {
+    const tokenStore = new SessionTokenStore(
+      new FakeSecretStorage({ 'oj.auth.accessToken': 'student-token' })
+    );
+    await tokenStore.hydrate();
+
+    let restored = false;
+    class RecordingPracticeCommands extends PracticeCommands {
+      override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
+        restored = true;
+        return [];
+      }
+
+      override async listSubmissions(): Promise<
+        readonly {
+          submissionId: string;
+          status: 'queued' | 'running' | 'finished' | 'failed';
+          verdict?: 'AC' | 'WA' | 'TLE' | 'RE' | 'CE';
+          timeMs?: number;
+          memoryKb?: number;
+        }[]
+      > {
+        restored = true;
+        return [];
+      }
+    }
+
+    const outputLines: string[] = [];
+    await restorePracticeStateOnStartup({
+      apiBaseUrl: 'http://oj.test',
+      tokenStore,
+      practiceCommands: new RecordingPracticeCommands(
+        new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test' }),
+        tokenStore
+      ),
+      practiceViews: new RecordingPracticeViews(),
+      output: { appendLine: (value) => outputLines.push(value) }
+    });
+
+    assert.equal(restored, false);
+    assert.ok(outputLines.includes('Session restored from SecretStorage'));
+    assert.ok(outputLines.some((line) => line.includes('API health probe failed: fetch failed')));
+    assert.ok(
+      outputLines.includes(
+        'Skipping practice state restore because the API at http://oj.test is unavailable.'
+      )
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

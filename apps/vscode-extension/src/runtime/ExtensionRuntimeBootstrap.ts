@@ -55,3 +55,42 @@ export async function restorePracticeState(options: {
     `Restored ${problems.length} problems and ${submissions.length} submissions from API`
   );
 }
+
+export async function restorePracticeStateOnStartup(options: {
+  apiBaseUrl: string;
+  tokenStore: SessionTokenStore;
+  practiceCommands: PracticeCommands;
+  practiceViews: PracticeViewsLike;
+  output: OutputChannelLike;
+}): Promise<void> {
+  let apiReachable = false;
+
+  try {
+    const health = await probeApiHealth(options.apiBaseUrl);
+    options.output.appendLine(`API health: ${health.healthz}`);
+    options.output.appendLine(`API readiness: ${health.readyz}`);
+    apiReachable = true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    options.output.appendLine(`API health probe failed: ${message}`);
+  }
+
+  if (!options.tokenStore.isAuthenticated()) {
+    return;
+  }
+
+  options.output.appendLine('Session restored from SecretStorage');
+  if (!apiReachable) {
+    options.output.appendLine(
+      `Skipping practice state restore because the API at ${options.apiBaseUrl} is unavailable.`
+    );
+    return;
+  }
+
+  try {
+    await restorePracticeState(options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    options.output.appendLine(`Practice state restore failed: ${message}`);
+  }
+}
