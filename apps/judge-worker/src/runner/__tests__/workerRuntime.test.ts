@@ -121,6 +121,35 @@ test('worker runtime starts, idles with ticks, and stops cleanly', async () => {
   assert.ok(logs.includes('worker.runtime.stopped'));
 });
 
+test('worker runtime resolves docker image after flags that include colon-valued arguments', () => {
+  const { __internal__ } = loadWorkerRuntime();
+
+  assert.equal(
+    __internal__.resolveDockerRunImage([
+      'run',
+      '--rm',
+      '--cpus',
+      '1',
+      '--memory',
+      '128m',
+      '--network',
+      'none',
+      '--read-only',
+      '--cap-drop=ALL',
+      '--security-opt',
+      'no-new-privileges',
+      '--pids-limit',
+      '64',
+      '--tmpfs',
+      '/tmp:rw,noexec,nosuid,size=64m',
+      'python:3.12-alpine',
+      'python',
+      '/sandbox/main.py'
+    ]),
+    'python:3.12-alpine'
+  );
+});
+
 test('worker tick uses problem tests and records AC for a correct submission', async () => {
   const { createWorkerTick } = loadWorkerRuntime();
   const savedResults: Array<{ verdict: string; timeMs: number; memoryKb: number }> = [];

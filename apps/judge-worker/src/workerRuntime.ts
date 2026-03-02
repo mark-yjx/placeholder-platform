@@ -63,17 +63,41 @@ type WorkerTickDependencies = {
   image: string;
 };
 
+const DOCKER_RUN_FLAGS_WITH_VALUES = new Set([
+  '--cpus',
+  '--memory',
+  '--network',
+  '--security-opt',
+  '--pids-limit',
+  '--tmpfs'
+]);
+
+function resolveDockerRunImage(args: readonly string[]): string {
+  if (args[0] !== 'run') {
+    throw new Error('Unsupported docker command for worker execution');
+  }
+
+  let index = 1;
+  while (index < args.length) {
+    const current = args[index];
+    if (current.startsWith('-')) {
+      index += DOCKER_RUN_FLAGS_WITH_VALUES.has(current) ? 2 : 1;
+      continue;
+    }
+
+    return current;
+  }
+
+  throw new Error('Docker image is required for worker execution');
+}
+
 async function executeDockerCommand(command: {
   command: string;
   args: readonly string[];
   stdin: string;
 }): Promise<{ stdout: string; stderr: string; exitCode: number; timeMs: number; memoryKb: number }> {
-  const imageIndex = command.args.findIndex((part) => part.includes(':'));
-  if (imageIndex < 0) {
-    throw new Error('Docker image is required for worker execution');
-  }
-
-  const image = command.args[imageIndex];
+  const image = resolveDockerRunImage(command.args);
+  const imageIndex = command.args.indexOf(image);
   const prefixArgs = command.args.slice(0, imageIndex);
   const startedAt = Date.now();
   return new Promise((resolve, reject) => {
@@ -242,3 +266,7 @@ export function runWorkerProcess(): void {
     void shutdown();
   });
 }
+
+export const __internal__ = {
+  resolveDockerRunImage
+};
