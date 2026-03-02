@@ -3,6 +3,7 @@ import { AuthClient, LoginRequest, LoginResponse } from '../auth/AuthClient';
 import {
   CreateSubmissionRequest,
   CreateSubmissionResponse,
+  ProblemDetail,
   PracticeApiClient,
   PublishedProblem,
   SubmissionResult
@@ -33,6 +34,19 @@ export class InMemoryPracticeApiClient implements PracticeApiClient {
 
   async listPublishedProblems(_accessToken: string): Promise<readonly PublishedProblem[]> {
     return this.problems;
+  }
+
+  async getPublishedProblemDetail(_accessToken: string, problemId: string): Promise<ProblemDetail> {
+    const problem = this.problems.find((item) => item.problemId === problemId);
+    if (!problem) {
+      throw new Error('Problem not found');
+    }
+
+    return {
+      ...problem,
+      versionId: `${problemId}-v1`,
+      starterCode: `def ${problemId.replace(/-/g, '_')}():\n    # YOUR CODE HERE\n    raise NotImplementedError\n`
+    };
   }
 
   async listSubmissions(_accessToken: string): Promise<readonly SubmissionResult[]> {

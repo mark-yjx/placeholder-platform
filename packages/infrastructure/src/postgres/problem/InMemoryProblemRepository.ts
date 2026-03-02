@@ -35,4 +35,8 @@ export class InMemoryProblemRepository
       publicationState: version.publicationState
     }));
   }
+
+  async getStarterCode(_versionId: string): Promise<string | null> {
+    return null;
+  }
 }

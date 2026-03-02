@@ -1,5 +1,6 @@
 import {
   CreateSubmissionRequest,
+  ProblemDetail,
   PracticeApiClient,
   PublishedProblem,
   SubmissionResult
@@ -22,6 +23,16 @@ export class PracticeCommands {
   async listSubmissions(): Promise<readonly SubmissionResult[]> {
     return runProtectedCommand(this.tokenStore, async () =>
       this.client.listSubmissions(this.requireAccessToken())
+    );
+  }
+
+  async fetchProblemDetail(problemId: string): Promise<ProblemDetail> {
+    if (!problemId.trim()) {
+      throw new Error('Problem id is required');
+    }
+
+    return runProtectedCommand(this.tokenStore, async () =>
+      this.client.getPublishedProblemDetail(this.requireAccessToken(), problemId)
     );
   }
 

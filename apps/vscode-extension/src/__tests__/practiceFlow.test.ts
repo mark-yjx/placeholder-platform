@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CreateSubmissionRequest,
   JudgeVerdict,
+  ProblemDetail,
   PracticeApiClient,
   PublishedProblem,
   SubmissionResult
@@ -30,6 +31,19 @@ class FakePracticeApiClient implements PracticeApiClient {
 
   async listPublishedProblems(): Promise<readonly PublishedProblem[]> {
     return this.problems;
+  }
+
+  async getPublishedProblemDetail(
+    _accessToken: string,
+    problemId: string
+  ): Promise<ProblemDetail> {
+    return {
+      problemId,
+      versionId: `${problemId}-v1`,
+      title: this.problems.find((problem) => problem.problemId === problemId)?.title ?? 'Unknown Problem',
+      statement: 'Solve it',
+      starterCode: 'def solve():\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
+    };
   }
 
   async listSubmissions(): Promise<readonly SubmissionResult[]> {

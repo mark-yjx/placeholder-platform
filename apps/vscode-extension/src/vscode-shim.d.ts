@@ -16,6 +16,10 @@ declare module 'vscode' {
     languageId: string;
     fileName?: string;
   };
+  export class Uri {
+    readonly fsPath: string;
+    static file(path: string): Uri;
+  }
   export const TreeItemCollapsibleState: {
     None: 0;
   };
@@ -49,7 +53,10 @@ declare module 'vscode' {
     getConfiguration(section?: string): {
       get<T>(setting: string, defaultValue: T): T;
     };
-    openTextDocument(options: { content: string; language?: string }): Thenable<TextDocument>;
+    workspaceFolders?: readonly {
+      uri: Uri;
+    }[];
+    openTextDocument(options: { content: string; language?: string } | string): Thenable<TextDocument>;
   };
 
   export const window: {
@@ -64,6 +71,11 @@ declare module 'vscode' {
     };
     showErrorMessage(message: string): void;
     showInformationMessage(message: string): void;
+    showWarningMessage<T extends string>(
+      message: string,
+      options: { modal: boolean },
+      ...items: readonly T[]
+    ): Thenable<T | undefined>;
     showTextDocument(
       document: TextDocument,
       options?: { preview?: boolean }

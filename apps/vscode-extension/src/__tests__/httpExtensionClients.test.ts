@@ -64,6 +64,16 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
       return createJsonResponse({ problems: [{ problemId: 'problem-1', title: 'Two Sum' }] });
     }
 
+    if (path === '/problems/problem-1') {
+      return createJsonResponse({
+        problemId: 'problem-1',
+        versionId: 'problem-1-v1',
+        title: 'Two Sum',
+        statement: 'Solve it',
+        starterCode: 'def two_sum():\n    pass\n'
+      });
+    }
+
     if (path === '/submissions' && init?.method === 'POST') {
       const body = JSON.parse(String(init.body)) as {
         submissionId: string;
@@ -98,6 +108,13 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
     assert.deepEqual(await client.listPublishedProblems('student-token'), [
       { problemId: 'problem-1', title: 'Two Sum' }
     ]);
+    assert.deepEqual(await client.getPublishedProblemDetail('student-token', 'problem-1'), {
+      problemId: 'problem-1',
+      versionId: 'problem-1-v1',
+      title: 'Two Sum',
+      statement: 'Solve it',
+      starterCode: 'def two_sum():\n    pass\n'
+    });
 
     const submission = await client.createSubmission('student-token', {
       problemId: 'problem-1',
@@ -116,6 +133,7 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
 
     assert.deepEqual(seenPaths, [
       'GET /problems',
+      'GET /problems/problem-1',
       'POST /submissions',
       `GET /submissions/${submission.submissionId}`
     ]);

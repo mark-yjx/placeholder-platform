@@ -17,7 +17,8 @@ function createRuntime() {
             problemId,
             versionId: 'problem-1-v1',
             title: 'Two Sum',
-            statement: 'Solve it'
+            statement: 'Solve it',
+            starterCode: 'def solve():\n    return 42\n'
           };
         }
       },
@@ -398,7 +399,8 @@ test('local runtime routes problem, favorites, and reviews through injected pers
             problemId,
             versionId: 'problem-1-v1',
             title: 'Two Sum',
-            statement: 'Solve it'
+            statement: 'Solve it',
+            starterCode: 'def solve():\n    return 42\n'
           };
         }
       },
@@ -525,7 +527,8 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     problemId: 'problem-1',
     versionId: 'problem-1-v1',
     title: 'Two Sum',
-    statement: 'Solve it'
+    statement: 'Solve it',
+    starterCode: 'def solve():\n    return 42\n'
   });
 
   const favorite = await invoke({

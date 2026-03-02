@@ -7,6 +7,11 @@ export type PublishedProblem = {
   statement?: string;
 };
 
+export type ProblemDetail = PublishedProblem & {
+  versionId: string;
+  starterCode?: string;
+};
+
 export type CreateSubmissionRequest = {
   problemId: string;
   language: 'python';
@@ -27,6 +32,7 @@ export type SubmissionResult = {
 
 export interface PracticeApiClient {
   listPublishedProblems(accessToken: string): Promise<readonly PublishedProblem[]>;
+  getPublishedProblemDetail(accessToken: string, problemId: string): Promise<ProblemDetail>;
   listSubmissions(accessToken: string): Promise<readonly SubmissionResult[]>;
   createSubmission(
     accessToken: string,

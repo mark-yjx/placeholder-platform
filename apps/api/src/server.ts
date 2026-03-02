@@ -52,6 +52,7 @@ type LocalApiRuntime = {
         versionId: string;
         title: string;
         statement: string;
+        starterCode?: string;
       }>;
     };
     favorites: {

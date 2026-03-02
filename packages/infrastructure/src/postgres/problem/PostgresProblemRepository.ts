@@ -25,6 +25,10 @@ type TimelineRow = {
   publication_state: string;
 };
 
+type ProblemStarterAssetRow = {
+  starter_code: string;
+};
+
 export interface PostgresSqlClient {
   query<T>(sql: string, params?: readonly unknown[]): Promise<readonly T[]>;
   execute(sql: string, params?: readonly unknown[]): Promise<void>;
@@ -84,6 +88,13 @@ SELECT
 FROM problem_versions pv
 WHERE pv.problem_id = $1
 ORDER BY pv.version_number ASC
+`;
+
+const FIND_PROBLEM_STARTER_SQL = `
+SELECT pva.starter_code AS starter_code
+FROM problem_version_assets pva
+WHERE pva.version_id = $1
+LIMIT 1
 `;
 
 function parsePublicationState(value: string): PublicationState {
@@ -200,5 +211,9 @@ export class PostgresProblemRepository
       publicationState: parsePublicationState(row.publication_state)
     }));
   }
-}
 
+  async getStarterCode(versionId: string): Promise<string | null> {
+    const rows = await this.client.query<ProblemStarterAssetRow>(FIND_PROBLEM_STARTER_SQL, [versionId]);
+    return rows[0]?.starter_code ?? null;
+  }
+}

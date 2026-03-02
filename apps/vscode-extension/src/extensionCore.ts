@@ -4,6 +4,7 @@ import { PracticeCommands } from './practice/PracticeCommands';
 import { mapExtensionError } from './errors/ExtensionErrorMapper';
 import { PublishedProblem, SubmissionResult } from './api/PracticeApiClient';
 import { formatSubmissionDetail } from './ui/PracticeViewState';
+import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 
 export type DisposableLike = { dispose: () => void };
 
@@ -19,6 +20,11 @@ export type OutputChannelLike = {
 export type WindowLike = {
   showErrorMessage: (message: string) => void;
   showInformationMessage: (message: string) => void;
+  showWarningMessage?: <T extends string>(
+    message: string,
+    options: { modal: boolean },
+    ...items: readonly T[]
+  ) => Promise<T | undefined>;
   showQuickPick?: <T extends { label: string }>(
     items: readonly T[],
     options?: {
@@ -54,6 +60,7 @@ export type ExtensionCommandDependencies = {
     setSelectedProblem?: (problemId: string) => void;
     getSelectedProblemId?: () => string | null;
   };
+  problemStarterWorkspace?: ProblemStarterWorkspace;
   output: OutputChannelLike;
   window: WindowLike;
   registerCommand: RegisterCommand;
@@ -235,7 +242,8 @@ export function registerExtensionCommands(
           return;
         }
         dependencies.practiceViews?.setSelectedProblem?.(problemId);
-        await dependencies.practiceViews?.revealProblem(problemId);
+        const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
+        await dependencies.problemStarterWorkspace?.openProblemStarter(problemDetail);
       })
     ),
     dependencies.registerCommand(

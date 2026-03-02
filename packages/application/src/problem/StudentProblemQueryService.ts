@@ -11,6 +11,7 @@ export interface StudentProblemQueryRepository extends ProblemRepository {
       publicationState: PublicationState;
     };
   }[]>;
+  getStarterCode(versionId: string): Promise<string | null>;
 }
 
 export type StudentProblemView = {
@@ -18,6 +19,10 @@ export type StudentProblemView = {
   versionId: string;
   title: string;
   statement: string;
+};
+
+export type StudentProblemDetailView = StudentProblemView & {
+  starterCode?: string;
 };
 
 export class StudentProblemQueryService {
@@ -35,16 +40,18 @@ export class StudentProblemQueryService {
       }));
   }
 
-  async getPublishedProblemDetail(problemId: string): Promise<StudentProblemView> {
+  async getPublishedProblemDetail(problemId: string): Promise<StudentProblemDetailView> {
     const problem = await this.problems.findById(problemId);
     if (!problem || problem.latestVersion.publicationState !== PublicationState.PUBLISHED) {
       throw new Error('Problem not found');
     }
+    const starterCode = await this.problems.getStarterCode(problem.latestVersion.id);
     return {
       problemId: problem.id,
       versionId: problem.latestVersion.id,
       title: problem.latestVersion.title,
-      statement: problem.latestVersion.statement
+      statement: problem.latestVersion.statement,
+      ...(starterCode ? { starterCode } : {})
     };
   }
 }

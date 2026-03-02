@@ -14,6 +14,7 @@ import {
   HttpPracticeApiClient
 } from './runtime/HttpExtensionClients';
 import { restorePracticeStateOnStartup } from './runtime/ExtensionRuntimeBootstrap';
+import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { PracticeTreeViews } from './ui/PracticeTreeViews';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -28,12 +29,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const practiceCommands = new PracticeCommands(new HttpPracticeApiClient(clientConfig), tokenStore);
   const engagementCommands = new EngagementCommands(new HttpEngagementApiClient(clientConfig), tokenStore);
   const practiceViews = new PracticeTreeViews(vscode.window, vscode.workspace);
+  const problemStarterWorkspace = new ProblemStarterWorkspace(vscode.window, vscode.workspace);
 
   const disposables = registerExtensionCommands({
     authCommands,
     practiceCommands,
     engagementCommands,
     practiceViews,
+    problemStarterWorkspace,
     output,
     window: vscode.window,
     registerCommand: (commandId, callback) => vscode.commands.registerCommand(commandId, callback)

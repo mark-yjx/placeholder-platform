@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { EngagementCommands } from '../engagement/EngagementCommands';
 import { AuthCommands } from '../auth/AuthCommands';
 import { PracticeCommands } from '../practice/PracticeCommands';
@@ -11,6 +14,7 @@ import {
   InMemoryPracticeApiClient
 } from '../runtime/InMemoryExtensionClients';
 import { ExtensionApiError } from '../errors/ExtensionErrorMapper';
+import { ProblemStarterWorkspace } from '../ui/ProblemStarterWorkspace';
 
 test('registered command writes to output channel on success', async () => {
   const outputLines: string[] = [];
@@ -28,6 +32,7 @@ test('registered command writes to output channel on success', async () => {
     }[],
     revealed: [] as string[],
     openedProblems: [] as string[],
+    starterFiles: [] as string[],
     selectedProblemId: null as string | null
   };
 
@@ -61,6 +66,11 @@ test('registered command writes to output channel on success', async () => {
       },
       getSelectedProblemId: () => practiceViewCalls.selectedProblemId
     },
+    problemStarterWorkspace: {
+      openProblemStarter: async (problem: { problemId: string }) => {
+        practiceViewCalls.starterFiles.push(problem.problemId);
+      }
+    } as unknown as ProblemStarterWorkspace,
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
       activeTextEditor: {
@@ -104,7 +114,7 @@ test('registered command writes to output channel on success', async () => {
     }
   ]);
   assert.deepEqual(practiceViewCalls.revealed, ['submission-1']);
-  assert.deepEqual(practiceViewCalls.openedProblems, ['problem-1']);
+  assert.deepEqual(practiceViewCalls.starterFiles, ['problem-1']);
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
   assert.ok(
     infoMessages.some((message) =>
@@ -360,6 +370,9 @@ test('submit current file uses the active python editor and selected problem', a
       },
       getSelectedProblemId: () => selectedProblemId
     },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
     output: { appendLine: () => undefined },
     window: {
       activeTextEditor: {
@@ -433,6 +446,9 @@ test('submit current file prompts for a problem when none is selected', async ()
       setSelectedProblem: () => undefined,
       getSelectedProblemId: () => null
     },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
     output: { appendLine: () => undefined },
     window: {
       activeTextEditor: {
@@ -493,6 +509,9 @@ test('submit current file rejects non-.py editors', async () => {
       setSelectedProblem: () => undefined,
       getSelectedProblemId: () => 'problem-1'
     },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
       activeTextEditor: {
@@ -552,6 +571,9 @@ test('submit current file rejects an empty editor', async () => {
       setSelectedProblem: () => undefined,
       getSelectedProblemId: () => 'problem-1'
     },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
       activeTextEditor: {
@@ -639,4 +661,96 @@ test('running submission result shows actionable progress notification', async (
       message.includes('Submission submission-1 is still running. Run OJ: View Result again shortly.')
     )
   );
+});
+
+test('problem starter workspace shows a friendly error when no workspace is open', async () => {
+  const workspace = new ProblemStarterWorkspace(
+    {
+      showTextDocument: async () => undefined
+    },
+    {
+      workspaceFolders: [],
+      openTextDocument: async () => ({
+        getText: () => '',
+        languageId: 'python',
+        fileName: ''
+      })
+    }
+  );
+
+  await assert.rejects(
+    workspace.openProblemStarter({
+      problemId: 'collapse',
+      starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
+    }),
+    /Open a workspace folder before opening a problem/
+  );
+});
+
+test('problem starter workspace creates the starter file when it is missing and opens it', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'oj-problem-workspace-'));
+  const openedPaths: string[] = [];
+  const shownPaths: string[] = [];
+  const workspace = new ProblemStarterWorkspace(
+    {
+      showTextDocument: async (document) => {
+        shownPaths.push(document.fileName ?? '');
+      }
+    },
+    {
+      workspaceFolders: [{ uri: { fsPath: root } }],
+      openTextDocument: async (filePath) => {
+        openedPaths.push(filePath);
+        return {
+          getText: () => '',
+          languageId: 'python',
+          fileName: filePath
+        };
+      }
+    }
+  );
+
+  await workspace.openProblemStarter({
+    problemId: 'collapse',
+    starterCode: 'def collapse(number):\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
+  });
+
+  const targetPath = path.join(root, '.oj', 'problems', 'collapse.py');
+  assert.equal(await readFile(targetPath, 'utf8'), 'def collapse(number):\n    # YOUR CODE HERE\n    raise NotImplementedError\n');
+  assert.deepEqual(openedPaths, [targetPath]);
+  assert.deepEqual(shownPaths, [targetPath]);
+});
+
+test('problem starter workspace does not overwrite an existing file without confirmation', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'oj-problem-workspace-'));
+  const targetPath = path.join(root, '.oj', 'problems', 'collapse.py');
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  await writeFile(targetPath, '# student edits\nprint("keep me")\n', 'utf8');
+  let promptShown = false;
+
+  const workspace = new ProblemStarterWorkspace(
+    {
+      showTextDocument: async () => undefined,
+      showWarningMessage: async () => {
+        promptShown = true;
+        return undefined;
+      }
+    },
+    {
+      workspaceFolders: [{ uri: { fsPath: root } }],
+      openTextDocument: async (filePath) => ({
+        getText: () => '',
+        languageId: 'python',
+        fileName: filePath
+      })
+    }
+  );
+
+  await workspace.openProblemStarter({
+    problemId: 'collapse',
+    starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
+  });
+
+  assert.equal(promptShown, true);
+  assert.equal(await readFile(targetPath, 'utf8'), '# student edits\nprint("keep me")\n');
 });

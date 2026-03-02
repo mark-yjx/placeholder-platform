@@ -3,6 +3,7 @@ import { EngagementApiClient, ProblemReview, PublicRankingEntry, PublicStatsView
 import {
   CreateSubmissionRequest,
   CreateSubmissionResponse,
+  ProblemDetail,
   PracticeApiClient,
   PublishedProblem,
   SubmissionResult
@@ -82,6 +83,12 @@ export class HttpPracticeApiClient implements PracticeApiClient {
       accessToken
     });
     return response.problems;
+  }
+
+  async getPublishedProblemDetail(accessToken: string, problemId: string): Promise<ProblemDetail> {
+    return requestJson<ProblemDetail>(this.config, `/problems/${problemId}`, {
+      accessToken
+    });
   }
 
   async listSubmissions(accessToken: string): Promise<readonly SubmissionResult[]> {
