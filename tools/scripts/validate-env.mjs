@@ -22,7 +22,7 @@ const missing = required.filter((name) => {
 if (missing.length > 0) {
   console.error(`Missing required environment variables for ${target}:`);
   for (const name of missing) console.error(`- ${name}`);
-  console.error('See .env.example for required keys.');
+  console.error('See packages/config/env.required.json and docs/environment-and-local-setup.md.');
   process.exit(1);
 }
 

@@ -55,6 +55,9 @@ npm run quality
 ## User Demo Guide
 - [OJ VSCode Demo Checklist](./docs/extension-demo-checklist.md)
 
+## Environment Guide
+- [Environment And Local Setup](./docs/environment-and-local-setup.md)
+
 ## Local DB Pipeline
 - Migration SQL: `deploy/local/sql/migrations/001_init.sql`
 - Seed SQL: `deploy/local/sql/seeds/001_mvp_seed.sql`
