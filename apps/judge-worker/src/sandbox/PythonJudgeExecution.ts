@@ -45,7 +45,7 @@ export async function runPythonJudgeExecution(
       judgedSourceCode = buildRunnableJudgedPythonSource(
         input.sourceCode,
         input.entryFunction ?? 'solve',
-        testCase.input
+        testCase.inputJson
       );
     } catch {
       return {
@@ -74,7 +74,7 @@ export async function runPythonJudgeExecution(
       };
     }
 
-    const expectedStdout = `${JSON.stringify(testCase.expected)}\n`;
+    const expectedStdout = `${testCase.expectedJson}\n`;
     if (execution.stdout !== expectedStdout) {
       return {
         status: 'finished',

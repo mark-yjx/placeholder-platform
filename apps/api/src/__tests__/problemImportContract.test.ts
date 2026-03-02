@@ -25,15 +25,15 @@ test('problem import creates collapse on first import and skips an identical re-
   const store = importer.createInMemoryProblemImportStore();
   const definitions = importer.readProblemDefinitions(path.join(repoRoot, 'data', 'problems'));
   assert.deepEqual(definitions[0].publicTests, [
-    { input: 0, expected: 0 },
-    { input: 12321, expected: 12321 },
-    { input: -1111222232222111, expected: -12321 }
+    { inputJson: '0', expectedJson: '0' },
+    { inputJson: '12321', expectedJson: '12321' },
+    { inputJson: '-1111222232222111', expectedJson: '-12321' }
   ]);
   assert.deepEqual(definitions[0].hiddenTests, [
-    { input: 1111111111111, expected: 1 },
-    { input: -2222222222, expected: -2 },
-    { input: 1000000000000000000001, expected: 101 },
-    { input: -900111212777394440300, expected: -9012127394030 }
+    { inputJson: '1111111111111', expectedJson: '1' },
+    { inputJson: '-2222222222', expectedJson: '-2' },
+    { inputJson: '1000000000000000000001', expectedJson: '101' },
+    { inputJson: '-900111212777394440300', expectedJson: '-9012127394030' }
   ]);
 
   const firstRun = await importer.importProblemDefinitions(definitions, store);
@@ -75,7 +75,7 @@ test('problem import appends a new version when collapse content changes', async
 
   const updated = {
     ...collapse,
-    hiddenTests: [...collapse.hiddenTests, { input: 4444, expected: 4 }]
+    hiddenTests: [...collapse.hiddenTests, { inputJson: '4444', expectedJson: '4' }]
   };
   updated.contentDigest = importer.createContentDigest(updated);
 

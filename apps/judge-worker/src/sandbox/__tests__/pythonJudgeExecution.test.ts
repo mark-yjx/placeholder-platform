@@ -23,7 +23,7 @@ test('correct Python code results in finished with verdict AC and recorded time/
     runners: createRegistry(),
     image: 'python:3.12-alpine',
     sourceCode: 'def solve(value):\n    return 42\n',
-    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
+    tests: [{ testType: 'public', position: 1, inputJson: 'null', expectedJson: '42' }]
   });
 
   assert.deepEqual(result, {
@@ -55,7 +55,7 @@ def collapse(value):
     return helper()
 `.trim(),
     entryFunction: 'collapse',
-    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
+    tests: [{ testType: 'public', position: 1, inputJson: 'null', expectedJson: '42' }]
   });
 
   assert.deepEqual(result, {
@@ -80,7 +80,7 @@ test('wrong output results in finished with verdict WA and recorded time/memory'
     runners: createRegistry(),
     image: 'python:3.12-alpine',
     sourceCode: 'def solve(value):\n    return 41\n',
-    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
+    tests: [{ testType: 'public', position: 1, inputJson: 'null', expectedJson: '42' }]
   });
 
   assert.deepEqual(result, {
@@ -105,7 +105,7 @@ test('runtime exception results in finished with verdict RE and recorded time/me
     runners: createRegistry(),
     image: 'python:3.12-alpine',
     sourceCode: 'def solve(value):\n    raise RuntimeError("boom")\n',
-    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
+    tests: [{ testType: 'public', position: 1, inputJson: 'null', expectedJson: '42' }]
   });
 
   assert.deepEqual(result, {
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     import doctest
     doctest.testmod()
 `.trim(),
-    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
+    tests: [{ testType: 'public', position: 1, inputJson: 'null', expectedJson: '42' }]
   });
 
   assert.equal(calls.length, 1);
@@ -188,7 +188,7 @@ test('missing solve and missing configured entryFunction result in CE without in
     runners: createRegistry(),
     image: 'python:3.12-alpine',
     sourceCode: 'def helper():\n    return 42\n',
-    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
+    tests: [{ testType: 'public', position: 1, inputJson: 'null', expectedJson: '42' }]
   });
 
   assert.deepEqual(result, {
@@ -220,8 +220,8 @@ test('submission passing public tests but failing hidden tests returns WA withou
     sourceCode: 'def collapse(value):\n    return value\n',
     entryFunction: 'collapse',
     tests: [
-      { testType: 'public', position: 1, input: 12321, expected: 12321 },
-      { testType: 'hidden', position: 1, input: 1000000000000000000001n.toString(), expected: 101 }
+      { testType: 'public', position: 1, inputJson: '12321', expectedJson: '12321' },
+      { testType: 'hidden', position: 1, inputJson: '1000000000000000000001', expectedJson: '101' }
     ]
   });
 

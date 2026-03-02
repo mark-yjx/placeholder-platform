@@ -7,8 +7,8 @@ export interface ProblemExecutionConfigRepository {
 export type ProblemJudgeTestCase = {
   testType: 'public' | 'hidden';
   position: number;
-  input: unknown;
-  expected: unknown;
+  inputJson: string;
+  expectedJson: string;
 };
 
 export type ProblemJudgeConfig = {
@@ -55,8 +55,8 @@ type ProblemJudgeConfigRow = {
   entry_function: string;
   test_type: 'public' | 'hidden';
   position: number;
-  input: unknown;
-  expected: unknown;
+  input_json: string;
+  expected_json: string;
 };
 
 const FIND_PROBLEM_JUDGE_CONFIG_SQL = `
@@ -64,8 +64,8 @@ SELECT
   pva.entry_function AS entry_function,
   pvt.test_type AS test_type,
   pvt.position AS position,
-  pvt.input AS input,
-  pvt.expected AS expected
+  pvt.input::text AS input_json,
+  pvt.expected::text AS expected_json
 FROM problem_version_assets pva
 JOIN problem_version_tests pvt
   ON pvt.problem_version_id = pva.problem_version_id
@@ -91,8 +91,8 @@ export class PostgresProblemJudgeConfigRepository implements ProblemJudgeConfigR
       tests: rows.map((row) => ({
         testType: row.test_type,
         position: row.position,
-        input: row.input,
-        expected: row.expected
+        inputJson: row.input_json,
+        expectedJson: row.expected_json
       }))
     };
   }

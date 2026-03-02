@@ -197,7 +197,7 @@ test('worker tick uses problem tests and records AC for a correct submission', a
       async findByProblemVersionId() {
         return {
           entryFunction: 'collapse',
-          tests: [{ testType: 'public', position: 1, input: 0, expected: 0 }]
+          tests: [{ testType: 'public', position: 1, inputJson: '0', expectedJson: '0' }]
         };
       }
     },
@@ -277,8 +277,8 @@ test('worker tick returns WA when hidden tests fail and result does not leak hid
         return {
           entryFunction: 'collapse',
           tests: [
-            { testType: 'public', position: 1, input: 12321, expected: 12321 },
-            { testType: 'hidden', position: 1, input: -900111212777394440300, expected: -9012127394030 }
+            { testType: 'public', position: 1, inputJson: '12321', expectedJson: '12321' },
+            { testType: 'hidden', position: 1, inputJson: '-900111212777394440300', expectedJson: '-9012127394030' }
           ]
         };
       }

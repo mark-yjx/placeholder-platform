@@ -12,7 +12,7 @@ export function extractJudgedPythonSource(sourceCode: string, entryFunction = 's
 export function buildRunnableJudgedPythonSource(
   sourceCode: string,
   entryFunction = 'solve',
-  testInput?: unknown
+  testInputJson?: string
 ): string {
   const extracted = extractPythonSubmission({
     sourceCode,
@@ -20,11 +20,11 @@ export function buildRunnableJudgedPythonSource(
   });
 
   const invocation =
-    testInput === undefined
+    testInputJson === undefined
       ? `${extracted.selectedEntrypoint}()`
       : [
           'import json',
-          `__oj_input = json.loads(${JSON.stringify(JSON.stringify(testInput))})`,
+          `__oj_input = json.loads(${JSON.stringify(testInputJson)})`,
           `__oj_result = ${extracted.selectedEntrypoint}(__oj_input)`,
           'print(json.dumps(__oj_result))'
         ].join('\n');

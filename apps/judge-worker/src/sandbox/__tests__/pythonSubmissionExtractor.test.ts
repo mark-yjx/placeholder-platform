@@ -180,7 +180,7 @@ def collapse(value):
     return value
 `.trim(),
     'collapse',
-    -1111222232222111
+    '-1111222232222111'
   );
 
   assert.match(runnable, /^    import json$/m);

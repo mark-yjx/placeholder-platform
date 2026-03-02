@@ -86,6 +86,144 @@ export function createLocalProblemImportSqlClient() {
   };
 }
 
+function skipJsonWhitespace(source, index) {
+  let cursor = index;
+  while (cursor < source.length && /\s/.test(source[cursor])) {
+    cursor += 1;
+  }
+  return cursor;
+}
+
+function parseJsonStringToken(source, index) {
+  let cursor = index + 1;
+  while (cursor < source.length) {
+    const char = source[cursor];
+    if (char === '\\') {
+      cursor += 2;
+      continue;
+    }
+    if (char === '"') {
+      return cursor + 1;
+    }
+    cursor += 1;
+  }
+  throw new Error('Unterminated JSON string literal');
+}
+
+function parseJsonValueToken(source, index) {
+  const start = skipJsonWhitespace(source, index);
+  const first = source[start];
+
+  if (first === '"') {
+    return parseJsonStringToken(source, start);
+  }
+
+  if (first === '{' || first === '[') {
+    const stack = [first];
+    let cursor = start + 1;
+    while (cursor < source.length && stack.length > 0) {
+      const char = source[cursor];
+      if (char === '"') {
+        cursor = parseJsonStringToken(source, cursor);
+        continue;
+      }
+      if (char === '{' || char === '[') {
+        stack.push(char);
+      } else if (char === '}' && stack[stack.length - 1] === '{') {
+        stack.pop();
+      } else if (char === ']' && stack[stack.length - 1] === '[') {
+        stack.pop();
+      }
+      cursor += 1;
+    }
+    if (stack.length > 0) {
+      throw new Error('Unterminated JSON container value');
+    }
+    return cursor;
+  }
+
+  let cursor = start;
+  while (cursor < source.length && !/[,\]}]/.test(source[cursor])) {
+    cursor += 1;
+  }
+  return cursor;
+}
+
+function parseJsonCasesWithRawValues(filePath) {
+  const source = fs.readFileSync(filePath, 'utf8');
+  let cursor = skipJsonWhitespace(source, 0);
+  if (source[cursor] !== '[') {
+    throw new Error(`Expected JSON array in ${filePath}`);
+  }
+  cursor += 1;
+  const cases = [];
+
+  while (true) {
+    cursor = skipJsonWhitespace(source, cursor);
+    if (source[cursor] === ']') {
+      break;
+    }
+    if (source[cursor] !== '{') {
+      throw new Error(`Expected JSON object in ${filePath}`);
+    }
+    cursor += 1;
+
+    let inputJson = null;
+    let expectedJson = null;
+
+    while (true) {
+      cursor = skipJsonWhitespace(source, cursor);
+      if (source[cursor] === '}') {
+        cursor += 1;
+        break;
+      }
+
+      const keyStart = cursor;
+      const keyEnd = parseJsonStringToken(source, keyStart);
+      const key = JSON.parse(source.slice(keyStart, keyEnd));
+      cursor = skipJsonWhitespace(source, keyEnd);
+      if (source[cursor] !== ':') {
+        throw new Error(`Expected ":" after key ${key} in ${filePath}`);
+      }
+      cursor += 1;
+
+      const valueStart = skipJsonWhitespace(source, cursor);
+      const valueEnd = parseJsonValueToken(source, valueStart);
+      const rawValue = source.slice(valueStart, valueEnd).trim();
+      if (key === 'input') {
+        inputJson = rawValue;
+      } else if (key === 'expected') {
+        expectedJson = rawValue;
+      }
+      cursor = skipJsonWhitespace(source, valueEnd);
+      if (source[cursor] === ',') {
+        cursor += 1;
+        continue;
+      }
+      if (source[cursor] === '}') {
+        cursor += 1;
+        break;
+      }
+    }
+
+    if (inputJson === null || expectedJson === null) {
+      throw new Error(`Each test case in ${filePath} must define input and expected`);
+    }
+
+    cases.push({ inputJson, expectedJson });
+    cursor = skipJsonWhitespace(source, cursor);
+    if (source[cursor] === ',') {
+      cursor += 1;
+      continue;
+    }
+    if (source[cursor] === ']') {
+      break;
+    }
+  }
+
+  return cases;
+}
+
 function stableJson(value) {
   if (Array.isArray(value)) {
     return value.map((item) => stableJson(item));
@@ -133,8 +271,8 @@ export function readProblemDefinition(problemDir) {
   const statement = fs.readFileSync(path.join(problemDir, 'statement.md'), 'utf8');
   const starterCode = fs.readFileSync(path.join(problemDir, 'starter.py'), 'utf8');
   const testsDir = path.join(problemDir, 'tests');
-  const publicTests = JSON.parse(fs.readFileSync(path.join(testsDir, 'public.json'), 'utf8'));
-  const hiddenTests = JSON.parse(fs.readFileSync(path.join(testsDir, 'hidden.json'), 'utf8'));
+  const publicTests = parseJsonCasesWithRawValues(path.join(testsDir, 'public.json'));
+  const hiddenTests = parseJsonCasesWithRawValues(path.join(testsDir, 'hidden.json'));
 
   if (typeof metadata.slug !== 'string' || metadata.slug.trim().length === 0) {
     throw new Error(`Problem at ${problemDir} must define a non-empty slug`);
@@ -320,8 +458,8 @@ export function createPostgresProblemImportStore(sqlClient) {
         problemVersionId,
         testType,
         position,
-        JSON.stringify(testCase.input),
-        JSON.stringify(testCase.expected)
+        testCase.inputJson,
+        testCase.expectedJson
       ]);
     }
   }
