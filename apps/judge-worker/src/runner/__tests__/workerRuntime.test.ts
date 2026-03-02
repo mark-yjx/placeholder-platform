@@ -288,3 +288,79 @@ test('worker tick returns WA when hidden tests fail and result does not leak hid
   assert.equal('input' in savedResults[0], false);
   assert.equal('expected' in savedResults[0], false);
 });
+
+test('worker tick marks submission failed with CE and acknowledges job when judge config is missing', async () => {
+  const { createWorkerTick } = loadWorkerRuntime();
+  const savedStatuses: string[] = [];
+  const savedResults: Array<{ submissionId: string; verdict: string; timeMs: number; memoryKb: number }> = [];
+  let acknowledgedSubmissionId = '';
+
+  const tick = createWorkerTick({
+    queue: {
+      async claimNext() {
+        return {
+          submissionId: 'submission-missing-config',
+          ownerUserId: 'student-1',
+          problemId: 'problem-1',
+          problemVersionId: 'problem-1-v1',
+          language: 'python',
+          sourceCode: 'def solve():\n    return 42\n'
+        };
+      },
+      async acknowledge(submissionId: string) {
+        acknowledgedSubmissionId = submissionId;
+      }
+    },
+    submissions: {
+      async findById() {
+        return {
+          id: 'submission-missing-config',
+          ownerUserId: 'student-1',
+          problemId: 'problem-1',
+          problemVersionId: 'problem-1-v1',
+          language: 'python',
+          sourceCode: 'def solve():\n    return 42\n',
+          status: 'queued' as import('@packages/domain/src/submission').SubmissionStatus
+        };
+      },
+      async save(submission) {
+        savedStatuses.push(submission.status);
+      }
+    },
+    results: {
+      async save(result) {
+        savedResults.push(result);
+      }
+    },
+    judgeConfigs: {
+      async findByProblemVersionId() {
+        return null;
+      }
+    },
+    sandbox: new DockerSandboxAdapter(async () => {
+      throw new Error('sandbox should not be invoked when judge config is missing');
+    }),
+    runners: new RunnerRegistry([
+      {
+        language: 'python',
+        resolve() {
+          return { language: 'python', runArgs: ['python', '/sandbox/main.py'] };
+        }
+      }
+    ]),
+    image: 'python:3.12-alpine'
+  });
+
+  await tick();
+
+  assert.deepEqual(savedStatuses, ['running', 'failed']);
+  assert.deepEqual(savedResults, [
+    {
+      submissionId: 'submission-missing-config',
+      verdict: 'CE',
+      timeMs: 0,
+      memoryKb: 0
+    }
+  ]);
+  assert.equal(acknowledgedSubmissionId, 'submission-missing-config');
+});

@@ -144,7 +144,22 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
     }
     const judgeConfig = await dependencies.judgeConfigs.findByProblemVersionId(job.problemVersionId);
     if (!judgeConfig) {
-      throw new Error(`Judge config not found for problem version ${job.problemVersionId}`);
+      await dependencies.submissions.save({
+        ...submission,
+        status: 'running' as SubmissionStatus
+      });
+      await dependencies.submissions.save({
+        ...submission,
+        status: 'failed' as SubmissionStatus
+      });
+      await dependencies.results.save({
+        submissionId: job.submissionId,
+        verdict: 'CE' as Verdict,
+        timeMs: 0,
+        memoryKb: 0
+      });
+      await dependencies.queue.acknowledge(job.submissionId);
+      return;
     }
 
     await dependencies.submissions.save({
