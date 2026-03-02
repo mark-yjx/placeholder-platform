@@ -525,3 +525,78 @@ IN:
 - .vscodeignore or files whitelist
 OUT:
 - Backend changes
+
+# Phase 7 – Real Extension ↔ API Integration
+
+Goal:
+Replace in-memory extension clients with real HTTP clients and establish a true end-to-end workflow.
+
+## 66. Implement HTTP API Client in Extension
+
+Title:
+Replace InMemory clients with HttpApiClient
+
+Acceptance checks:
+- Extension uses real HTTP calls to API base URL
+- API base URL is configurable via settings
+- All requests use fetch (Node 18+ global fetch)
+- Proper error mapping is preserved
+- No direct database access from extension
+
+Scope:
+IN:
+- Implement HttpAuthClient
+- Implement HttpPracticeClient
+- Implement HttpEngagementClient
+- Replace in-memory wiring in extension.ts
+OUT:
+- UI redesign
+- Polling
+- Judge pipeline changes
+
+## 67. Wire Login to Real Backend
+
+Acceptance checks:
+- OJ: Login calls POST /auth/login
+- Token stored in SecretStorage
+- Token included in Authorization header
+- Invalid credentials mapped to user-friendly error
+
+Scope:
+IN:
+- Login HTTP integration
+- Token persistence
+OUT:
+- Role-based UI changes
+
+## 68. Fetch Problems from Real API
+
+Acceptance checks:
+- OJ: Fetch Problems calls GET /problems
+- Problems displayed are DB-backed
+- Network failures mapped cleanly
+- Empty list handled gracefully
+
+## 69. Submit Code to Real API
+
+Acceptance checks:
+- OJ: Submit Code calls POST /submissions
+- Submission ID returned from API
+- Submission added to Submissions TreeView
+- No in-memory submission logic remains
+
+## 70. Poll Submission Result
+
+Acceptance checks:
+- OJ: View Result calls GET /submissions/:id
+- Properly displays real verdict/time/memory
+- Handles running state
+- No state mutation in terminal states
+
+## 71. End-to-End Smoke Validation
+
+Acceptance checks:
+- Login → Fetch → Submit → Poll → AC flow works
+- Data persists across extension reload
+- No in-memory fallback logic exists
+- Health endpoints accessible from extension
