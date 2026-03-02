@@ -49,3 +49,15 @@ test('local db setup scripts apply all migration and seed files in lexical order
   assert.match(seedScript, /readdirSync\(seedsDir\)/);
   assert.match(seedScript, /\.sort\(/);
 });
+
+test('phase problem import migration defines immutable per-version canonical assets', () => {
+  const sql = readFromRoot('deploy', 'local', 'sql', 'migrations', '005_problem_import_assets.sql');
+
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS problem_version_assets/i);
+  assert.match(sql, /problem_version_id TEXT PRIMARY KEY REFERENCES problem_versions/i);
+  assert.match(sql, /entry_function TEXT NOT NULL/i);
+  assert.match(sql, /language TEXT NOT NULL CHECK \(language = 'python'\)/i);
+  assert.match(sql, /visibility TEXT NOT NULL CHECK \(visibility IN \('public', 'private'\)\)/i);
+  assert.match(sql, /starter_code TEXT NOT NULL/i);
+  assert.match(sql, /content_digest TEXT NOT NULL/i);
+});
