@@ -107,6 +107,8 @@ export function createContentDigest(problem) {
     title: problem.title,
     statement: problem.statement,
     starterCode: problem.starterCode,
+    publicTests: problem.publicTests,
+    hiddenTests: problem.hiddenTests,
     entryFunction: problem.entryFunction,
     language: problem.language,
     visibility: problem.visibility,
@@ -130,6 +132,9 @@ export function readProblemDefinition(problemDir) {
   const metadata = parseProblemJson(problemDir);
   const statement = fs.readFileSync(path.join(problemDir, 'statement.md'), 'utf8');
   const starterCode = fs.readFileSync(path.join(problemDir, 'starter.py'), 'utf8');
+  const testsDir = path.join(problemDir, 'tests');
+  const publicTests = JSON.parse(fs.readFileSync(path.join(testsDir, 'public.json'), 'utf8'));
+  const hiddenTests = JSON.parse(fs.readFileSync(path.join(testsDir, 'hidden.json'), 'utf8'));
 
   if (typeof metadata.slug !== 'string' || metadata.slug.trim().length === 0) {
     throw new Error(`Problem at ${problemDir} must define a non-empty slug`);
@@ -152,6 +157,8 @@ export function readProblemDefinition(problemDir) {
     title: metadata.title.trim(),
     statement,
     starterCode,
+    publicTests,
+    hiddenTests,
     entryFunction: metadata.entryFunction.trim(),
     language: 'python',
     visibility: metadata.visibility,
@@ -285,6 +292,17 @@ INSERT INTO problem_version_assets (
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `;
 
+const INSERT_PROBLEM_TEST_SQL = `
+INSERT INTO problem_version_tests (
+  problem_version_id,
+  test_type,
+  position,
+  input,
+  expected
+)
+VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)
+`;
+
 export function createPostgresProblemImportStore(sqlClient) {
   function publicationStateForVisibility(visibility) {
     return visibility === 'public' ? 'published' : 'unpublished';
@@ -292,6 +310,20 @@ export function createPostgresProblemImportStore(sqlClient) {
 
   function versionIdFor(slug, versionNumber) {
     return `${slug}-v${versionNumber}`;
+  }
+
+  async function insertTests(problemVersionId, tests, testType) {
+    let position = 0;
+    for (const testCase of tests) {
+      position += 1;
+      await sqlClient.execute(INSERT_PROBLEM_TEST_SQL, [
+        problemVersionId,
+        testType,
+        position,
+        JSON.stringify(testCase.input),
+        JSON.stringify(testCase.expected)
+      ]);
+    }
   }
 
   return {
@@ -310,9 +342,10 @@ export function createPostgresProblemImportStore(sqlClient) {
 
     async insertInitialProblem(problem) {
       const publicationState = publicationStateForVisibility(problem.visibility);
+      const problemVersionId = versionIdFor(problem.slug, 1);
       await sqlClient.execute(INSERT_PROBLEM_SQL, [problem.slug, problem.title, publicationState]);
       await sqlClient.execute(INSERT_PROBLEM_VERSION_SQL, [
-        versionIdFor(problem.slug, 1),
+        problemVersionId,
         problem.slug,
         1,
         problem.title,
@@ -320,7 +353,7 @@ export function createPostgresProblemImportStore(sqlClient) {
         publicationState
       ]);
       await sqlClient.execute(INSERT_PROBLEM_VERSION_ASSET_SQL, [
-        versionIdFor(problem.slug, 1),
+        problemVersionId,
         problem.entryFunction,
         problem.language,
         problem.visibility,
@@ -329,13 +362,16 @@ export function createPostgresProblemImportStore(sqlClient) {
         problem.starterCode,
         problem.contentDigest
       ]);
+      await insertTests(problemVersionId, problem.publicTests, 'public');
+      await insertTests(problemVersionId, problem.hiddenTests, 'hidden');
     },
 
     async appendProblemVersion(problem, nextVersionNumber) {
       const publicationState = publicationStateForVisibility(problem.visibility);
+      const problemVersionId = versionIdFor(problem.slug, nextVersionNumber);
       await sqlClient.execute(UPDATE_PROBLEM_SQL, [problem.slug, problem.title, publicationState]);
       await sqlClient.execute(INSERT_PROBLEM_VERSION_SQL, [
-        versionIdFor(problem.slug, nextVersionNumber),
+        problemVersionId,
         problem.slug,
         nextVersionNumber,
         problem.title,
@@ -343,7 +379,7 @@ export function createPostgresProblemImportStore(sqlClient) {
         publicationState
       ]);
       await sqlClient.execute(INSERT_PROBLEM_VERSION_ASSET_SQL, [
-        versionIdFor(problem.slug, nextVersionNumber),
+        problemVersionId,
         problem.entryFunction,
         problem.language,
         problem.visibility,
@@ -352,6 +388,8 @@ export function createPostgresProblemImportStore(sqlClient) {
         problem.starterCode,
         problem.contentDigest
       ]);
+      await insertTests(problemVersionId, problem.publicTests, 'public');
+      await insertTests(problemVersionId, problem.hiddenTests, 'hidden');
     }
   };
 }

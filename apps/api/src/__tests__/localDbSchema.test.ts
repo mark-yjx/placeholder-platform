@@ -61,3 +61,14 @@ test('phase problem import migration defines immutable per-version canonical ass
   assert.match(sql, /starter_code TEXT NOT NULL/i);
   assert.match(sql, /content_digest TEXT NOT NULL/i);
 });
+
+test('phase hidden test migration defines public and hidden problem test storage', () => {
+  const sql = readFromRoot('deploy', 'local', 'sql', 'migrations', '006_problem_version_tests.sql');
+
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS problem_version_tests/i);
+  assert.match(sql, /problem_version_id TEXT NOT NULL REFERENCES problem_versions/i);
+  assert.match(sql, /test_type TEXT NOT NULL CHECK \(test_type IN \('public', 'hidden'\)\)/i);
+  assert.match(sql, /input JSONB NOT NULL/i);
+  assert.match(sql, /expected JSONB NOT NULL/i);
+  assert.match(sql, /UNIQUE \(problem_version_id, test_type, position\)/i);
+});

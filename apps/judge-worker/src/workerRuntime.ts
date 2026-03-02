@@ -7,6 +7,7 @@ import { RunnerRegistry } from './runner/RunnerRegistry';
 import { createLocalPostgresSqlClient } from './runtime/localPostgresSqlClient';
 import { DockerSandboxAdapter } from './sandbox/DockerSandboxAdapter';
 import { runPythonJudgeExecution } from './sandbox/PythonJudgeExecution';
+import { PostgresProblemJudgeConfigRepository } from './sandbox/problemConfig';
 
 export type WorkerRuntimeOptions = {
   pollIntervalMs?: number;
@@ -19,6 +20,47 @@ export type WorkerRuntimeOptions = {
 
 export type WorkerRuntimeHandle = {
   stop: () => Promise<void>;
+};
+
+type WorkerTickDependencies = {
+  queue: { claimNext: () => Promise<import('@packages/contracts/src').Judge.JudgeJob | null>; acknowledge: (submissionId: string) => Promise<void> };
+  submissions: {
+    findById: (id: string) => Promise<{
+      id: string;
+      ownerUserId: string;
+      problemId: string;
+      problemVersionId: string;
+      language: string;
+      sourceCode: string;
+      status: SubmissionStatus;
+    } | null>;
+    save: (submission: {
+      id: string;
+      ownerUserId: string;
+      problemId: string;
+      problemVersionId: string;
+      language: string;
+      sourceCode: string;
+      status: SubmissionStatus;
+    }) => Promise<void>;
+  };
+  results: {
+    save: (result: {
+      submissionId: string;
+      verdict: Verdict;
+      timeMs: number;
+      memoryKb: number;
+    }) => Promise<void>;
+  };
+  judgeConfigs: {
+    findByProblemVersionId: (problemVersionId: string) => Promise<{
+      entryFunction: string;
+      tests: readonly import('./sandbox/problemConfig').ProblemJudgeTestCase[];
+    } | null>;
+  };
+  sandbox: DockerSandboxAdapter;
+  runners: RunnerRegistry;
+  image: string;
 };
 
 async function executeDockerCommand(command: {
@@ -73,45 +115,63 @@ export function createLocalWorkerTick(): () => Promise<void> {
   const queue = new PostgresJudgeJobQueue(sqlClient);
   const submissions = new PostgresSubmissionRepository(sqlClient);
   const results = new PostgresJudgeResultRepository(sqlClient);
+  const judgeConfigs = new PostgresProblemJudgeConfigRepository(sqlClient);
   const sandbox = new DockerSandboxAdapter(executeDockerCommand);
   const runners = new RunnerRegistry([new PythonRunnerPlugin()]);
   const image = process.env.DOCKER_IMAGE_PYTHON ?? 'python:3.12-alpine';
 
+  return createWorkerTick({
+    queue,
+    submissions,
+    results,
+    judgeConfigs,
+    sandbox,
+    runners,
+    image
+  });
+}
+
+export function createWorkerTick(dependencies: WorkerTickDependencies): () => Promise<void> {
   return async () => {
-    const job = await queue.claimNext();
+    const job = await dependencies.queue.claimNext();
     if (!job) {
       return;
     }
 
-    const submission = await submissions.findById(job.submissionId);
+    const submission = await dependencies.submissions.findById(job.submissionId);
     if (!submission) {
       throw new Error(`Submission not found for job ${job.submissionId}`);
     }
+    const judgeConfig = await dependencies.judgeConfigs.findByProblemVersionId(job.problemVersionId);
+    if (!judgeConfig) {
+      throw new Error(`Judge config not found for problem version ${job.problemVersionId}`);
+    }
 
-    await submissions.save({
+    await dependencies.submissions.save({
       ...submission,
       status: 'running' as SubmissionStatus
     });
 
     const result = await runPythonJudgeExecution({
-      sandbox,
-      runners,
-      image,
+      sandbox: dependencies.sandbox,
+      runners: dependencies.runners,
+      image: dependencies.image,
       sourceCode: job.sourceCode,
-      expectedStdout: '42\n'
+      entryFunction: judgeConfig.entryFunction,
+      tests: judgeConfig.tests
     });
 
-    await submissions.save({
+    await dependencies.submissions.save({
       ...submission,
       status: result.status as SubmissionStatus
     });
-    await results.save({
+    await dependencies.results.save({
       submissionId: job.submissionId,
       verdict: result.verdict as Verdict,
       timeMs: result.timeMs,
       memoryKb: result.memoryKb
     });
-    await queue.acknowledge(job.submissionId);
+    await dependencies.queue.acknowledge(job.submissionId);
   };
 }
 

@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Module from 'node:module';
 import ts from 'typescript';
+import { DockerSandboxAdapter } from '../../sandbox/DockerSandboxAdapter';
+import { RunnerRegistry } from '../../runner/RunnerRegistry';
 
 function resolveRepoRoot(): string {
   const candidates = [process.cwd(), path.resolve(process.cwd(), '..', '..')];
@@ -117,4 +119,172 @@ test('worker runtime starts, idles with ticks, and stops cleanly', async () => {
   assert.ok(ticks > 0);
   assert.ok(logs.includes('worker.runtime.started'));
   assert.ok(logs.includes('worker.runtime.stopped'));
+});
+
+test('worker tick uses problem tests and records AC for a correct submission', async () => {
+  const { createWorkerTick } = loadWorkerRuntime();
+  const savedResults: Array<{ verdict: string; timeMs: number; memoryKb: number }> = [];
+  let acknowledgedSubmissionId = '';
+  let currentStatus = 'queued';
+
+  const tick = createWorkerTick({
+    queue: {
+      async claimNext() {
+        return {
+          submissionId: 'submission-1',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v1',
+          language: 'python',
+          sourceCode: 'def collapse(number):\n    return 0 if number == 0 else int(str(number)[0])\n'
+        };
+      },
+      async acknowledge(submissionId: string) {
+        acknowledgedSubmissionId = submissionId;
+      }
+    },
+    submissions: {
+      async findById() {
+        return {
+          id: 'submission-1',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v1',
+          language: 'python',
+          sourceCode: 'def collapse(number):\n    return 0 if number == 0 else int(str(number)[0])\n',
+          status: currentStatus as import('@packages/domain/src/submission').SubmissionStatus
+        };
+      },
+      async save(submission) {
+        currentStatus = submission.status;
+      }
+    },
+    results: {
+      async save(result) {
+        savedResults.push(result);
+      }
+    },
+    judgeConfigs: {
+      async findByProblemVersionId() {
+        return {
+          entryFunction: 'collapse',
+          tests: [{ testType: 'public', position: 1, input: 0, expected: 0 }]
+        };
+      }
+    },
+    sandbox: new DockerSandboxAdapter(async () => {
+      return {
+        stdout: '0\n',
+        stderr: '',
+        exitCode: 0,
+        timeMs: 15,
+        memoryKb: 512
+      };
+    }),
+    runners: new RunnerRegistry([
+      {
+        language: 'python',
+        resolve() {
+          return { language: 'python', runArgs: ['python', '/sandbox/main.py'] };
+        }
+      }
+    ]),
+    image: 'python:3.12-alpine'
+  });
+
+  await tick();
+
+  assert.equal(currentStatus, 'finished');
+  assert.equal(acknowledgedSubmissionId, 'submission-1');
+  assert.deepEqual(savedResults, [
+    { submissionId: 'submission-1', verdict: 'AC', timeMs: 15, memoryKb: 512 }
+  ]);
+});
+
+test('worker tick returns WA when hidden tests fail and result does not leak hidden input/output', async () => {
+  const { createWorkerTick } = loadWorkerRuntime();
+  const savedResults: Array<Record<string, unknown>> = [];
+  let executeCount = 0;
+
+  const tick = createWorkerTick({
+    queue: {
+      async claimNext() {
+        return {
+          submissionId: 'submission-2',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v2',
+          language: 'python',
+          sourceCode: 'def collapse(number):\n    return number\n'
+        };
+      },
+      async acknowledge() {
+        return;
+      }
+    },
+    submissions: {
+      async findById() {
+        return {
+          id: 'submission-2',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v2',
+          language: 'python',
+          sourceCode: 'def collapse(number):\n    return number\n',
+          status: 'queued' as import('@packages/domain/src/submission').SubmissionStatus
+        };
+      },
+      async save() {
+        return;
+      }
+    },
+    results: {
+      async save(result) {
+        savedResults.push(result as unknown as Record<string, unknown>);
+      }
+    },
+    judgeConfigs: {
+      async findByProblemVersionId() {
+        return {
+          entryFunction: 'collapse',
+          tests: [
+            { testType: 'public', position: 1, input: 12321, expected: 12321 },
+            { testType: 'hidden', position: 1, input: -900111212777394440300, expected: -9012127394030 }
+          ]
+        };
+      }
+    },
+    sandbox: new DockerSandboxAdapter(async () => {
+      executeCount += 1;
+      return {
+        stdout: executeCount === 1 ? '12321\n' : '-900111212777394440300\n',
+        stderr: '',
+        exitCode: 0,
+        timeMs: 20,
+        memoryKb: 1024
+      };
+    }),
+    runners: new RunnerRegistry([
+      {
+        language: 'python',
+        resolve() {
+          return { language: 'python', runArgs: ['python', '/sandbox/main.py'] };
+        }
+      }
+    ]),
+    image: 'python:3.12-alpine'
+  });
+
+  await tick();
+
+  assert.deepEqual(savedResults, [
+    {
+      submissionId: 'submission-2',
+      verdict: 'WA',
+      timeMs: 40,
+      memoryKb: 1024
+    }
+  ]);
+  assert.equal('input' in savedResults[0], false);
+  assert.equal('expected' in savedResults[0], false);
 });

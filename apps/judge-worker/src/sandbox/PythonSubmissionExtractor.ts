@@ -11,18 +11,27 @@ export function extractJudgedPythonSource(sourceCode: string, entryFunction = 's
 
 export function buildRunnableJudgedPythonSource(
   sourceCode: string,
-  entryFunction = 'solve'
+  entryFunction = 'solve',
+  testInput?: unknown
 ): string {
   const extracted = extractPythonSubmission({
     sourceCode,
     entryFunction
   });
 
+  const invocation =
+    testInput === undefined
+      ? `${extracted.selectedEntrypoint}()`
+      : [
+          'import json',
+          `__oj_input = json.loads(${JSON.stringify(JSON.stringify(testInput))})`,
+          `__oj_result = ${extracted.selectedEntrypoint}(__oj_input)`,
+          'print(json.dumps(__oj_result))'
+        ].join('\n');
+
   return `${extracted.extractedSourceCode.trimEnd()}
 
 if __name__ == "__main__":
-    __oj_result = ${extracted.selectedEntrypoint}()
-    if __oj_result is not None:
-        print(__oj_result)
+    ${invocation.split('\n').join('\n    ')}
 `;
 }

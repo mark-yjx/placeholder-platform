@@ -22,8 +22,8 @@ test('correct Python code results in finished with verdict AC and recorded time/
     sandbox,
     runners: createRegistry(),
     image: 'python:3.12-alpine',
-    sourceCode: 'def solve():\n    return 42\n',
-    expectedStdout: '42\n'
+    sourceCode: 'def solve(value):\n    return 42\n',
+    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
   });
 
   assert.deepEqual(result, {
@@ -51,11 +51,11 @@ test('submission without solve but with configured entryFunction results in fini
 def helper():
     return 42
 
-def collapse():
+def collapse(value):
     return helper()
 `.trim(),
     entryFunction: 'collapse',
-    expectedStdout: '42\n'
+    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
   });
 
   assert.deepEqual(result, {
@@ -79,8 +79,8 @@ test('wrong output results in finished with verdict WA and recorded time/memory'
     sandbox,
     runners: createRegistry(),
     image: 'python:3.12-alpine',
-    sourceCode: 'def solve():\n    return 41\n',
-    expectedStdout: '42\n'
+    sourceCode: 'def solve(value):\n    return 41\n',
+    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
   });
 
   assert.deepEqual(result, {
@@ -104,8 +104,8 @@ test('runtime exception results in finished with verdict RE and recorded time/me
     sandbox,
     runners: createRegistry(),
     image: 'python:3.12-alpine',
-    sourceCode: 'def solve():\n    raise RuntimeError("boom")\n',
-    expectedStdout: '42\n'
+    sourceCode: 'def solve(value):\n    raise RuntimeError("boom")\n',
+    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
   });
 
   assert.deepEqual(result, {
@@ -141,7 +141,7 @@ VALUE = 40
 def helper():
     return VALUE + math.floor(2.9)
 
-def solve():
+def solve(value):
     return helper()
 
 def unused():
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     import doctest
     doctest.testmod()
 `.trim(),
-    expectedStdout: '42\n'
+    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
   });
 
   assert.equal(calls.length, 1);
@@ -163,7 +163,7 @@ if __name__ == "__main__":
   assert.match(calls[0]?.stdin ?? '', /^import math$/m);
   assert.match(calls[0]?.stdin ?? '', /^VALUE = 40$/m);
   assert.match(calls[0]?.stdin ?? '', /^def helper\(\):$/m);
-  assert.match(calls[0]?.stdin ?? '', /^def solve\(\):$/m);
+  assert.match(calls[0]?.stdin ?? '', /^def solve\(value\):$/m);
   assert.doesNotMatch(calls[0]?.stdin ?? '', /^def unused\(\):$/m);
   assert.doesNotMatch(calls[0]?.stdin ?? '', /print\("debug"\)/);
   assert.doesNotMatch(calls[0]?.stdin ?? '', /doctest/);
@@ -188,7 +188,7 @@ test('missing solve and missing configured entryFunction result in CE without in
     runners: createRegistry(),
     image: 'python:3.12-alpine',
     sourceCode: 'def helper():\n    return 42\n',
-    expectedStdout: '42\n'
+    tests: [{ testType: 'public', position: 1, input: null, expected: 42 }]
   });
 
   assert.deepEqual(result, {
@@ -198,4 +198,39 @@ test('missing solve and missing configured entryFunction result in CE without in
     memoryKb: 0
   });
   assert.equal(called, false);
+});
+
+test('submission passing public tests but failing hidden tests returns WA without hidden detail leakage', async () => {
+  let callCount = 0;
+  const sandbox = new DockerSandboxAdapter(async () => {
+    callCount += 1;
+    return {
+      stdout: callCount === 1 ? '12321\n' : '1000\n',
+      stderr: '',
+      exitCode: 0,
+      timeMs: 30,
+      memoryKb: 1024
+    };
+  });
+
+  const result = await runPythonJudgeExecution({
+    sandbox,
+    runners: createRegistry(),
+    image: 'python:3.12-alpine',
+    sourceCode: 'def collapse(value):\n    return value\n',
+    entryFunction: 'collapse',
+    tests: [
+      { testType: 'public', position: 1, input: 12321, expected: 12321 },
+      { testType: 'hidden', position: 1, input: 1000000000000000000001n.toString(), expected: 101 }
+    ]
+  });
+
+  assert.deepEqual(result, {
+    status: 'finished',
+    verdict: 'WA',
+    timeMs: 60,
+    memoryKb: 1024
+  });
+  assert.equal('input' in result, false);
+  assert.equal('expected' in result, false);
 });

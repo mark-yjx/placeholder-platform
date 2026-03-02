@@ -157,7 +157,7 @@ def solve():
 
   assert.match(runnable, /^def solve\(\):$/m);
   assert.match(runnable, /^if __name__ == "__main__":$/m);
-  assert.match(runnable, /__oj_result = solve\(\)/);
+  assert.match(runnable, /^    solve\(\)$/m);
 });
 
 test('runnable judged source calls configured entryFunction when solve is absent', () => {
@@ -170,5 +170,21 @@ def collapse():
   );
 
   assert.match(runnable, /^def collapse\(\):$/m);
-  assert.match(runnable, /__oj_result = collapse\(\)/);
+  assert.match(runnable, /^    collapse\(\)$/m);
+});
+
+test('runnable judged source serializes test input through json harness', () => {
+  const runnable = buildRunnableJudgedPythonSource(
+    `
+def collapse(value):
+    return value
+`.trim(),
+    'collapse',
+    -1111222232222111
+  );
+
+  assert.match(runnable, /^    import json$/m);
+  assert.match(runnable, /json\.loads\("-1111222232222111"\)/);
+  assert.match(runnable, /__oj_result = collapse\(__oj_input\)/);
+  assert.match(runnable, /print\(json\.dumps\(__oj_result\)\)/);
 });
