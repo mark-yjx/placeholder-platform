@@ -69,7 +69,11 @@ export function registerExtensionCommands(
       runWithHandling('oj.practice.fetchProblems', async () => {
         const problems = await dependencies.practiceCommands.fetchPublishedProblems();
         dependencies.practiceViews?.showProblems(problems);
-        dependencies.window.showInformationMessage(`Loaded ${problems.length} problems.`);
+        dependencies.window.showInformationMessage(
+          problems.length === 0
+            ? 'No published problems available.'
+            : `Loaded ${problems.length} problems.`
+        );
       })
     ),
     dependencies.registerCommand(

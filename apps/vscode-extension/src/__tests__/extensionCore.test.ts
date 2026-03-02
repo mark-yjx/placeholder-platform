@@ -73,6 +73,56 @@ test('registered command writes to output channel on success', async () => {
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
 });
 
+test('fetch problems handles an empty list gracefully', async () => {
+  const infoMessages: string[] = [];
+  const handlers = new Map<string, () => Promise<void>>();
+  const practiceViewCalls = {
+    problems: [{ problemId: 'stale-problem', title: 'Stale Problem' }] as readonly {
+      problemId: string;
+      title: string;
+    }[]
+  };
+
+  class EmptyPracticeCommands extends PracticeCommands {
+    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
+      return [];
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new EmptyPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: (problems) => {
+        practiceViewCalls.problems = problems;
+      },
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined
+    },
+    output: { appendLine: () => undefined },
+    window: {
+      showErrorMessage: () => undefined,
+      showInformationMessage: (message) => infoMessages.push(message)
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.fetchProblems')?.();
+
+  assert.deepEqual(practiceViewCalls.problems, []);
+  assert.ok(infoMessages.includes('No published problems available.'));
+});
+
 test('login command uses the real backend student fixture credentials', async () => {
   const handlers = new Map<string, () => Promise<void>>();
   let receivedRequest: { email: string; password: string } | null = null;
