@@ -690,6 +690,33 @@ IN:
 OUT:
 - code changes
 
+## 78. Extension: Open Problem creates local editable starter file
+
+Acceptance checks:
+- In OJ Problems TreeView, selecting/clicking a problem opens or creates an editable python file in the current workspace:
+  path: `.oj/problems/<problemId>.py`
+- The file content is the canonical `starter.py` from backend problem detail payload (NOT hardcoded).
+- If the file already exists:
+  - do NOT overwrite by default
+  - prompt user to overwrite; only overwrite on confirmation
+- After opening, user can edit under `# YOUR CODE HERE`.
+- Works even if the statement view remains markdown-only.
+- Unit tests prove:
+  1. no workspace open => friendly error shown
+  2. creates file when missing and opens it
+  3. existing file is not overwritten without confirmation
+
+Scope boundaries:
+IN scope:
+- extension tree item click handler / command wiring
+- file creation/open logic
+- reading `starter.py` from API client (existing client interface)
+- tests
+OUT of scope:
+- judge changes
+- DB/schema changes
+- new backend endpoints unless strictly required (prefer using existing problem detail fetch)
+
 ## Phase - Submission from File (Python)
 
 81. **Extension: Submit current editor file**  
