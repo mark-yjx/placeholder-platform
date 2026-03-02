@@ -93,7 +93,7 @@ ORDER BY pv.version_number ASC
 const FIND_PROBLEM_STARTER_SQL = `
 SELECT pva.starter_code AS starter_code
 FROM problem_version_assets pva
-WHERE pva.version_id = $1
+WHERE pva.problem_version_id = $1
 LIMIT 1
 `;
 

@@ -25,6 +25,20 @@ export type StudentProblemDetailView = StudentProblemView & {
   starterCode?: string;
 };
 
+function createFallbackStarterCode(entryFunction = 'solve'): string {
+  return [
+    `def ${entryFunction}():`,
+    '    # YOUR CODE HERE',
+    '    raise NotImplementedError',
+    '',
+    '',
+    'if __name__ == "__main__":',
+    '    import doctest',
+    '    doctest.testmod()',
+    ''
+  ].join('\n');
+}
+
 export class StudentProblemQueryService {
   constructor(private readonly problems: StudentProblemQueryRepository) {}
 
@@ -51,7 +65,7 @@ export class StudentProblemQueryService {
       versionId: problem.latestVersion.id,
       title: problem.latestVersion.title,
       statement: problem.latestVersion.statement,
-      ...(starterCode ? { starterCode } : {})
+      starterCode: starterCode ?? createFallbackStarterCode()
     };
   }
 }

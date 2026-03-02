@@ -61,3 +61,10 @@ test('postgres problem repository can be re-instantiated against the same backin
   assert.match(source, /class PostgresProblemRepository/);
 });
 
+test('postgres problem repository reads starter assets through problem_version_id', () => {
+  const source = readPostgresProblemRepositorySource();
+
+  assert.match(source, /FROM problem_version_assets pva/);
+  assert.match(source, /WHERE pva\.problem_version_id = \$1/);
+  assert.doesNotMatch(source, /WHERE pva\.version_id = \$1/);
+});
