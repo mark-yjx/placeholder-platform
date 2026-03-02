@@ -2,6 +2,10 @@
 
 Minimal VS Code extension package for the COMP9021 practice platform.
 
+## Versioning
+- Releases use Semantic Versioning.
+- Current packaged release: `0.1.0`
+
 ## Commands
 - `OJ: Login`
 - `OJ: Fetch Problems`

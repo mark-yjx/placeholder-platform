@@ -4,7 +4,16 @@
   "description": "COMP9021 practice extension scaffold",
   "private": true,
   "publisher": "local",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mark-yjx/comp9021-oj.git"
+  },
+  "homepage": "https://github.com/mark-yjx/comp9021-oj",
+  "bugs": {
+    "url": "https://github.com/mark-yjx/comp9021-oj/issues"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -88,6 +97,6 @@
     "lint": "node -e \"console.log('lint @apps/vscode-extension')\"",
     "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/__tests__/*.test.js",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "package:vsix": "npm run build && npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository --skip-license --out oj-vscode-extension-0.0.0.vsix"
+    "package:vsix": "npm run build && npx --yes @vscode/vsce package --no-dependencies --skip-license --out oj-vscode-extension-0.1.0.vsix"
   }
 }

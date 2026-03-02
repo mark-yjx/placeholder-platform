@@ -6,7 +6,7 @@ This guide is for manual QA of the packaged VS Code extension by a non-developer
 
 You need:
 - VS Code
-- the packaged extension file: `apps/vscode-extension/oj-vscode-extension-0.0.0.vsix`
+- the packaged extension file: `apps/vscode-extension/oj-vscode-extension-0.1.0.vsix`
 - a running OJ API reachable from VS Code
 
 For the local stack used in this repository:
@@ -43,7 +43,7 @@ Expected:
 2. Open Extensions.
 3. Open the `...` menu.
 4. Choose `Install from VSIX...`.
-5. Select `oj-vscode-extension-0.0.0.vsix`.
+5. Select `oj-vscode-extension-0.1.0.vsix`.
 
 Expected:
 - the extension `OJ VSCode` appears as installed
