@@ -52,6 +52,7 @@ export type ExtensionCommandDependencies = {
   authCommands: AuthCommands;
   practiceCommands: PracticeCommands;
   engagementCommands: EngagementCommands;
+  waitForNextPoll?: (delayMs: number) => Promise<void>;
   practiceViews?: {
     showProblems: (problems: readonly PublishedProblem[]) => void;
     showSubmissionCreated: (submissionId: string) => void;
@@ -70,6 +71,11 @@ export type ExtensionCommandDependencies = {
 export function registerExtensionCommands(
   dependencies: ExtensionCommandDependencies
 ): readonly DisposableLike[] {
+  const waitForNextPoll =
+    dependencies.waitForNextPoll ??
+    ((delayMs: number) => new Promise<void>((resolve) => setTimeout(resolve, delayMs)));
+  const pollIntervalMs = 1_000;
+
   const runWithHandling =
     (commandId: string, run: (...args: unknown[]) => Promise<void>) =>
     async (...args: unknown[]) => {
@@ -86,6 +92,40 @@ export function registerExtensionCommands(
     };
 
   let latestSubmissionId: string | null = null;
+
+  const presentSubmissionResult = (result: SubmissionResult): void => {
+    dependencies.practiceViews?.showSubmissionResult(result);
+    dependencies.practiceViews?.revealSubmission(result.submissionId);
+    dependencies.output.appendLine(formatSubmissionDetail(result));
+  };
+
+  const pollSubmissionLifecycle = async (submissionId: string): Promise<void> => {
+    let retryCount = 0;
+
+    while (true) {
+      try {
+        const result = await dependencies.practiceCommands.pollSubmissionResult(submissionId);
+        retryCount = 0;
+        presentSubmissionResult(result);
+
+        if (result.status === 'finished' || result.status === 'failed') {
+          return;
+        }
+
+        await waitForNextPoll(pollIntervalMs);
+      } catch (error) {
+        if (retryCount >= 1) {
+          throw error;
+        }
+
+        retryCount += 1;
+        dependencies.output.appendLine(
+          `Retrying submission ${submissionId} status poll after transient error.`
+        );
+        await waitForNextPoll(pollIntervalMs);
+      }
+    }
+  };
 
   const resolveSelectedProblemId = async (): Promise<string> => {
     const selectedProblemId = dependencies.practiceViews?.getSelectedProblemId?.();
@@ -192,10 +232,12 @@ export function registerExtensionCommands(
         });
         latestSubmissionId = submission.submissionId;
         dependencies.practiceViews?.showSubmissionCreated(submission.submissionId);
+        presentSubmissionResult({ submissionId: submission.submissionId, status: 'queued' });
         dependencies.output.appendLine(`Submitted: ${submission.submissionId}`);
         dependencies.window.showInformationMessage(
-          `Submission ${submission.submissionId} queued. Run OJ: View Result to refresh its status.`
+          `Submission ${submission.submissionId}: status=queued`
         );
+        await pollSubmissionLifecycle(submission.submissionId);
       })
     ),
     dependencies.registerCommand(
@@ -210,10 +252,12 @@ export function registerExtensionCommands(
         });
         latestSubmissionId = submission.submissionId;
         dependencies.practiceViews?.showSubmissionCreated(submission.submissionId);
+        presentSubmissionResult({ submissionId: submission.submissionId, status: 'queued' });
         dependencies.output.appendLine(`Submitted current file: ${submission.submissionId}`);
         dependencies.window.showInformationMessage(
-          `Submission ${submission.submissionId} queued from current file. Run OJ: View Result to refresh its status.`
+          `Submission ${submission.submissionId}: status=queued`
         );
+        await pollSubmissionLifecycle(submission.submissionId);
       })
     ),
     dependencies.registerCommand(

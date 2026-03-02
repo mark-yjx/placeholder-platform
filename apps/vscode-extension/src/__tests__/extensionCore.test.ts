@@ -72,6 +72,7 @@ test('registered command writes to output channel on success', async () => {
         practiceViewCalls.starterFiles.push(problem.problemId);
       }
     } as unknown as ProblemStarterWorkspace,
+    waitForNextPoll: async () => undefined,
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
       activeTextEditor: {
@@ -104,8 +105,19 @@ test('registered command writes to output channel on success', async () => {
     { problemId: 'problem-2', title: 'FizzBuzz' }
   ]);
   assert.deepEqual(practiceViewCalls.created, ['submission-1']);
-  assert.equal(practiceViewCalls.results.length, 1);
+  assert.equal(practiceViewCalls.results.length, 3);
   assert.deepEqual(practiceViewCalls.results, [
+    {
+      submissionId: 'submission-1',
+      status: 'queued'
+    },
+    {
+      submissionId: 'submission-1',
+      status: 'finished',
+      verdict: 'AC',
+      timeMs: 120,
+      memoryKb: 2048
+    },
     {
       submissionId: 'submission-1',
       status: 'finished',
@@ -114,12 +126,12 @@ test('registered command writes to output channel on success', async () => {
       memoryKb: 2048
     }
   ]);
-  assert.deepEqual(practiceViewCalls.revealed, ['submission-1']);
+  assert.deepEqual(practiceViewCalls.revealed, ['submission-1', 'submission-1', 'submission-1']);
   assert.deepEqual(practiceViewCalls.starterFiles, ['problem-1']);
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
   assert.ok(
     infoMessages.some((message) =>
-      message.includes('Submission submission-1 queued from current file. Run OJ: View Result to refresh its status.')
+      message.includes('Submission submission-1: status=queued')
     )
   );
 });
@@ -875,6 +887,7 @@ if __name__ == "__main__":
 test('running submission result shows actionable progress notification', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const infoMessages: string[] = [];
+  let pollCount = 0;
 
   class RunningPracticeCommands extends PracticeCommands {
     override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
@@ -887,8 +900,22 @@ test('running submission result shows actionable progress notification', async (
 
     override async pollSubmissionResult(): Promise<{
       submissionId: string;
-      status: 'running';
+      status: 'running' | 'finished';
+      verdict?: 'AC';
+      timeMs?: number;
+      memoryKb?: number;
     }> {
+      pollCount += 1;
+      if (pollCount === 1) {
+        return {
+          submissionId: 'submission-1',
+          status: 'finished',
+          verdict: 'AC',
+          timeMs: 120,
+          memoryKb: 2048
+        };
+      }
+
       return { submissionId: 'submission-1', status: 'running' };
     }
   }
@@ -903,6 +930,7 @@ test('running submission result shows actionable progress notification', async (
       new InMemoryEngagementApiClient(),
       new SessionTokenStore()
     ),
+    waitForNextPoll: async () => undefined,
     practiceViews: {
       showProblems: () => undefined,
       showSubmissionCreated: () => undefined,
@@ -929,6 +957,278 @@ test('running submission result shows actionable progress notification', async (
   assert.ok(
     infoMessages.some((message) =>
       message.includes('Submission submission-1 is still running. Run OJ: View Result again shortly.')
+    )
+  );
+});
+
+test('submit current file polls until finished and stops on terminal state', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const outputLines: string[] = [];
+  const polledSubmissionIds: string[] = [];
+  const reportedResults: Array<{
+    submissionId: string;
+    status: string;
+    verdict?: string;
+    timeMs?: number;
+    memoryKb?: number;
+  }> = [];
+  let pollIndex = 0;
+
+  class PollingPracticeCommands extends PracticeCommands {
+    override async submitCode(): Promise<{ submissionId: string }> {
+      return { submissionId: 'submission-finished-1' };
+    }
+
+    override async pollSubmissionResult(submissionId: string) {
+      polledSubmissionIds.push(submissionId);
+      pollIndex += 1;
+
+      if (pollIndex === 1) {
+        return { submissionId, status: 'running' as const };
+      }
+
+      return {
+        submissionId,
+        status: 'finished' as const,
+        verdict: 'AC' as const,
+        timeMs: 123,
+        memoryKb: 456
+      };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new PollingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    waitForNextPoll: async () => undefined,
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: (result) => {
+        reportedResults.push(result);
+      },
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: (line) => outputLines.push(line) },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'def solve():\n    return 42\n'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.deepEqual(polledSubmissionIds, ['submission-finished-1', 'submission-finished-1']);
+  assert.deepEqual(reportedResults, [
+    { submissionId: 'submission-finished-1', status: 'queued' },
+    { submissionId: 'submission-finished-1', status: 'running' },
+    {
+      submissionId: 'submission-finished-1',
+      status: 'finished',
+      verdict: 'AC',
+      timeMs: 123,
+      memoryKb: 456
+    }
+  ]);
+  assert.ok(
+    outputLines.some((line) =>
+      line.includes('Submission submission-finished-1: verdict=AC, time=123ms, memory=456KB')
+    )
+  );
+});
+
+test('submit current file polls until failed and stops on terminal state', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const polledSubmissionIds: string[] = [];
+  const reportedResults: Array<{ submissionId: string; status: string }> = [];
+  let pollIndex = 0;
+
+  class FailingPollingPracticeCommands extends PracticeCommands {
+    override async submitCode(): Promise<{ submissionId: string }> {
+      return { submissionId: 'submission-failed-1' };
+    }
+
+    override async pollSubmissionResult(submissionId: string) {
+      polledSubmissionIds.push(submissionId);
+      pollIndex += 1;
+
+      if (pollIndex === 1) {
+        return { submissionId, status: 'running' as const };
+      }
+
+      return { submissionId, status: 'failed' as const };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new FailingPollingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    waitForNextPoll: async () => undefined,
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: (result) => {
+        reportedResults.push({ submissionId: result.submissionId, status: result.status });
+      },
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'def solve():\n    return 42\n'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.deepEqual(polledSubmissionIds, ['submission-failed-1', 'submission-failed-1']);
+  assert.deepEqual(reportedResults, [
+    { submissionId: 'submission-failed-1', status: 'queued' },
+    { submissionId: 'submission-failed-1', status: 'running' },
+    { submissionId: 'submission-failed-1', status: 'failed' }
+  ]);
+});
+
+test('submit current file retries one transient poll error before succeeding', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const outputLines: string[] = [];
+  const reportedResults: Array<{ submissionId: string; status: string }> = [];
+  let pollAttempts = 0;
+
+  class RetryPollingPracticeCommands extends PracticeCommands {
+    override async submitCode(): Promise<{ submissionId: string }> {
+      return { submissionId: 'submission-retry-1' };
+    }
+
+    override async pollSubmissionResult(submissionId: string) {
+      pollAttempts += 1;
+
+      if (pollAttempts === 1) {
+        throw new Error('fetch failed');
+      }
+
+      if (pollAttempts === 2) {
+        return { submissionId, status: 'running' as const };
+      }
+
+      return {
+        submissionId,
+        status: 'finished' as const,
+        verdict: 'WA' as const,
+        timeMs: 77,
+        memoryKb: 88
+      };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RetryPollingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    waitForNextPoll: async () => undefined,
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: (result) => {
+        reportedResults.push({ submissionId: result.submissionId, status: result.status });
+      },
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: (line) => outputLines.push(line) },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'def solve():\n    return 42\n'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.equal(pollAttempts, 3);
+  assert.deepEqual(reportedResults, [
+    { submissionId: 'submission-retry-1', status: 'queued' },
+    { submissionId: 'submission-retry-1', status: 'running' },
+    { submissionId: 'submission-retry-1', status: 'finished' }
+  ]);
+  assert.ok(
+    outputLines.some((line) =>
+      line.includes('Retrying submission submission-retry-1 status poll after transient error.')
     )
   );
 });
