@@ -22,7 +22,7 @@ test('correct Python code results in finished with verdict AC and recorded time/
     sandbox,
     runners: createRegistry(),
     image: 'python:3.12-alpine',
-    sourceCode: 'print(42)',
+    sourceCode: 'def solve():\n    return 42\n',
     expectedStdout: '42\n'
   });
 
@@ -47,7 +47,7 @@ test('wrong output results in finished with verdict WA and recorded time/memory'
     sandbox,
     runners: createRegistry(),
     image: 'python:3.12-alpine',
-    sourceCode: 'print(41)',
+    sourceCode: 'def solve():\n    return 41\n',
     expectedStdout: '42\n'
   });
 
@@ -72,7 +72,7 @@ test('runtime exception results in finished with verdict RE and recorded time/me
     sandbox,
     runners: createRegistry(),
     image: 'python:3.12-alpine',
-    sourceCode: 'raise RuntimeError("boom")',
+    sourceCode: 'def solve():\n    raise RuntimeError("boom")\n',
     expectedStdout: '42\n'
   });
 
@@ -101,7 +101,26 @@ test('python judge execution runs through network-disabled sandbox command', asy
     sandbox,
     runners: createRegistry(),
     image: 'python:3.12-alpine',
-    sourceCode: 'print(42)',
+    sourceCode: `
+import math
+
+VALUE = 40
+
+def helper():
+    return VALUE + math.floor(2.9)
+
+def solve():
+    return helper()
+
+def unused():
+    return "ignore"
+
+print("debug")
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
+`.trim(),
     expectedStdout: '42\n'
   });
 
@@ -109,4 +128,42 @@ test('python judge execution runs through network-disabled sandbox command', asy
   assert.equal(calls[0]?.args.includes('--network'), true);
   assert.equal(calls[0]?.args.includes('none'), true);
   assert.deepEqual(calls[0]?.args.slice(-2), ['python', '/sandbox/main.py']);
+  assert.match(calls[0]?.stdin ?? '', /^import math$/m);
+  assert.match(calls[0]?.stdin ?? '', /^VALUE = 40$/m);
+  assert.match(calls[0]?.stdin ?? '', /^def helper\(\):$/m);
+  assert.match(calls[0]?.stdin ?? '', /^def solve\(\):$/m);
+  assert.doesNotMatch(calls[0]?.stdin ?? '', /^def unused\(\):$/m);
+  assert.doesNotMatch(calls[0]?.stdin ?? '', /print\("debug"\)/);
+  assert.doesNotMatch(calls[0]?.stdin ?? '', /doctest/);
+  assert.match(calls[0]?.stdin ?? '', /^if __name__ == "__main__":$/m);
+});
+
+test('missing solve results in CE without invoking the sandbox', async () => {
+  let called = false;
+  const sandbox = new DockerSandboxAdapter(async () => {
+    called = true;
+    return {
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+      timeMs: 100,
+      memoryKb: 100
+    };
+  });
+
+  const result = await runPythonJudgeExecution({
+    sandbox,
+    runners: createRegistry(),
+    image: 'python:3.12-alpine',
+    sourceCode: 'def helper():\n    return 42\n',
+    expectedStdout: '42\n'
+  });
+
+  assert.deepEqual(result, {
+    status: 'finished',
+    verdict: 'CE',
+    timeMs: 0,
+    memoryKb: 0
+  });
+  assert.equal(called, false);
 });
