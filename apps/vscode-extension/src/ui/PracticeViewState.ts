@@ -17,12 +17,32 @@ type PendingSubmission = {
   readonly submissionId: string;
 };
 
+function isTerminalStatus(status: SubmissionResult['status']): boolean {
+  return status === 'finished' || status === 'failed';
+}
+
 export function formatSubmissionSummary(result: SubmissionResult): string {
-  return `${result.verdict} | ${result.timeMs}ms | ${result.memoryKb}KB`;
+  if (result.status === 'queued' || result.status === 'running') {
+    return result.status;
+  }
+
+  if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
+    return `${result.verdict} | ${result.timeMs}ms | ${result.memoryKb}KB`;
+  }
+
+  return result.status;
 }
 
 export function formatSubmissionDetail(result: SubmissionResult): string {
-  return `Submission ${result.submissionId}: verdict=${result.verdict}, time=${result.timeMs}ms, memory=${result.memoryKb}KB`;
+  if (result.status === 'queued' || result.status === 'running') {
+    return `Submission ${result.submissionId}: status=${result.status}`;
+  }
+
+  if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
+    return `Submission ${result.submissionId}: verdict=${result.verdict}, time=${result.timeMs}ms, memory=${result.memoryKb}KB`;
+  }
+
+  return `Submission ${result.submissionId}: status=${result.status}`;
 }
 
 export function formatPendingSubmissionSummary(): string {
@@ -51,6 +71,10 @@ export class PracticeViewState {
   }
 
   recordSubmissionResult(result: SubmissionResult): void {
+    const existing = this.results.get(result.submissionId);
+    if (existing && isTerminalStatus(existing.status)) {
+      return;
+    }
     this.pendingSubmissions.delete(result.submissionId);
     this.results.set(result.submissionId, result);
   }

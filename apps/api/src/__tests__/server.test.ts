@@ -615,12 +615,27 @@ test('local runtime routes problem, favorites, and reviews through injected pers
   });
 
   const submissionResult = await invoke({
-    path: '/submissions/submission-1/result',
+    path: '/submissions/submission-1',
     headers: { authorization: 'Bearer token-student-1' },
     runtime
   });
   assert.equal(submissionResult.statusCode, 200);
   assert.deepEqual(submissionResult.body, {
+    submissionId: 'submission-1',
+    ownerUserId: 'student-1',
+    status: 'finished',
+    verdict: 'AC',
+    timeMs: 120,
+    memoryKb: 2048
+  });
+
+  const submissionResultCompat = await invoke({
+    path: '/submissions/submission-1/result',
+    headers: { authorization: 'Bearer token-student-1' },
+    runtime
+  });
+  assert.equal(submissionResultCompat.statusCode, 200);
+  assert.deepEqual(submissionResultCompat.body, {
     submissionId: 'submission-1',
     ownerUserId: 'student-1',
     status: 'finished',
@@ -640,6 +655,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     'reviews.listReviews:problem-1',
     'submissionStudent.create:submission-1:student-1:problem-1:python',
     'submissionResults.listByActorUserId:student-1',
+    'submissionResults.getBySubmissionId:submission-1',
     'submissionResults.getBySubmissionId:submission-1'
   ]);
 });

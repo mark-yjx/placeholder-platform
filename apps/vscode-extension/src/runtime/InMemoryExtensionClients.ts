@@ -43,6 +43,7 @@ export class InMemoryPracticeApiClient implements PracticeApiClient {
     const submissionId = `submission-${this.counter}`;
     this.results.set(submissionId, {
       submissionId,
+      status: 'finished',
       verdict: 'AC',
       timeMs: 120,
       memoryKb: 2048

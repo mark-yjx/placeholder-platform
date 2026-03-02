@@ -102,23 +102,17 @@ export class HttpPracticeApiClient implements PracticeApiClient {
   async getSubmissionResult(accessToken: string, submissionId: string): Promise<SubmissionResult> {
     const response = await requestJson<{
       submissionId: string;
+      status: SubmissionResult['status'];
       verdict?: SubmissionResult['verdict'];
       timeMs?: number;
       memoryKb?: number;
-    }>(this.config, `/submissions/${submissionId}/result`, {
+    }>(this.config, `/submissions/${submissionId}`, {
       accessToken
     });
 
-    if (
-      response.verdict === undefined ||
-      response.timeMs === undefined ||
-      response.memoryKb === undefined
-    ) {
-      throw new Error('Submission result is not ready yet');
-    }
-
     return {
       submissionId: response.submissionId,
+      status: response.status,
       verdict: response.verdict,
       timeMs: response.timeMs,
       memoryKb: response.memoryKb

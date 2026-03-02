@@ -443,7 +443,7 @@ export function createApiRequestHandler(
       return;
     }
 
-    const submissionResultMatch = path.match(/^\/submissions\/([^/]+)\/result$/);
+    const submissionResultMatch = path.match(/^\/submissions\/([^/]+)(?:\/result)?$/);
     if (submissionResultMatch && method === 'GET') {
       try {
         const actor = requireAuthenticatedActor(

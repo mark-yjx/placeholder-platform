@@ -21,9 +21,10 @@ test('registered command writes to output channel on success', async () => {
     created: [] as readonly string[],
     results: [] as readonly {
       submissionId: string;
-      verdict: string;
-      timeMs: number;
-      memoryKb: number;
+      status: string;
+      verdict?: string;
+      timeMs?: number;
+      memoryKb?: number;
     }[],
     revealed: [] as string[]
   };
@@ -74,6 +75,15 @@ test('registered command writes to output channel on success', async () => {
   ]);
   assert.deepEqual(practiceViewCalls.created, ['submission-1']);
   assert.equal(practiceViewCalls.results.length, 1);
+  assert.deepEqual(practiceViewCalls.results, [
+    {
+      submissionId: 'submission-1',
+      status: 'finished',
+      verdict: 'AC',
+      timeMs: 120,
+      memoryKb: 2048
+    }
+  ]);
   assert.deepEqual(practiceViewCalls.revealed, ['submission-1']);
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
 });

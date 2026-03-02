@@ -27,6 +27,7 @@ test('submission tree nodes expose verdict, time, memory, and detail text', () =
 
   state.recordSubmissionResult({
     submissionId: 'submission-1',
+    status: 'finished',
     verdict: 'AC',
     timeMs: 120,
     memoryKb: 2048
@@ -68,6 +69,7 @@ test('submission result replaces the pending tree entry for the same submission 
   state.recordSubmissionCreated('submission-1');
   state.recordSubmissionResult({
     submissionId: 'submission-1',
+    status: 'finished',
     verdict: 'AC',
     timeMs: 120,
     memoryKb: 2048
@@ -83,9 +85,49 @@ test('submission result replaces the pending tree entry for the same submission 
   ]);
 });
 
+test('running submissions render status without verdict metrics', () => {
+  const state = new PracticeViewState();
+
+  state.recordSubmissionResult({
+    submissionId: 'submission-running-1',
+    status: 'running'
+  });
+
+  assert.deepEqual(state.getSubmissionNodes(), [
+    {
+      id: 'submission-running-1',
+      label: 'submission-running-1',
+      description: 'running',
+      detail: 'Submission submission-running-1: status=running'
+    }
+  ]);
+});
+
+test('terminal submission results are not overwritten by later updates', () => {
+  const state = new PracticeViewState();
+
+  state.recordSubmissionResult({
+    submissionId: 'submission-locked-1',
+    status: 'finished',
+    verdict: 'AC',
+    timeMs: 120,
+    memoryKb: 2048
+  });
+  state.recordSubmissionResult({
+    submissionId: 'submission-locked-1',
+    status: 'running'
+  });
+
+  assert.equal(
+    state.getSubmissionDetail('submission-locked-1'),
+    'Submission submission-locked-1: verdict=AC, time=120ms, memory=2048KB'
+  );
+});
+
 test('submission result renderers stay stable', () => {
   const result = {
     submissionId: 'submission-2',
+    status: 'finished' as const,
     verdict: 'WA' as const,
     timeMs: 222,
     memoryKb: 4096
@@ -100,5 +142,10 @@ test('submission result renderers stay stable', () => {
   assert.equal(
     formatPendingSubmissionDetail('submission-pending-2'),
     'Submission submission-pending-2: submitted to API'
+  );
+  assert.equal(formatSubmissionSummary({ submissionId: 'submission-3', status: 'running' }), 'running');
+  assert.equal(
+    formatSubmissionDetail({ submissionId: 'submission-3', status: 'running' }),
+    'Submission submission-3: status=running'
   );
 });

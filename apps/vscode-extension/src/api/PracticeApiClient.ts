@@ -1,4 +1,5 @@
 export type JudgeVerdict = 'AC' | 'WA' | 'TLE' | 'RE' | 'CE';
+export type SubmissionStatus = 'queued' | 'running' | 'finished' | 'failed';
 
 export type PublishedProblem = {
   problemId: string;
@@ -17,9 +18,10 @@ export type CreateSubmissionResponse = {
 
 export type SubmissionResult = {
   submissionId: string;
-  verdict: JudgeVerdict;
-  timeMs: number;
-  memoryKb: number;
+  status: SubmissionStatus;
+  verdict?: JudgeVerdict;
+  timeMs?: number;
+  memoryKb?: number;
 };
 
 export interface PracticeApiClient {

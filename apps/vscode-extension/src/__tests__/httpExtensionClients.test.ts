@@ -76,9 +76,10 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
       return createJsonResponse({ submissionId: body.submissionId }, { status: 201 });
     }
 
-    if (path.startsWith('/submissions/') && path.endsWith('/result')) {
+    if (path.startsWith('/submissions/')) {
       return createJsonResponse({
         submissionId: path.split('/')[2],
+        status: 'finished',
         verdict: 'AC',
         timeMs: 120,
         memoryKb: 2048
@@ -104,6 +105,7 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
 
     assert.deepEqual(await client.getSubmissionResult('student-token', submission.submissionId), {
       submissionId: submission.submissionId,
+      status: 'finished',
       verdict: 'AC',
       timeMs: 120,
       memoryKb: 2048
@@ -112,8 +114,36 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
     assert.deepEqual(seenPaths, [
       'GET /problems',
       'POST /submissions',
-      `GET /submissions/${submission.submissionId}/result`
+      `GET /submissions/${submission.submissionId}`
     ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('http practice client preserves running submission state without inventing verdict data', async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (input, init) => {
+    assert.equal(String(input), 'http://oj.test/submissions/submission-running-1');
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get('authorization'), 'Bearer student-token');
+
+    return createJsonResponse({
+      submissionId: 'submission-running-1',
+      status: 'running'
+    });
+  };
+
+  try {
+    const client = new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test' });
+    assert.deepEqual(await client.getSubmissionResult('student-token', 'submission-running-1'), {
+      submissionId: 'submission-running-1',
+      status: 'running',
+      verdict: undefined,
+      timeMs: undefined,
+      memoryKb: undefined
+    });
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -41,6 +41,7 @@ class FakePracticeApiClient implements PracticeApiClient {
     const verdict = this.verdictSequence[this.submissionCounter - 1] ?? 'AC';
     this.resultsById.set(submissionId, {
       submissionId,
+      status: 'finished',
       verdict,
       timeMs: 100 + this.submissionCounter,
       memoryKb: 2048 + this.submissionCounter
@@ -85,4 +86,30 @@ test('user can complete fetch -> submit -> see AC/WA/TLE/RE/CE + time/memory', a
     const rendered = await practiceCommands.viewSubmissionResult(submission.submissionId);
     assert.match(rendered, new RegExp(`^${expectedVerdict} \\| time: \\d+ms \\| memory: \\d+KB$`));
   }
+});
+
+test('view submission result handles running state without verdict metrics', async () => {
+  const tokenStore = new SessionTokenStore();
+  const authCommands = new AuthCommands(new FakeAuthClient(), tokenStore);
+
+  class RunningPracticeApiClient extends FakePracticeApiClient {
+    override async getSubmissionResult(): Promise<SubmissionResult> {
+      return {
+        submissionId: 'sub-running-1',
+        status: 'running'
+      };
+    }
+  }
+
+  const practiceCommands = new PracticeCommands(
+    new RunningPracticeApiClient(['AC']),
+    tokenStore
+  );
+
+  await authCommands.login({ email: 'student@example.com', password: 'secret' });
+
+  assert.equal(
+    await practiceCommands.viewSubmissionResult('sub-running-1'),
+    'RUNNING | waiting for judge result'
+  );
 });

@@ -58,5 +58,13 @@ export class PracticeCommands {
 }
 
 export function formatSubmissionResult(result: SubmissionResult): string {
-  return `${result.verdict} | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB`;
+  if (result.status === 'queued' || result.status === 'running') {
+    return `${result.status.toUpperCase()} | waiting for judge result`;
+  }
+
+  if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
+    return `${result.verdict} | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB`;
+  }
+
+  return `${result.status.toUpperCase()} | result unavailable`;
 }
