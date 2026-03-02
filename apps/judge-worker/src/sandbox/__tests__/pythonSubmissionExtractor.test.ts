@@ -80,15 +80,20 @@ def unused():
   assert.doesNotMatch(extracted, /^def unused\(\):$/m);
 });
 
-test('extractor rejects submissions without solve', () => {
-  assert.throws(
-    () =>
-      extractJudgedPythonSource(`
-def helper():
-    return 1
-`.trim()),
-    /solve\(\)/
+test('extractor can use configured entryFunction when solve is absent', () => {
+  const extracted = extractJudgedPythonSource(
+    `
+def helper(value):
+    return value + 1
+
+def collapse(value):
+    return helper(value)
+`.trim(),
+    'collapse'
   );
+
+  assert.match(extracted, /^def helper\(value\):$/m);
+  assert.match(extracted, /^def collapse\(value\):$/m);
 });
 
 test('extracted code is importable and solve can be called without running doctest or top-level debug code', async (t) => {
@@ -153,4 +158,17 @@ def solve():
   assert.match(runnable, /^def solve\(\):$/m);
   assert.match(runnable, /^if __name__ == "__main__":$/m);
   assert.match(runnable, /__oj_result = solve\(\)/);
+});
+
+test('runnable judged source calls configured entryFunction when solve is absent', () => {
+  const runnable = buildRunnableJudgedPythonSource(
+    `
+def collapse():
+    return 42
+`.trim(),
+    'collapse'
+  );
+
+  assert.match(runnable, /^def collapse\(\):$/m);
+  assert.match(runnable, /__oj_result = collapse\(\)/);
 });

@@ -10,6 +10,7 @@ export type PythonJudgeExecutionInput = {
   runners: RunnerRegistry;
   image: string;
   sourceCode: string;
+  entryFunction?: string;
   expectedStdout: string;
   limits?: ResourceLimits;
 };
@@ -29,7 +30,10 @@ export async function runPythonJudgeExecution(
   let judgedSourceCode: string;
 
   try {
-    judgedSourceCode = buildRunnableJudgedPythonSource(input.sourceCode);
+    judgedSourceCode = buildRunnableJudgedPythonSource(
+      input.sourceCode,
+      input.entryFunction ?? 'solve'
+    );
   } catch {
     return {
       status: 'finished',

@@ -34,6 +34,38 @@ test('correct Python code results in finished with verdict AC and recorded time/
   });
 });
 
+test('submission without solve but with configured entryFunction results in finished with verdict AC', async () => {
+  const sandbox = new DockerSandboxAdapter(async (command) => ({
+    stdout: '42\n',
+    stderr: '',
+    exitCode: 0,
+    timeMs: 118,
+    memoryKb: 2040
+  }));
+
+  const result = await runPythonJudgeExecution({
+    sandbox,
+    runners: createRegistry(),
+    image: 'python:3.12-alpine',
+    sourceCode: `
+def helper():
+    return 42
+
+def collapse():
+    return helper()
+`.trim(),
+    entryFunction: 'collapse',
+    expectedStdout: '42\n'
+  });
+
+  assert.deepEqual(result, {
+    status: 'finished',
+    verdict: 'AC',
+    timeMs: 118,
+    memoryKb: 2040
+  });
+});
+
 test('wrong output results in finished with verdict WA and recorded time/memory', async () => {
   const sandbox = new DockerSandboxAdapter(async () => ({
     stdout: '41\n',
@@ -138,7 +170,7 @@ if __name__ == "__main__":
   assert.match(calls[0]?.stdin ?? '', /^if __name__ == "__main__":$/m);
 });
 
-test('missing solve results in CE without invoking the sandbox', async () => {
+test('missing solve and missing configured entryFunction result in CE without invoking the sandbox', async () => {
   let called = false;
   const sandbox = new DockerSandboxAdapter(async () => {
     called = true;
