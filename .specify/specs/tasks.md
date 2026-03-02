@@ -717,6 +717,46 @@ OUT of scope:
 - DB/schema changes
 - new backend endpoints unless strictly required (prefer using existing problem detail fetch)
 
+## 79. Extension: Problem detail includes starter metadata
+
+Acceptance checks:
+- Problem detail fetch in the extension carries enough metadata to open the starter file:
+  - `problemId`
+  - `versionId`
+  - `title`
+  - `statement`
+  - `starter.py` content
+- Existing statement rendering remains supported.
+- No hardcoded starter template remains in extension problem-open flow.
+- Unit tests prove problem detail parsing fails clearly when starter content is absent.
+
+Scope:
+IN:
+- extension API client contracts and parsing
+- extension-side problem detail model updates
+- tests
+OUT:
+- judge changes
+- DB/schema changes unless strictly required by existing detail path
+
+## 80. Extension: Local problem workspace lifecycle
+
+Acceptance checks:
+- Opening a problem ensures `.oj/problems/` exists in the active workspace.
+- The generated starter file uses the canonical filename `<problemId>.py`.
+- Re-opening the same problem reuses the local path consistently.
+- Friendly messaging explains whether the file was created, reused, or left untouched due to overwrite rejection.
+- Unit tests prove directory creation and stable path resolution.
+
+Scope:
+IN:
+- extension local file/directory lifecycle
+- user messaging around create/reuse behavior
+- tests
+OUT:
+- judge changes
+- backend changes beyond existing problem detail usage
+
 ## Phase - Submission from File (Python)
 
 81. **Extension: Submit current editor file**  
