@@ -56,11 +56,33 @@ export function formatPendingSubmissionDetail(submissionId: string): string {
 
 export class PracticeViewState {
   private problems: readonly PublishedProblem[] = [];
+  private selectedProblemId: string | null = null;
   private readonly pendingSubmissions = new Map<string, PendingSubmission>();
   private readonly results = new Map<string, SubmissionResult>();
 
   setProblems(problems: readonly PublishedProblem[]): void {
     this.problems = [...problems];
+    if (
+      this.selectedProblemId &&
+      !this.problems.some((problem) => problem.problemId === this.selectedProblemId)
+    ) {
+      this.selectedProblemId = null;
+    }
+  }
+
+  setSelectedProblem(problemId: string): void {
+    if (!problemId.trim()) {
+      return;
+    }
+
+    const exists = this.problems.some((problem) => problem.problemId === problemId);
+    if (exists) {
+      this.selectedProblemId = problemId;
+    }
+  }
+
+  getSelectedProblemId(): string | null {
+    return this.selectedProblemId;
   }
 
   getProblemNodes(): readonly ProblemTreeNode[] {

@@ -19,6 +19,13 @@ export type OutputChannelLike = {
 export type WindowLike = {
   showErrorMessage: (message: string) => void;
   showInformationMessage: (message: string) => void;
+  showQuickPick?: <T extends { label: string }>(
+    items: readonly T[],
+    options?: {
+      placeHolder?: string;
+      ignoreFocusOut?: boolean;
+    }
+  ) => Promise<T | undefined>;
   showInputBox: (options?: {
     prompt?: string;
     placeHolder?: string;
@@ -29,6 +36,7 @@ export type WindowLike = {
     document: {
       getText: () => string;
       languageId: string;
+      fileName?: string;
     };
   };
 };
@@ -43,6 +51,8 @@ export type ExtensionCommandDependencies = {
     showSubmissionResult: (result: SubmissionResult) => void;
     revealSubmission: (submissionId: string) => void;
     revealProblem: (problemId: string) => Promise<void>;
+    setSelectedProblem?: (problemId: string) => void;
+    getSelectedProblemId?: () => string | null;
   };
   output: OutputChannelLike;
   window: WindowLike;
@@ -68,6 +78,57 @@ export function registerExtensionCommands(
     };
 
   let latestSubmissionId: string | null = null;
+
+  const resolveSelectedProblemId = async (): Promise<string> => {
+    const selectedProblemId = dependencies.practiceViews?.getSelectedProblemId?.();
+    if (selectedProblemId) {
+      return selectedProblemId;
+    }
+
+    const problems = await dependencies.practiceCommands.fetchPublishedProblems();
+    dependencies.practiceViews?.showProblems(problems);
+    if (problems.length === 0) {
+      throw new Error('No published problems available');
+    }
+
+    const pickedProblem = await dependencies.window.showQuickPick?.(
+      problems.map((problem) => ({
+        label: problem.title,
+        description: problem.problemId,
+        problemId: problem.problemId
+      })),
+      {
+        placeHolder: 'Select a problem to submit against',
+        ignoreFocusOut: true
+      }
+    );
+
+    if (!pickedProblem) {
+      throw new Error('Problem selection is required');
+    }
+
+    dependencies.practiceViews?.setSelectedProblem?.(pickedProblem.problemId);
+    return pickedProblem.problemId;
+  };
+
+  const resolveCurrentPythonFileSubmission = (): string => {
+    const activeDocument = dependencies.window.activeTextEditor?.document;
+    if (!activeDocument) {
+      throw new Error('Open a Python file before submitting');
+    }
+
+    const fileName = activeDocument.fileName?.trim() ?? '';
+    if (!fileName.toLowerCase().endsWith('.py')) {
+      throw new Error('Active editor must be a .py file');
+    }
+
+    const sourceCode = activeDocument.getText().trim();
+    if (!sourceCode) {
+      throw new Error('Active editor is empty');
+    }
+
+    return sourceCode;
+  };
 
   const resolveSubmissionSource = async (): Promise<string> => {
     const activeDocument = dependencies.window.activeTextEditor?.document;
@@ -130,6 +191,24 @@ export function registerExtensionCommands(
       })
     ),
     dependencies.registerCommand(
+      'oj.practice.submitCurrentFile',
+      runWithHandling('oj.practice.submitCurrentFile', async () => {
+        const problemId = await resolveSelectedProblemId();
+        const sourceCode = resolveCurrentPythonFileSubmission();
+        const submission = await dependencies.practiceCommands.submitCode({
+          problemId,
+          language: 'python',
+          sourceCode
+        });
+        latestSubmissionId = submission.submissionId;
+        dependencies.practiceViews?.showSubmissionCreated(submission.submissionId);
+        dependencies.output.appendLine(`Submitted current file: ${submission.submissionId}`);
+        dependencies.window.showInformationMessage(
+          `Submission ${submission.submissionId} queued from current file. Run OJ: View Result to refresh its status.`
+        );
+      })
+    ),
+    dependencies.registerCommand(
       'oj.practice.viewResult',
       runWithHandling('oj.practice.viewResult', async () => {
         if (!latestSubmissionId) {
@@ -155,6 +234,7 @@ export function registerExtensionCommands(
           dependencies.window.showInformationMessage('No problem selected yet. Run OJ: Fetch Problems first.');
           return;
         }
+        dependencies.practiceViews?.setSelectedProblem?.(problemId);
         await dependencies.practiceViews?.revealProblem(problemId);
       })
     ),

@@ -21,6 +21,7 @@
     "onCommand:oj.login",
     "onCommand:oj.practice.fetchProblems",
     "onCommand:oj.practice.submitCode",
+    "onCommand:oj.practice.submitCurrentFile",
     "onCommand:oj.practice.viewResult",
     "onView:ojProblems",
     "onView:ojSubmissions",
@@ -53,6 +54,10 @@
       {
         "command": "oj.practice.submitCode",
         "title": "OJ: Submit Code"
+      },
+      {
+        "command": "oj.practice.submitCurrentFile",
+        "title": "OJ: Submit Current File"
       },
       {
         "command": "oj.practice.viewResult",

@@ -14,6 +14,7 @@ declare module 'vscode' {
   export type TextDocument = {
     getText(): string;
     languageId: string;
+    fileName?: string;
   };
   export const TreeItemCollapsibleState: {
     None: 0;
@@ -73,5 +74,12 @@ declare module 'vscode' {
       value?: string;
       ignoreFocusOut?: boolean;
     }): Thenable<string | undefined>;
+    showQuickPick<T extends { label: string }>(
+      items: readonly T[],
+      options?: {
+        placeHolder?: string;
+        ignoreFocusOut?: boolean;
+      }
+    ): Thenable<T | undefined>;
   };
 }

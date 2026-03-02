@@ -49,6 +49,20 @@ test('problem details render as markdown content', () => {
   );
 });
 
+test('selected problem is tracked only for loaded problems', () => {
+  const state = new PracticeViewState();
+  state.setProblems([
+    { problemId: 'problem-1', title: 'Two Sum' },
+    { problemId: 'problem-2', title: 'FizzBuzz' }
+  ]);
+
+  state.setSelectedProblem('problem-2');
+  assert.equal(state.getSelectedProblemId(), 'problem-2');
+
+  state.setProblems([{ problemId: 'problem-1', title: 'Two Sum' }]);
+  assert.equal(state.getSelectedProblemId(), null);
+});
+
 test('submission tree nodes expose verdict, time, memory, and detail text', () => {
   const state = new PracticeViewState();
 

@@ -84,6 +84,14 @@ export class PracticeTreeViews {
     this.problemsProvider.refresh();
   }
 
+  setSelectedProblem(problemId: string): void {
+    this.state.setSelectedProblem(problemId);
+  }
+
+  getSelectedProblemId(): string | null {
+    return this.state.getSelectedProblemId();
+  }
+
   showSubmissionCreated(submissionId: string): void {
     this.state.recordSubmissionCreated(submissionId);
     this.submissionsProvider.refresh();

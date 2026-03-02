@@ -27,7 +27,8 @@ test('registered command writes to output channel on success', async () => {
       memoryKb?: number;
     }[],
     revealed: [] as string[],
-    openedProblems: [] as string[]
+    openedProblems: [] as string[],
+    selectedProblemId: null as string | null
   };
 
   const tokenStore = new SessionTokenStore();
@@ -54,13 +55,25 @@ test('registered command writes to output channel on success', async () => {
       },
       revealProblem: async (problemId) => {
         practiceViewCalls.openedProblems.push(problemId);
-      }
+      },
+      setSelectedProblem: (problemId) => {
+        practiceViewCalls.selectedProblemId = problemId;
+      },
+      getSelectedProblemId: () => practiceViewCalls.selectedProblemId
     },
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/submission.py',
+          getText: () => 'print(42)'
+        }
+      },
       showErrorMessage: () => undefined,
       showInformationMessage: (message) => infoMessages.push(message),
-      showInputBox: async () => 'print(42)'
+      showInputBox: async () => 'print(42)',
+      showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -71,7 +84,7 @@ test('registered command writes to output channel on success', async () => {
   await handlers.get('oj.login')?.();
   await handlers.get('oj.practice.fetchProblems')?.();
   await handlers.get('oj.practice.selectProblem')?.('problem-1');
-  await handlers.get('oj.practice.submitCode')?.();
+  await handlers.get('oj.practice.submitCurrentFile')?.();
   await handlers.get('oj.practice.viewResult')?.();
 
   assert.ok(outputLines.some((line) => line.includes('[oj.login] success')));
@@ -95,7 +108,7 @@ test('registered command writes to output channel on success', async () => {
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
   assert.ok(
     infoMessages.some((message) =>
-      message.includes('Submission submission-1 queued. Run OJ: View Result to refresh its status.')
+      message.includes('Submission submission-1 queued from current file. Run OJ: View Result to refresh its status.')
     )
   );
 });
@@ -139,7 +152,8 @@ test('fetch problems handles an empty list gracefully', async () => {
     window: {
       showErrorMessage: () => undefined,
       showInformationMessage: (message) => infoMessages.push(message),
-      showInputBox: async () => 'print(42)'
+      showInputBox: async () => 'print(42)',
+      showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -174,7 +188,8 @@ test('login command uses the real backend student fixture credentials', async ()
     window: {
       showErrorMessage: () => undefined,
       showInformationMessage: () => undefined,
-      showInputBox: async () => 'print(42)'
+      showInputBox: async () => 'print(42)',
+      showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -208,7 +223,8 @@ test('command error is reported cleanly', async () => {
     window: {
       showErrorMessage: (message) => shownErrors.push(message),
       showInformationMessage: () => undefined,
-      showInputBox: async () => 'print(42)'
+      showInputBox: async () => 'print(42)',
+      showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -242,7 +258,8 @@ test('command error is reported cleanly', async () => {
     window: {
       showErrorMessage: (message) => shownErrors.push(message),
       showInformationMessage: () => undefined,
-      showInputBox: async () => 'print(42)'
+      showInputBox: async () => 'print(42)',
+      showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
       failingHandlers.set(commandId, callback);
@@ -303,21 +320,21 @@ test('auth failures prompt login instead of showing raw auth error text', async 
   assert.equal(shownErrors.some((line) => line.includes('Authentication token is invalid')), false);
 });
 
-test('submit code uses the active python editor when available', async () => {
+test('submit current file uses the active python editor and selected problem', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
-  let submittedSource = '';
+  let submittedRequest: { problemId: string; sourceCode: string } | null = null;
+  let selectedProblemId: string | null = null;
 
   class RecordingPracticeCommands extends PracticeCommands {
-    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
-      return [{ problemId: 'problem-1', title: 'Two Sum' }];
-    }
-
     override async submitCode(request: {
       problemId: string;
       language: string;
       sourceCode: string;
     }): Promise<{ submissionId: string }> {
-      submittedSource = request.sourceCode;
+      submittedRequest = {
+        problemId: request.problemId,
+        sourceCode: request.sourceCode
+      };
       return { submissionId: 'submission-1' };
     }
   }
@@ -337,13 +354,18 @@ test('submit code uses the active python editor when available', async () => {
       showSubmissionCreated: () => undefined,
       showSubmissionResult: () => undefined,
       revealSubmission: () => undefined,
-      revealProblem: async () => undefined
+      revealProblem: async () => undefined,
+      setSelectedProblem: (problemId) => {
+        selectedProblemId = problemId;
+      },
+      getSelectedProblemId: () => selectedProblemId
     },
     output: { appendLine: () => undefined },
     window: {
       activeTextEditor: {
         document: {
           languageId: 'python',
+          fileName: '/tmp/solution.py',
           getText: () => 'print("from editor")'
         }
       },
@@ -351,6 +373,81 @@ test('submit code uses the active python editor when available', async () => {
       showInformationMessage: () => undefined,
       showInputBox: async () => {
         throw new Error('input should not be used');
+      },
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.selectProblem')?.('problem-1');
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.deepEqual(submittedRequest, {
+    problemId: 'problem-1',
+    sourceCode: 'print("from editor")'
+  });
+});
+
+test('submit current file prompts for a problem when none is selected', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  let submittedProblemId = '';
+  let quickPickShown = false;
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
+      return [
+        { problemId: 'problem-1', title: 'Two Sum' },
+        { problemId: 'problem-2', title: 'FizzBuzz' }
+      ];
+    }
+
+    override async submitCode(request: {
+      problemId: string;
+      language: string;
+      sourceCode: string;
+    }): Promise<{ submissionId: string }> {
+      submittedProblemId = request.problemId;
+      return { submissionId: 'submission-1' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => null
+    },
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/submission.py',
+          getText: () => 'print("from file")'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'print("from prompt")',
+      showQuickPick: async (items) => {
+        quickPickShown = true;
+        return items[1];
       }
     },
     registerCommand: (commandId, callback) => {
@@ -359,26 +456,20 @@ test('submit code uses the active python editor when available', async () => {
     }
   });
 
-  await handlers.get('oj.practice.submitCode')?.();
+  await handlers.get('oj.practice.submitCurrentFile')?.();
 
-  assert.equal(submittedSource, 'print("from editor")');
+  assert.equal(quickPickShown, true);
+  assert.equal(submittedProblemId, 'problem-2');
 });
 
-test('submit code prompts for source when there is no active python editor', async () => {
+test('submit current file rejects non-.py editors', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
-  let submittedSource = '';
+  const outputLines: string[] = [];
+  let submitCalled = false;
 
   class RecordingPracticeCommands extends PracticeCommands {
-    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
-      return [{ problemId: 'problem-1', title: 'Two Sum' }];
-    }
-
-    override async submitCode(request: {
-      problemId: string;
-      language: string;
-      sourceCode: string;
-    }): Promise<{ submissionId: string }> {
-      submittedSource = request.sourceCode;
+    override async submitCode(): Promise<{ submissionId: string }> {
+      submitCalled = true;
       return { submissionId: 'submission-1' };
     }
   }
@@ -398,13 +489,23 @@ test('submit code prompts for source when there is no active python editor', asy
       showSubmissionCreated: () => undefined,
       showSubmissionResult: () => undefined,
       revealSubmission: () => undefined,
-      revealProblem: async () => undefined
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
     },
-    output: { appendLine: () => undefined },
+    output: { appendLine: (line) => outputLines.push(line) },
     window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'plaintext',
+          fileName: '/tmp/readme.txt',
+          getText: () => 'print("nope")'
+        }
+      },
       showErrorMessage: () => undefined,
       showInformationMessage: () => undefined,
-      showInputBox: async () => 'print("from prompt")'
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -412,9 +513,71 @@ test('submit code prompts for source when there is no active python editor', asy
     }
   });
 
-  await handlers.get('oj.practice.submitCode')?.();
+  await handlers.get('oj.practice.submitCurrentFile')?.();
 
-  assert.equal(submittedSource, 'print("from prompt")');
+  assert.equal(submitCalled, false);
+  assert.ok(
+    outputLines.some((line) => line.includes('[oj.practice.submitCurrentFile] error: Active editor must be a .py file'))
+  );
+});
+
+test('submit current file rejects an empty editor', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const outputLines: string[] = [];
+  let submitCalled = false;
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async submitCode(): Promise<{ submissionId: string }> {
+      submitCalled = true;
+      return { submissionId: 'submission-1' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    output: { appendLine: (line) => outputLines.push(line) },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => '   \n'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.equal(submitCalled, false);
+  assert.ok(
+    outputLines.some((line) => line.includes('[oj.practice.submitCurrentFile] error: Active editor is empty'))
+  );
 });
 
 test('running submission result shows actionable progress notification', async () => {
@@ -459,7 +622,8 @@ test('running submission result shows actionable progress notification', async (
     window: {
       showErrorMessage: () => undefined,
       showInformationMessage: (message) => infoMessages.push(message),
-      showInputBox: async () => 'print(42)'
+      showInputBox: async () => 'print(42)',
+      showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
