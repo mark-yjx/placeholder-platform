@@ -404,6 +404,156 @@ test('submit current file uses the active python editor and selected problem', a
   });
 });
 
+test('submit code uses the selected problem instead of defaulting to the first fetched problem', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  let submittedRequest: { problemId: string; sourceCode: string } | null = null;
+  let selectedProblemId: string | null = 'problem-2';
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
+      return [
+        { problemId: 'problem-1', title: 'Two Sum' },
+        { problemId: 'problem-2', title: 'FizzBuzz' }
+      ];
+    }
+
+    override async submitCode(request: {
+      problemId: string;
+      language: string;
+      sourceCode: string;
+    }): Promise<{ submissionId: string }> {
+      submittedRequest = {
+        problemId: request.problemId,
+        sourceCode: request.sourceCode
+      };
+      return { submissionId: 'submission-1' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: (problemId) => {
+        selectedProblemId = problemId;
+      },
+      getSelectedProblemId: () => selectedProblemId
+    },
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'print("selected problem")'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => {
+        throw new Error('input should not be used');
+      },
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCode')?.();
+
+  assert.deepEqual(submittedRequest, {
+    problemId: 'problem-2',
+    sourceCode: 'print("selected problem")'
+  });
+});
+
+test('submit code prompts for a problem when none is selected', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  let submittedProblemId = '';
+  let quickPickShown = false;
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
+      return [
+        { problemId: 'problem-1', title: 'Two Sum' },
+        { problemId: 'problem-2', title: 'FizzBuzz' }
+      ];
+    }
+
+    override async submitCode(request: {
+      problemId: string;
+      language: string;
+      sourceCode: string;
+    }): Promise<{ submissionId: string }> {
+      submittedProblemId = request.problemId;
+      return { submissionId: 'submission-1' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => null
+    },
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'print("from editor")'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => {
+        throw new Error('input should not be used');
+      },
+      showQuickPick: async (items) => {
+        quickPickShown = true;
+        return items[1];
+      }
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCode')?.();
+
+  assert.equal(quickPickShown, true);
+  assert.equal(submittedProblemId, 'problem-2');
+});
+
 test('submit current file prompts for a problem when none is selected', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   let submittedProblemId = '';

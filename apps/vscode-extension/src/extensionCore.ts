@@ -182,10 +182,10 @@ export function registerExtensionCommands(
     dependencies.registerCommand(
       'oj.practice.submitCode',
       runWithHandling('oj.practice.submitCode', async () => {
-        const problems = await dependencies.practiceCommands.fetchPublishedProblems();
+        const problemId = await resolveSelectedProblemId();
         const sourceCode = await resolveSubmissionSource();
         const submission = await dependencies.practiceCommands.submitCode({
-          problemId: problems[0]?.problemId ?? 'problem-1',
+          problemId,
           language: 'python',
           sourceCode
         });
