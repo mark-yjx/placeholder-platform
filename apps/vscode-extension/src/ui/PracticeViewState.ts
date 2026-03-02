@@ -54,6 +54,10 @@ export function formatPendingSubmissionDetail(submissionId: string): string {
   return `Submission ${submissionId}: submitted to API`;
 }
 
+export function formatSubmissionLabel(submissionId: string, summary: string): string {
+  return `${submissionId} | ${summary}`;
+}
+
 export class PracticeViewState {
   private problems: readonly PublishedProblem[] = [];
   private selectedProblemId: string | null = null;
@@ -118,13 +122,13 @@ export class PracticeViewState {
   getSubmissionNodes(): readonly SubmissionTreeNode[] {
     const pendingNodes = Array.from(this.pendingSubmissions.values()).map((submission) => ({
       id: submission.submissionId,
-      label: submission.submissionId,
+      label: formatSubmissionLabel(submission.submissionId, formatPendingSubmissionSummary()),
       description: formatPendingSubmissionSummary(),
       detail: formatPendingSubmissionDetail(submission.submissionId)
     }));
     const resultNodes = Array.from(this.results.values()).map((result) => ({
       id: result.submissionId,
-      label: result.submissionId,
+      label: formatSubmissionLabel(result.submissionId, formatSubmissionSummary(result)),
       description: formatSubmissionSummary(result),
       detail: formatSubmissionDetail(result)
     }));

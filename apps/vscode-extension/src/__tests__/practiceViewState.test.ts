@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   PracticeViewState,
   formatProblemDetail,
+  formatSubmissionLabel,
   formatSubmissionDetail,
   formatPendingSubmissionDetail,
   formatPendingSubmissionSummary,
@@ -77,7 +78,7 @@ test('submission tree nodes expose verdict, time, memory, and detail text', () =
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-1',
-      label: 'submission-1',
+      label: 'submission-1 | AC | 120ms | 2048KB',
       description: 'AC | 120ms | 2048KB',
       detail: 'Submission submission-1: verdict=AC, time=120ms, memory=2048KB'
     }
@@ -93,7 +94,7 @@ test('submission tree nodes include newly created submissions before results arr
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-pending-1',
-      label: 'submission-pending-1',
+      label: 'submission-pending-1 | Submitted',
       description: 'Submitted',
       detail: 'Submission submission-pending-1: submitted to API'
     }
@@ -119,7 +120,7 @@ test('submission result replaces the pending tree entry for the same submission 
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-1',
-      label: 'submission-1',
+      label: 'submission-1 | AC | 120ms | 2048KB',
       description: 'AC | 120ms | 2048KB',
       detail: 'Submission submission-1: verdict=AC, time=120ms, memory=2048KB'
     }
@@ -137,7 +138,7 @@ test('running submissions render status without verdict metrics', () => {
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-running-1',
-      label: 'submission-running-1',
+      label: 'submission-running-1 | running',
       description: 'running',
       detail: 'Submission submission-running-1: status=running'
     }
@@ -184,6 +185,7 @@ test('submission result renderers stay stable', () => {
     formatPendingSubmissionDetail('submission-pending-2'),
     'Submission submission-pending-2: submitted to API'
   );
+  assert.equal(formatSubmissionLabel('submission-2', 'WA | 222ms | 4096KB'), 'submission-2 | WA | 222ms | 4096KB');
   assert.equal(formatSubmissionSummary({ submissionId: 'submission-3', status: 'running' }), 'running');
   assert.equal(
     formatSubmissionDetail({ submissionId: 'submission-3', status: 'running' }),

@@ -207,7 +207,7 @@ test('smoke validates login -> fetch -> submit -> poll -> reload restoration ove
     assert.deepEqual(restoredViews.state.getSubmissionNodes(), [
       {
         id: submission.submissionId,
-        label: submission.submissionId,
+        label: `${submission.submissionId} | AC | 120ms | 2048KB`,
         description: 'AC | 120ms | 2048KB',
         detail: `Submission ${submission.submissionId}: verdict=AC, time=120ms, memory=2048KB`
       }
