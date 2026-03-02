@@ -26,6 +26,7 @@ export type SubmissionResult = {
 
 export interface PracticeApiClient {
   listPublishedProblems(accessToken: string): Promise<readonly PublishedProblem[]>;
+  listSubmissions(accessToken: string): Promise<readonly SubmissionResult[]>;
   createSubmission(
     accessToken: string,
     request: CreateSubmissionRequest

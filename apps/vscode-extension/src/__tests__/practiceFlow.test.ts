@@ -32,6 +32,10 @@ class FakePracticeApiClient implements PracticeApiClient {
     return this.problems;
   }
 
+  async listSubmissions(): Promise<readonly SubmissionResult[]> {
+    return Array.from(this.resultsById.values());
+  }
+
   async createSubmission(
     _accessToken: string,
     request: CreateSubmissionRequest

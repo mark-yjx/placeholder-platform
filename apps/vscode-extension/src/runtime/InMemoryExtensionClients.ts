@@ -35,6 +35,10 @@ export class InMemoryPracticeApiClient implements PracticeApiClient {
     return this.problems;
   }
 
+  async listSubmissions(_accessToken: string): Promise<readonly SubmissionResult[]> {
+    return Array.from(this.results.values());
+  }
+
   async createSubmission(
     _accessToken: string,
     request: CreateSubmissionRequest

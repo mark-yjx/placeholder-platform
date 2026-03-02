@@ -19,6 +19,12 @@ export class PracticeCommands {
     );
   }
 
+  async listSubmissions(): Promise<readonly SubmissionResult[]> {
+    return runProtectedCommand(this.tokenStore, async () =>
+      this.client.listSubmissions(this.requireAccessToken())
+    );
+  }
+
   async submitCode(request: CreateSubmissionRequest): Promise<{ submissionId: string }> {
     if (request.language !== 'python') {
       throw new Error('Only python is supported');

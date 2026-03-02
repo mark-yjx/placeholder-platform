@@ -84,6 +84,15 @@ export class HttpPracticeApiClient implements PracticeApiClient {
     return response.problems;
   }
 
+  async listSubmissions(accessToken: string): Promise<readonly SubmissionResult[]> {
+    const response = await requestJson<{
+      submissions: readonly SubmissionResult[];
+    }>(this.config, '/submissions', {
+      accessToken
+    });
+    return response.submissions;
+  }
+
   async createSubmission(
     accessToken: string,
     request: CreateSubmissionRequest

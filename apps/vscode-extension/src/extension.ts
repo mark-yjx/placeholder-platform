@@ -13,6 +13,7 @@ import {
   HttpEngagementApiClient,
   HttpPracticeApiClient
 } from './runtime/HttpExtensionClients';
+import { probeApiHealth, restorePracticeState } from './runtime/ExtensionRuntimeBootstrap';
 import { PracticeTreeViews } from './ui/PracticeTreeViews';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -62,8 +63,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   output.appendLine('OJ VSCode extension activated');
   output.appendLine(`API base URL: ${apiBaseUrl}`);
+  try {
+    const health = await probeApiHealth(apiBaseUrl);
+    output.appendLine(`API health: ${health.healthz}`);
+    output.appendLine(`API readiness: ${health.readyz}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    output.appendLine(`API health probe failed: ${message}`);
+  }
   if (tokenStore.isAuthenticated()) {
     output.appendLine('Session restored from SecretStorage');
+    try {
+      await restorePracticeState({
+        tokenStore,
+        practiceCommands,
+        practiceViews,
+        output
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      output.appendLine(`Practice state restore failed: ${message}`);
+    }
   }
 }
 
