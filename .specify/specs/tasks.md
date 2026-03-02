@@ -259,24 +259,6 @@ Files/areas touched: smoke script(s), local run docs, API test fixtures/tokens a
 Acceptance checks: smoke performs login (or explicit test token fixture), admin create problem, student fetch problems, favorite + review, restart stack (or API container), fetch again and assert persisted state; smoke fails if persistence breaks.  
 Scope (IN): implement/adjust smoke script to call live API endpoints (not in-process stubs).  
 
-## Phase - Submission from File (Python)
-
-81. **Extension: Submit current editor file**  
-Goal: Add a VS Code command that submits the active Python editor contents for the selected problem.  
-Files/areas touched: `apps/vscode-extension` commands, Problems view integration, submit API client usage, command unit tests.  
-Acceptance checks: Add command `OJ: Submit Current File`; it reads active editor text and requires a `.py` file; it requires that the user has selected a problem in the Problems view (or prompts to pick one); it sends `sourceCode` to the existing submit API client interface using the current file content; unit test rejects non-`.py` and empty editor.
-
-82. **Shared library: Submission extraction**  
-Goal: Add a shared extraction module that derives judgeable Python source from a student submission.  
-Files/areas touched: `packages/application` or `packages/contracts`, Python source parsing module, extraction unit tests.  
-Acceptance checks: Add a package module, preferably in `packages/application` or `packages/contracts`, that parses Python source; if `solve()` exists it chooses `solve`; otherwise it chooses `entryFunction`; it includes same-level helper `def`s with best-effort static analysis; it outputs `extractedSourceCode` as a string; unit tests cover `solve` present, `solve` absent so `entryFunction` is used, helper function included, and malicious extra top-level code excluded on a best-effort basis.
-
-83. **Worker: Wire extraction into judge runner**  
-Goal: Execute extracted submission code in the worker instead of the raw source.  
-Files/areas touched: worker judge runner, execution pipeline wiring, worker integration tests.  
-Acceptance checks: Worker uses `extractedSourceCode` for execution; `__main__` block in starter/submission is not executed; integration test proves a submission with `solve` works and a submission without `solve` but with `entryFunction` works.
-Scope (OUT): no judge submission E2E in this phase.
-
 # Phase 4 – Real Judge Execution
 
 Goal:
@@ -707,3 +689,21 @@ IN:
 - docs only
 OUT:
 - code changes
+
+## Phase - Submission from File (Python)
+
+81. **Extension: Submit current editor file**  
+Goal: Add a VS Code command that submits the active Python editor contents for the selected problem.  
+Files/areas touched: `apps/vscode-extension` commands, Problems view integration, submit API client usage, command unit tests.  
+Acceptance checks: Add command `OJ: Submit Current File`; it reads active editor text and requires a `.py` file; it requires that the user has selected a problem in the Problems view (or prompts to pick one); it sends `sourceCode` to the existing submit API client interface using the current file content; unit test rejects non-`.py` and empty editor.
+
+82. **Shared library: Submission extraction**  
+Goal: Add a shared extraction module that derives judgeable Python source from a student submission.  
+Files/areas touched: `packages/application` or `packages/contracts`, Python source parsing module, extraction unit tests.  
+Acceptance checks: Add a package module, preferably in `packages/application` or `packages/contracts`, that parses Python source; if `solve()` exists it chooses `solve`; otherwise it chooses `entryFunction`; it includes same-level helper `def`s with best-effort static analysis; it outputs `extractedSourceCode` as a string; unit tests cover `solve` present, `solve` absent so `entryFunction` is used, helper function included, and malicious extra top-level code excluded on a best-effort basis.
+
+83. **Worker: Wire extraction into judge runner**  
+Goal: Execute extracted submission code in the worker instead of the raw source.  
+Files/areas touched: worker judge runner, execution pipeline wiring, worker integration tests.  
+Acceptance checks: Worker uses `extractedSourceCode` for execution; `__main__` block in starter/submission is not executed; integration test proves a submission with `solve` works and a submission without `solve` but with `entryFunction` works.
+Scope (OUT): no judge submission E2E in this phase.
