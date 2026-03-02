@@ -36,7 +36,7 @@ test('http auth client posts credentials and surfaces invalid login mapping', as
       client.login({ email: 'student@example.com', password: 'wrong' }),
       (error: unknown) => {
         assert.ok(error instanceof ExtensionApiError);
-        assert.equal(mapExtensionError(error).userMessage, 'Please login to continue.');
+        assert.equal(mapExtensionError(error).userMessage, 'Invalid email or password.');
         return true;
       }
     );

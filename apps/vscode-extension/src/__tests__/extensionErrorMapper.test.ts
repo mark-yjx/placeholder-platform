@@ -30,6 +30,20 @@ test('401 errors prompt the user to login', () => {
   );
 });
 
+test('invalid credential errors show a login-specific message', () => {
+  assert.deepEqual(
+    mapExtensionError(
+      new ExtensionApiError(401, {
+        error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'invalid credentials' }
+      })
+    ),
+    {
+      userMessage: 'Invalid email or password.',
+      logMessage: 'API 401 AUTH_INVALID_CREDENTIALS'
+    }
+  );
+});
+
 test('403 errors show a permission message', () => {
   assert.deepEqual(
     mapExtensionError(

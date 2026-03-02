@@ -58,7 +58,7 @@ export function registerExtensionCommands(
       'oj.login',
       runWithHandling('oj.login', async () => {
         await dependencies.authCommands.login({
-          email: 'student@example.com',
+          email: 'student1@example.com',
           password: 'secret'
         });
         dependencies.output.appendLine('Authenticated');

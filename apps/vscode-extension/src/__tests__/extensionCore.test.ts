@@ -73,6 +73,42 @@ test('registered command writes to output channel on success', async () => {
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
 });
 
+test('login command uses the real backend student fixture credentials', async () => {
+  const handlers = new Map<string, () => Promise<void>>();
+  let receivedRequest: { email: string; password: string } | null = null;
+
+  class RecordingAuthCommands extends AuthCommands {
+    override async login(request: { email: string; password: string }): Promise<void> {
+      receivedRequest = request;
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new RecordingAuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new PracticeCommands(new InMemoryPracticeApiClient(), new SessionTokenStore()),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    output: { appendLine: () => undefined },
+    window: {
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.login')?.();
+
+  assert.deepEqual(receivedRequest, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
+});
+
 test('command error is reported cleanly', async () => {
   const outputLines: string[] = [];
   const shownErrors: string[] = [];

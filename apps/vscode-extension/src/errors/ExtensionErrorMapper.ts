@@ -31,9 +31,13 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
     const apiMessage = normalizeApiMessage(error.payload);
 
     if (error.statusCode === 401) {
+      const errorCode = error.payload?.error?.code ?? 'UNAUTHORIZED';
       return {
-        userMessage: 'Please login to continue.',
-        logMessage: `API 401 ${error.payload?.error?.code ?? 'UNAUTHORIZED'}`
+        userMessage:
+          errorCode === 'AUTH_INVALID_CREDENTIALS'
+            ? 'Invalid email or password.'
+            : 'Please login to continue.',
+        logMessage: `API 401 ${errorCode}`
       };
     }
 
