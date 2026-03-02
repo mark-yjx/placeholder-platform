@@ -33,6 +33,7 @@ export class DockerSandboxAdapter {
       args: [
         'run',
         '--rm',
+        '-i',
         '--cpus',
         String(input.limits.cpuCores),
         '--memory',

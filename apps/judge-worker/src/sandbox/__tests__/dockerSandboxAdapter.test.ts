@@ -20,7 +20,7 @@ test('docker sandbox command enforces network-disabled and isolation flags', asy
   assert.equal(calls.length, 1);
   const run = calls[0];
   assert.equal(run.command, 'docker');
-  assert.deepEqual(run.args.slice(0, 3), ['run', '--rm', '--cpus']);
+  assert.deepEqual(run.args.slice(0, 4), ['run', '--rm', '-i', '--cpus']);
   assert.equal(run.args.includes('1'), true);
   assert.equal(run.args.includes('--memory'), true);
   assert.equal(run.args.includes('256m'), true);
@@ -31,4 +31,5 @@ test('docker sandbox command enforces network-disabled and isolation flags', asy
   assert.equal(run.args.includes('--security-opt'), true);
   assert.equal(run.args.includes('no-new-privileges'), true);
   assert.equal(run.args.includes('--tmpfs'), true);
+  assert.equal(run.stdin, 'print("hello")');
 });
