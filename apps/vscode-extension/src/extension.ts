@@ -9,10 +9,10 @@ import {
   resolveApiBaseUrl
 } from './config/ExtensionConfiguration';
 import {
-  InMemoryAuthClient,
-  InMemoryEngagementApiClient,
-  InMemoryPracticeApiClient
-} from './runtime/InMemoryExtensionClients';
+  HttpAuthClient,
+  HttpEngagementApiClient,
+  HttpPracticeApiClient
+} from './runtime/HttpExtensionClients';
 import { PracticeTreeViews } from './ui/PracticeTreeViews';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -23,9 +23,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   await tokenStore.hydrate();
   const clientConfig = { apiBaseUrl };
 
-  const authCommands = new AuthCommands(new InMemoryAuthClient(clientConfig), tokenStore);
-  const practiceCommands = new PracticeCommands(new InMemoryPracticeApiClient(clientConfig), tokenStore);
-  const engagementCommands = new EngagementCommands(new InMemoryEngagementApiClient(clientConfig), tokenStore);
+  const authCommands = new AuthCommands(new HttpAuthClient(clientConfig), tokenStore);
+  const practiceCommands = new PracticeCommands(new HttpPracticeApiClient(clientConfig), tokenStore);
+  const engagementCommands = new EngagementCommands(new HttpEngagementApiClient(clientConfig), tokenStore);
   const practiceViews = new PracticeTreeViews(vscode.window);
 
   const disposables = registerExtensionCommands({
