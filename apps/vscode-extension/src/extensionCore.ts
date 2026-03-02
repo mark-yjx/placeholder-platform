@@ -27,6 +27,7 @@ export type ExtensionCommandDependencies = {
   engagementCommands: EngagementCommands;
   practiceViews?: {
     showProblems: (problems: readonly PublishedProblem[]) => void;
+    showSubmissionCreated: (submissionId: string) => void;
     showSubmissionResult: (result: SubmissionResult) => void;
     revealSubmission: (submissionId: string) => void;
   };
@@ -86,6 +87,7 @@ export function registerExtensionCommands(
           sourceCode: 'print(42)'
         });
         latestSubmissionId = submission.submissionId;
+        dependencies.practiceViews?.showSubmissionCreated(submission.submissionId);
         dependencies.output.appendLine(`Submitted: ${submission.submissionId}`);
       })
     ),

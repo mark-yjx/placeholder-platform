@@ -76,6 +76,11 @@ export class PracticeTreeViews {
     this.problemsProvider.refresh();
   }
 
+  showSubmissionCreated(submissionId: string): void {
+    this.state.recordSubmissionCreated(submissionId);
+    this.submissionsProvider.refresh();
+  }
+
   showSubmissionResult(result: SubmissionResult): void {
     this.state.recordSubmissionResult(result);
     this.submissionsProvider.refresh();

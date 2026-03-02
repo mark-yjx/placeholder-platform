@@ -18,6 +18,7 @@ test('registered command writes to output channel on success', async () => {
   const handlers = new Map<string, () => Promise<void>>();
   const practiceViewCalls = {
     problems: [] as readonly { problemId: string; title: string }[],
+    created: [] as readonly string[],
     results: [] as readonly {
       submissionId: string;
       verdict: string;
@@ -39,6 +40,9 @@ test('registered command writes to output channel on success', async () => {
     practiceViews: {
       showProblems: (problems) => {
         practiceViewCalls.problems = problems;
+      },
+      showSubmissionCreated: (submissionId) => {
+        practiceViewCalls.created = [...practiceViewCalls.created, submissionId];
       },
       showSubmissionResult: (result) => {
         practiceViewCalls.results = [...practiceViewCalls.results, result];
@@ -68,6 +72,7 @@ test('registered command writes to output channel on success', async () => {
     { problemId: 'problem-1', title: 'Two Sum' },
     { problemId: 'problem-2', title: 'FizzBuzz' }
   ]);
+  assert.deepEqual(practiceViewCalls.created, ['submission-1']);
   assert.equal(practiceViewCalls.results.length, 1);
   assert.deepEqual(practiceViewCalls.revealed, ['submission-1']);
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
@@ -103,6 +108,7 @@ test('fetch problems handles an empty list gracefully', async () => {
       showProblems: (problems) => {
         practiceViewCalls.problems = problems;
       },
+      showSubmissionCreated: () => undefined,
       showSubmissionResult: () => undefined,
       revealSubmission: () => undefined
     },
