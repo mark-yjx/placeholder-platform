@@ -15,6 +15,7 @@ import {
 } from '../runtime/InMemoryExtensionClients';
 import { ExtensionApiError } from '../errors/ExtensionErrorMapper';
 import { ProblemStarterWorkspace } from '../ui/ProblemStarterWorkspace';
+import { extractSubmitPayload } from '../submission/SubmissionPayloadExtraction';
 
 test('registered command writes to output channel on success', async () => {
   const outputLines: string[] = [];
@@ -77,7 +78,7 @@ test('registered command writes to output channel on success', async () => {
         document: {
           languageId: 'python',
           fileName: '/tmp/submission.py',
-          getText: () => 'print(42)'
+          getText: () => 'def solve():\n    return 42\n'
         }
       },
       showErrorMessage: () => undefined,
@@ -379,7 +380,7 @@ test('submit current file uses the active python editor and selected problem', a
         document: {
           languageId: 'python',
           fileName: '/tmp/solution.py',
-          getText: () => 'print("from editor")'
+          getText: () => 'def solve():\n    return "from editor"\n'
         }
       },
       showErrorMessage: () => undefined,
@@ -400,7 +401,7 @@ test('submit current file uses the active python editor and selected problem', a
 
   assert.deepEqual(submittedRequest, {
     problemId: 'problem-1',
-    sourceCode: 'print("from editor")'
+    sourceCode: 'def solve():\n    return "from editor"\n'
   });
 });
 
@@ -605,7 +606,7 @@ test('submit current file prompts for a problem when none is selected', async ()
         document: {
           languageId: 'python',
           fileName: '/tmp/submission.py',
-          getText: () => 'print("from file")'
+          getText: () => 'def solve():\n    return "from file"\n'
         }
       },
       showErrorMessage: () => undefined,
@@ -750,6 +751,125 @@ test('submit current file rejects an empty editor', async () => {
   assert.ok(
     outputLines.some((line) => line.includes('[oj.practice.submitCurrentFile] error: Active editor is empty'))
   );
+});
+
+test('submit current file rejects missing solve()', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const outputLines: string[] = [];
+  let submitCalled = false;
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async submitCode(): Promise<{ submissionId: string }> {
+      submitCalled = true;
+      return { submissionId: 'submission-1' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: (line) => outputLines.push(line) },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'def collapse(number):\n    return number\n'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.equal(submitCalled, false);
+  assert.ok(
+    outputLines.some((line) =>
+      line.includes('[oj.practice.submitCurrentFile] error: Submission must define a top-level solve() function')
+    )
+  );
+});
+
+test('submit payload extraction keeps solve() only when no helper is referenced', () => {
+  const extracted = extractSubmitPayload(`
+import math
+
+def solve():
+    """ 
+    >>> solve()
+    42
+    """
+    return 42
+
+def unused():
+    return math.floor(2.3)
+
+if __name__ == "__main__":
+    print("debug")
+`.trim());
+
+  assert.match(extracted, /^def solve\(\):$/m);
+  assert.doesNotMatch(extracted, />>> solve/);
+  assert.doesNotMatch(extracted, /^def unused\(\):$/m);
+  assert.doesNotMatch(extracted, /__name__ == "__main__"/);
+});
+
+test('submit payload extraction includes solve() and referenced helper defs', () => {
+  const extracted = extractSubmitPayload(`
+import math
+
+def helper(value):
+    return math.floor(value)
+
+def solve():
+    return helper(2.7)
+`.trim());
+
+  assert.match(extracted, /^import math$/m);
+  assert.match(extracted, /^def helper\(value\):$/m);
+  assert.match(extracted, /^def solve\(\):$/m);
+});
+
+test('submit payload extraction excludes __main__ blocks', () => {
+  const extracted = extractSubmitPayload(`
+def solve():
+    return 42
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
+`.trim());
+
+  assert.match(extracted, /^def solve\(\):$/m);
+  assert.doesNotMatch(extracted, /doctest/);
+  assert.doesNotMatch(extracted, /__name__ == "__main__"/);
 });
 
 test('running submission result shows actionable progress notification', async () => {

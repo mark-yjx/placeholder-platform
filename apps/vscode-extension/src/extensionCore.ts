@@ -5,6 +5,7 @@ import { mapExtensionError } from './errors/ExtensionErrorMapper';
 import { PublishedProblem, SubmissionResult } from './api/PracticeApiClient';
 import { formatSubmissionDetail } from './ui/PracticeViewState';
 import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
+import { extractSubmitPayload } from './submission/SubmissionPayloadExtraction';
 
 export type DisposableLike = { dispose: () => void };
 
@@ -134,7 +135,7 @@ export function registerExtensionCommands(
       throw new Error('Active editor is empty');
     }
 
-    return sourceCode;
+    return extractSubmitPayload(sourceCode);
   };
 
   const resolveSubmissionSource = async (): Promise<string> => {
