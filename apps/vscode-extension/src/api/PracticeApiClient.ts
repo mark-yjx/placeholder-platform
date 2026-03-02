@@ -4,6 +4,7 @@ export type SubmissionStatus = 'queued' | 'running' | 'finished' | 'failed';
 export type PublishedProblem = {
   problemId: string;
   title: string;
+  statement?: string;
 };
 
 export type CreateSubmissionRequest = {

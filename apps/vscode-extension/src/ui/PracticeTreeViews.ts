@@ -21,7 +21,12 @@ class ProblemsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeIte
       const item = new vscode.TreeItem(problem.label, vscode.TreeItemCollapsibleState.None);
       item.id = problem.id;
       item.description = problem.description;
-      item.tooltip = `${problem.label} (${problem.description})`;
+      item.tooltip = problem.detail;
+      item.command = {
+        command: 'oj.practice.selectProblem',
+        title: 'Open Problem Detail',
+        arguments: [problem.id]
+      };
       return item;
     });
   }
@@ -62,7 +67,10 @@ export class PracticeTreeViews {
   private readonly problemsProvider = new ProblemsTreeDataProvider(this.state);
   private readonly submissionsProvider = new SubmissionsTreeDataProvider(this.state);
 
-  constructor(private readonly window: Pick<typeof vscode.window, 'showInformationMessage'>) {}
+  constructor(
+    private readonly window: Pick<typeof vscode.window, 'showInformationMessage' | 'showTextDocument'>,
+    private readonly workspace: Pick<typeof vscode.workspace, 'openTextDocument'>
+  ) {}
 
   register(registerTreeDataProvider: (viewId: string, provider: vscode.TreeDataProvider<vscode.TreeItem>) => vscode.Disposable): readonly vscode.Disposable[] {
     return [
@@ -91,5 +99,17 @@ export class PracticeTreeViews {
     if (detail) {
       this.window.showInformationMessage(detail);
     }
+  }
+
+  async revealProblem(problemId: string): Promise<void> {
+    const detail = this.state.getProblemDetail(problemId);
+    if (!detail) {
+      return;
+    }
+    const document = await this.workspace.openTextDocument({
+      content: detail,
+      language: 'markdown'
+    });
+    await this.window.showTextDocument(document, { preview: true });
   }
 }

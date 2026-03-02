@@ -35,28 +35,28 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
       return {
         userMessage:
           errorCode === 'AUTH_INVALID_CREDENTIALS'
-            ? 'Invalid email or password.'
-            : 'Please login to continue.',
+            ? 'Invalid email or password. Run OJ: Login and try again.'
+            : 'Please login to continue. Run OJ: Login and try again.',
         logMessage: `API 401 ${errorCode}`
       };
     }
 
     if (error.statusCode === 403) {
       return {
-        userMessage: 'You do not have permission to perform this action.',
+        userMessage: 'You do not have permission to perform this action. Use an allowed account and try again.',
         logMessage: `API 403 ${error.payload?.error?.code ?? 'FORBIDDEN'}`
       };
     }
 
     if (error.statusCode === 404) {
       return {
-        userMessage: apiMessage ?? 'Requested resource was not found.',
+        userMessage: apiMessage ?? 'Requested resource was not found. Refresh data and try again.',
         logMessage: `API 404 ${error.payload?.error?.code ?? 'NOT_FOUND'}`
       };
     }
 
     return {
-      userMessage: apiMessage ?? 'The OJ request failed. Please try again.',
+      userMessage: apiMessage ?? 'The OJ request failed. Check the OJ output channel, then try again.',
       logMessage: `API ${error.statusCode} ${error.payload?.error?.code ?? 'UNKNOWN'}`
     };
   }
@@ -81,20 +81,20 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
     normalizedMessage.includes('socket hang up')
   ) {
     return {
-      userMessage: 'Unable to reach the OJ API. Check the server and oj.apiBaseUrl, then try again.',
+      userMessage: 'Unable to reach the OJ API. Check that the server is running and verify oj.apiBaseUrl, then try again.',
       logMessage: networkCode ? `Network error ${networkCode}` : rawMessage
     };
   }
 
   if (normalizedMessage.includes('authentication required')) {
     return {
-      userMessage: 'Please login to continue.',
+      userMessage: 'Please login to continue. Run OJ: Login and try again.',
       logMessage: rawMessage
     };
   }
 
   return {
-    userMessage: 'Something went wrong. Check the OJ output channel for details.',
+    userMessage: 'Something went wrong. Check the OJ output channel for details, then try again.',
     logMessage: rawMessage
   };
 }

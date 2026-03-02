@@ -11,7 +11,7 @@ test('network failures show a user-friendly API unreachable message', () => {
   });
 
   assert.deepEqual(mapExtensionError(error), {
-    userMessage: 'Unable to reach the OJ API. Check the server and oj.apiBaseUrl, then try again.',
+    userMessage: 'Unable to reach the OJ API. Check that the server is running and verify oj.apiBaseUrl, then try again.',
     logMessage: 'Network error ECONNREFUSED'
   });
 });
@@ -24,7 +24,7 @@ test('401 errors prompt the user to login', () => {
       })
     ),
     {
-      userMessage: 'Please login to continue.',
+      userMessage: 'Please login to continue. Run OJ: Login and try again.',
       logMessage: 'API 401 AUTH_INVALID_TOKEN'
     }
   );
@@ -38,7 +38,7 @@ test('invalid credential errors show a login-specific message', () => {
       })
     ),
     {
-      userMessage: 'Invalid email or password.',
+      userMessage: 'Invalid email or password. Run OJ: Login and try again.',
       logMessage: 'API 401 AUTH_INVALID_CREDENTIALS'
     }
   );
@@ -52,7 +52,7 @@ test('403 errors show a permission message', () => {
       })
     ),
     {
-      userMessage: 'You do not have permission to perform this action.',
+      userMessage: 'You do not have permission to perform this action. Use an allowed account and try again.',
       logMessage: 'API 403 FORBIDDEN'
     }
   );
@@ -77,6 +77,6 @@ test('unexpected failures hide raw stack traces from the user', () => {
     new Error('Error: boom\n    at extension.ts:10:2\n    at runner:1:1')
   );
 
-  assert.equal(mapped.userMessage, 'Something went wrong. Check the OJ output channel for details.');
+  assert.equal(mapped.userMessage, 'Something went wrong. Check the OJ output channel for details, then try again.');
   assert.match(mapped.logMessage, /boom/);
 });

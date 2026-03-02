@@ -11,6 +11,10 @@ declare module 'vscode' {
     getChildren(element?: T): T[] | Thenable<T[] | readonly T[]> | readonly T[];
     onDidChangeTreeData?: Event<T | void>;
   };
+  export type TextDocument = {
+    getText(): string;
+    languageId: string;
+  };
   export const TreeItemCollapsibleState: {
     None: 0;
   };
@@ -44,6 +48,7 @@ declare module 'vscode' {
     getConfiguration(section?: string): {
       get<T>(setting: string, defaultValue: T): T;
     };
+    openTextDocument(options: { content: string; language?: string }): Thenable<TextDocument>;
   };
 
   export const window: {
@@ -53,7 +58,20 @@ declare module 'vscode' {
       show(preserveFocus?: boolean): void;
       dispose(): void;
     };
+    activeTextEditor?: {
+      document: TextDocument;
+    };
     showErrorMessage(message: string): void;
     showInformationMessage(message: string): void;
+    showTextDocument(
+      document: TextDocument,
+      options?: { preview?: boolean }
+    ): Thenable<unknown>;
+    showInputBox(options?: {
+      prompt?: string;
+      placeHolder?: string;
+      value?: string;
+      ignoreFocusOut?: boolean;
+    }): Thenable<string | undefined>;
   };
 }

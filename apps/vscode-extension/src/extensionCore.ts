@@ -9,7 +9,7 @@ export type DisposableLike = { dispose: () => void };
 
 export type RegisterCommand = (
   commandId: string,
-  callback: () => Promise<void>
+  callback: (...args: unknown[]) => Promise<void>
 ) => DisposableLike;
 
 export type OutputChannelLike = {
@@ -19,6 +19,18 @@ export type OutputChannelLike = {
 export type WindowLike = {
   showErrorMessage: (message: string) => void;
   showInformationMessage: (message: string) => void;
+  showInputBox: (options?: {
+    prompt?: string;
+    placeHolder?: string;
+    value?: string;
+    ignoreFocusOut?: boolean;
+  }) => Promise<string | undefined>;
+  activeTextEditor?: {
+    document: {
+      getText: () => string;
+      languageId: string;
+    };
+  };
 };
 
 export type ExtensionCommandDependencies = {
@@ -30,6 +42,7 @@ export type ExtensionCommandDependencies = {
     showSubmissionCreated: (submissionId: string) => void;
     showSubmissionResult: (result: SubmissionResult) => void;
     revealSubmission: (submissionId: string) => void;
+    revealProblem: (problemId: string) => Promise<void>;
   };
   output: OutputChannelLike;
   window: WindowLike;
@@ -39,10 +52,12 @@ export type ExtensionCommandDependencies = {
 export function registerExtensionCommands(
   dependencies: ExtensionCommandDependencies
 ): readonly DisposableLike[] {
-  const runWithHandling = (commandId: string, run: () => Promise<void>) => async () => {
+  const runWithHandling =
+    (commandId: string, run: (...args: unknown[]) => Promise<void>) =>
+    async (...args: unknown[]) => {
     dependencies.output.appendLine(`[${commandId}] start`);
     try {
-      await run();
+      await run(...args);
       dependencies.output.appendLine(`[${commandId}] success`);
       dependencies.window.showInformationMessage(`[${commandId}] success`);
     } catch (error) {
@@ -50,9 +65,28 @@ export function registerExtensionCommands(
       dependencies.output.appendLine(`[${commandId}] error: ${mapped.logMessage}`);
       dependencies.window.showErrorMessage(`[${commandId}] ${mapped.userMessage}`);
     }
-  };
+    };
 
   let latestSubmissionId: string | null = null;
+
+  const resolveSubmissionSource = async (): Promise<string> => {
+    const activeDocument = dependencies.window.activeTextEditor?.document;
+    if (activeDocument?.languageId === 'python') {
+      const source = activeDocument.getText().trim();
+      if (source.length > 0) {
+        return source;
+      }
+    }
+
+    return (
+      (await dependencies.window.showInputBox({
+        prompt: 'Enter Python source code to submit',
+        placeHolder: 'print(42)',
+        value: 'print(42)',
+        ignoreFocusOut: true
+      })) ?? ''
+    );
+  };
 
   return [
     dependencies.registerCommand(
@@ -81,14 +115,18 @@ export function registerExtensionCommands(
       'oj.practice.submitCode',
       runWithHandling('oj.practice.submitCode', async () => {
         const problems = await dependencies.practiceCommands.fetchPublishedProblems();
+        const sourceCode = await resolveSubmissionSource();
         const submission = await dependencies.practiceCommands.submitCode({
           problemId: problems[0]?.problemId ?? 'problem-1',
           language: 'python',
-          sourceCode: 'print(42)'
+          sourceCode
         });
         latestSubmissionId = submission.submissionId;
         dependencies.practiceViews?.showSubmissionCreated(submission.submissionId);
         dependencies.output.appendLine(`Submitted: ${submission.submissionId}`);
+        dependencies.window.showInformationMessage(
+          `Submission ${submission.submissionId} queued. Run OJ: View Result to refresh its status.`
+        );
       })
     ),
     dependencies.registerCommand(
@@ -102,6 +140,22 @@ export function registerExtensionCommands(
         dependencies.practiceViews?.showSubmissionResult(result);
         dependencies.practiceViews?.revealSubmission(result.submissionId);
         dependencies.output.appendLine(formatSubmissionDetail(result));
+        if (result.status === 'queued' || result.status === 'running') {
+          dependencies.window.showInformationMessage(
+            `Submission ${result.submissionId} is still ${result.status}. Run OJ: View Result again shortly.`
+          );
+        }
+      })
+    ),
+    dependencies.registerCommand(
+      'oj.practice.selectProblem',
+      runWithHandling('oj.practice.selectProblem', async (...args: unknown[]) => {
+        const problemId = typeof args[0] === 'string' ? args[0] : '';
+        if (!problemId) {
+          dependencies.window.showInformationMessage('No problem selected yet. Run OJ: Fetch Problems first.');
+          return;
+        }
+        await dependencies.practiceViews?.revealProblem(problemId);
       })
     ),
     dependencies.registerCommand(

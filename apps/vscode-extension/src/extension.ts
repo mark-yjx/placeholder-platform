@@ -27,7 +27,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const authCommands = new AuthCommands(new HttpAuthClient(clientConfig), tokenStore);
   const practiceCommands = new PracticeCommands(new HttpPracticeApiClient(clientConfig), tokenStore);
   const engagementCommands = new EngagementCommands(new HttpEngagementApiClient(clientConfig), tokenStore);
-  const practiceViews = new PracticeTreeViews(vscode.window);
+  const practiceViews = new PracticeTreeViews(vscode.window, vscode.workspace);
 
   const disposables = registerExtensionCommands({
     authCommands,

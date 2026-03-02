@@ -4,6 +4,7 @@ export type ProblemTreeNode = {
   readonly id: string;
   readonly label: string;
   readonly description: string;
+  readonly detail: string;
 };
 
 export type SubmissionTreeNode = {
@@ -66,8 +67,14 @@ export class PracticeViewState {
     return this.problems.map((problem) => ({
       id: problem.problemId,
       label: problem.title,
-      description: problem.problemId
+      description: problem.problemId,
+      detail: formatProblemDetail(problem)
     }));
+  }
+
+  getProblemDetail(problemId: string): string | null {
+    const problem = this.problems.find((candidate) => candidate.problemId === problemId);
+    return problem ? formatProblemDetail(problem) : null;
   }
 
   recordSubmissionResult(result: SubmissionResult): void {
@@ -110,4 +117,18 @@ export class PracticeViewState {
     const result = this.results.get(submissionId);
     return result ? formatSubmissionDetail(result) : null;
   }
+}
+
+export function formatProblemDetail(problem: PublishedProblem): string {
+  const statement = typeof problem.statement === 'string' && problem.statement.trim().length > 0
+    ? problem.statement.trim()
+    : 'No statement available.';
+  return `# ${problem.title}
+
+- Problem ID: ${problem.problemId}
+
+## Statement
+
+${statement}
+`;
 }

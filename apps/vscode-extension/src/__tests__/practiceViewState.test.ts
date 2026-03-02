@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PracticeViewState,
+  formatProblemDetail,
   formatSubmissionDetail,
   formatPendingSubmissionDetail,
   formatPendingSubmissionSummary,
@@ -17,9 +18,35 @@ test('problem tree nodes mirror loaded problem data', () => {
   ]);
 
   assert.deepEqual(state.getProblemNodes(), [
-    { id: 'problem-1', label: 'Two Sum', description: 'problem-1' },
-    { id: 'problem-2', label: 'FizzBuzz', description: 'problem-2' }
+    {
+      id: 'problem-1',
+      label: 'Two Sum',
+      description: 'problem-1',
+      detail: '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nNo statement available.\n'
+    },
+    {
+      id: 'problem-2',
+      label: 'FizzBuzz',
+      description: 'problem-2',
+      detail: '# FizzBuzz\n\n- Problem ID: problem-2\n\n## Statement\n\nNo statement available.\n'
+    }
   ]);
+});
+
+test('problem details render as markdown content', () => {
+  const state = new PracticeViewState();
+  state.setProblems([
+    { problemId: 'problem-1', title: 'Two Sum', statement: 'Add two numbers.' }
+  ]);
+
+  assert.equal(
+    state.getProblemDetail('problem-1'),
+    '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nAdd two numbers.\n'
+  );
+  assert.equal(
+    formatProblemDetail({ problemId: 'problem-2', title: 'FizzBuzz', statement: '' }),
+    '# FizzBuzz\n\n- Problem ID: problem-2\n\n## Statement\n\nNo statement available.\n'
+  );
 });
 
 test('submission tree nodes expose verdict, time, memory, and detail text', () => {

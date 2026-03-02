@@ -15,7 +15,7 @@ import { ExtensionApiError } from '../errors/ExtensionErrorMapper';
 test('registered command writes to output channel on success', async () => {
   const outputLines: string[] = [];
   const infoMessages: string[] = [];
-  const handlers = new Map<string, () => Promise<void>>();
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const practiceViewCalls = {
     problems: [] as readonly { problemId: string; title: string }[],
     created: [] as readonly string[],
@@ -26,7 +26,8 @@ test('registered command writes to output channel on success', async () => {
       timeMs?: number;
       memoryKb?: number;
     }[],
-    revealed: [] as string[]
+    revealed: [] as string[],
+    openedProblems: [] as string[]
   };
 
   const tokenStore = new SessionTokenStore();
@@ -50,12 +51,16 @@ test('registered command writes to output channel on success', async () => {
       },
       revealSubmission: (submissionId) => {
         practiceViewCalls.revealed.push(submissionId);
+      },
+      revealProblem: async (problemId) => {
+        practiceViewCalls.openedProblems.push(problemId);
       }
     },
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
       showErrorMessage: () => undefined,
-      showInformationMessage: (message) => infoMessages.push(message)
+      showInformationMessage: (message) => infoMessages.push(message),
+      showInputBox: async () => 'print(42)'
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -65,6 +70,7 @@ test('registered command writes to output channel on success', async () => {
 
   await handlers.get('oj.login')?.();
   await handlers.get('oj.practice.fetchProblems')?.();
+  await handlers.get('oj.practice.selectProblem')?.('problem-1');
   await handlers.get('oj.practice.submitCode')?.();
   await handlers.get('oj.practice.viewResult')?.();
 
@@ -85,12 +91,18 @@ test('registered command writes to output channel on success', async () => {
     }
   ]);
   assert.deepEqual(practiceViewCalls.revealed, ['submission-1']);
+  assert.deepEqual(practiceViewCalls.openedProblems, ['problem-1']);
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
+  assert.ok(
+    infoMessages.some((message) =>
+      message.includes('Submission submission-1 queued. Run OJ: View Result to refresh its status.')
+    )
+  );
 });
 
 test('fetch problems handles an empty list gracefully', async () => {
   const infoMessages: string[] = [];
-  const handlers = new Map<string, () => Promise<void>>();
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const practiceViewCalls = {
     problems: [{ problemId: 'stale-problem', title: 'Stale Problem' }] as readonly {
       problemId: string;
@@ -120,12 +132,14 @@ test('fetch problems handles an empty list gracefully', async () => {
       },
       showSubmissionCreated: () => undefined,
       showSubmissionResult: () => undefined,
-      revealSubmission: () => undefined
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined
     },
     output: { appendLine: () => undefined },
     window: {
       showErrorMessage: () => undefined,
-      showInformationMessage: (message) => infoMessages.push(message)
+      showInformationMessage: (message) => infoMessages.push(message),
+      showInputBox: async () => 'print(42)'
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -140,7 +154,7 @@ test('fetch problems handles an empty list gracefully', async () => {
 });
 
 test('login command uses the real backend student fixture credentials', async () => {
-  const handlers = new Map<string, () => Promise<void>>();
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   let receivedRequest: { email: string; password: string } | null = null;
 
   class RecordingAuthCommands extends AuthCommands {
@@ -159,7 +173,8 @@ test('login command uses the real backend student fixture credentials', async ()
     output: { appendLine: () => undefined },
     window: {
       showErrorMessage: () => undefined,
-      showInformationMessage: () => undefined
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'print(42)'
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -178,7 +193,7 @@ test('login command uses the real backend student fixture credentials', async ()
 test('command error is reported cleanly', async () => {
   const outputLines: string[] = [];
   const shownErrors: string[] = [];
-  const handlers = new Map<string, () => Promise<void>>();
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
 
   const tokenStore = new SessionTokenStore();
   const authCommands = new AuthCommands(new InMemoryAuthClient(), tokenStore);
@@ -192,7 +207,8 @@ test('command error is reported cleanly', async () => {
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
       showErrorMessage: (message) => shownErrors.push(message),
-      showInformationMessage: () => undefined
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'print(42)'
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -217,7 +233,7 @@ test('command error is reported cleanly', async () => {
   const failingEngagement = new EngagementCommands(new InMemoryEngagementApiClient(), tokenStore);
   const failingAuth = new AuthCommands(new InMemoryAuthClient(), tokenStore);
 
-  const failingHandlers = new Map<string, () => Promise<void>>();
+  const failingHandlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   registerExtensionCommands({
     authCommands: failingAuth,
     practiceCommands: failingPractice,
@@ -225,7 +241,8 @@ test('command error is reported cleanly', async () => {
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
       showErrorMessage: (message) => shownErrors.push(message),
-      showInformationMessage: () => undefined
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'print(42)'
     },
     registerCommand: (commandId, callback) => {
       failingHandlers.set(commandId, callback);
@@ -244,7 +261,7 @@ test('command error is reported cleanly', async () => {
 test('auth failures prompt login instead of showing raw auth error text', async () => {
   const outputLines: string[] = [];
   const shownErrors: string[] = [];
-  const handlers = new Map<string, () => Promise<void>>();
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
 
   class UnauthorizedPracticeCommands extends PracticeCommands {
     override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
@@ -270,7 +287,8 @@ test('auth failures prompt login instead of showing raw auth error text', async 
     output: { appendLine: (line) => outputLines.push(line) },
     window: {
       showErrorMessage: (message) => shownErrors.push(message),
-      showInformationMessage: () => undefined
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'print(42)'
     },
     registerCommand: (commandId, callback) => {
       handlers.set(commandId, callback);
@@ -283,4 +301,178 @@ test('auth failures prompt login instead of showing raw auth error text', async 
   assert.ok(outputLines.some((line) => line.includes('API 401 AUTH_INVALID_TOKEN')));
   assert.ok(shownErrors.some((line) => line.includes('Please login to continue.')));
   assert.equal(shownErrors.some((line) => line.includes('Authentication token is invalid')), false);
+});
+
+test('submit code uses the active python editor when available', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  let submittedSource = '';
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
+      return [{ problemId: 'problem-1', title: 'Two Sum' }];
+    }
+
+    override async submitCode(request: {
+      problemId: string;
+      language: string;
+      sourceCode: string;
+    }): Promise<{ submissionId: string }> {
+      submittedSource = request.sourceCode;
+      return { submissionId: 'submission-1' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined
+    },
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          getText: () => 'print("from editor")'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => {
+        throw new Error('input should not be used');
+      }
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCode')?.();
+
+  assert.equal(submittedSource, 'print("from editor")');
+});
+
+test('submit code prompts for source when there is no active python editor', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  let submittedSource = '';
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
+      return [{ problemId: 'problem-1', title: 'Two Sum' }];
+    }
+
+    override async submitCode(request: {
+      problemId: string;
+      language: string;
+      sourceCode: string;
+    }): Promise<{ submissionId: string }> {
+      submittedSource = request.sourceCode;
+      return { submissionId: 'submission-1' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined
+    },
+    output: { appendLine: () => undefined },
+    window: {
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'print("from prompt")'
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCode')?.();
+
+  assert.equal(submittedSource, 'print("from prompt")');
+});
+
+test('running submission result shows actionable progress notification', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const infoMessages: string[] = [];
+
+  class RunningPracticeCommands extends PracticeCommands {
+    override async fetchPublishedProblems(): Promise<readonly { problemId: string; title: string }[]> {
+      return [{ problemId: 'problem-1', title: 'Two Sum' }];
+    }
+
+    override async submitCode(): Promise<{ submissionId: string }> {
+      return { submissionId: 'submission-1' };
+    }
+
+    override async pollSubmissionResult(): Promise<{
+      submissionId: string;
+      status: 'running';
+    }> {
+      return { submissionId: 'submission-1', status: 'running' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RunningPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined
+    },
+    output: { appendLine: () => undefined },
+    window: {
+      showErrorMessage: () => undefined,
+      showInformationMessage: (message) => infoMessages.push(message),
+      showInputBox: async () => 'print(42)'
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCode')?.();
+  await handlers.get('oj.practice.viewResult')?.();
+
+  assert.ok(
+    infoMessages.some((message) =>
+      message.includes('Submission submission-1 is still running. Run OJ: View Result again shortly.')
+    )
+  );
 });

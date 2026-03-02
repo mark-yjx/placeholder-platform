@@ -196,7 +196,12 @@ test('smoke validates login -> fetch -> submit -> poll -> reload restoration ove
     });
 
     assert.deepEqual(restoredViews.state.getProblemNodes(), [
-      { id: 'problem-1', label: 'Two Sum', description: 'problem-1' }
+      {
+        id: 'problem-1',
+        label: 'Two Sum',
+        description: 'problem-1',
+        detail: '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nNo statement available.\n'
+      }
     ]);
     assert.deepEqual(restoredViews.state.getSubmissionNodes(), [
       {
