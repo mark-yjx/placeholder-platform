@@ -48,15 +48,21 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    working_dir: /workspace
     environment:
       DATABASE_URL: "postgresql://oj:oj@postgres:5432/oj"
       DOCKER_HOST: "unix:///var/run/docker.sock"
       DOCKER_IMAGE_PYTHON: "python:3.12-alpine"
+    volumes:
+      - ../..:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
     command:
       - sh
       - -lc
       - |
-        touch /tmp/healthy && node -e "setInterval(() => {}, 1000)"
+        apk add --no-cache docker-cli docker-cli-compose >/dev/null
+        touch /tmp/healthy
+        exec npm run worker:start
     healthcheck:
       test: ["CMD-SHELL", "test -f /tmp/healthy"]
       interval: 5s

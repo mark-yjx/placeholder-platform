@@ -11,7 +11,6 @@ const LOCAL_API_PORT = 3100;
 const LOCAL_API_BASE = `http://127.0.0.1:${LOCAL_API_PORT}`;
 
 let apiProcess = null;
-let workerProcess = null;
 
 function startLocalApiProcess() {
   apiProcess = spawn('npm', ['run', 'api:start'], {
@@ -43,33 +42,6 @@ async function stopLocalApiProcess() {
 async function restartLocalApiProcess() {
   await stopLocalApiProcess();
   startLocalApiProcess();
-}
-
-function startLocalWorkerProcess() {
-  workerProcess = spawn('npm', ['run', 'worker:start'], {
-    stdio: 'ignore',
-    env: {
-      ...process.env,
-      DATABASE_URL: 'postgresql://oj:oj@127.0.0.1:5432/oj',
-      DOCKER_IMAGE_PYTHON: 'python:3.12-alpine'
-    }
-  });
-}
-
-async function stopLocalWorkerProcess() {
-  if (!workerProcess) {
-    return;
-  }
-  await new Promise((resolve) => {
-    workerProcess.once('exit', () => resolve(undefined));
-    workerProcess.kill('SIGTERM');
-    setTimeout(() => {
-      if (workerProcess && !workerProcess.killed) {
-        workerProcess.kill('SIGKILL');
-      }
-    }, 1500);
-  });
-  workerProcess = null;
 }
 
 async function apiRequest(method, path, body, token) {
@@ -218,7 +190,7 @@ async function runFlow() {
 
   const submissionId = `smoke-submission-${Date.now()}`;
 
-  process.stdout.write('[smoke] submit while worker stopped and verify queued... ');
+  process.stdout.write('[smoke] submit and wait for compose worker result... ');
   const submission = await apiRequest(
     'POST',
     '/submissions',
@@ -230,15 +202,6 @@ async function runFlow() {
     },
     studentToken
   );
-  if (submission.status !== 'queued') {
-    throw new Error('submission was not queued');
-  }
-  const queuedView = await apiRequest('GET', `/submissions/${submissionId}/result`, undefined, studentToken);
-  assertSubmissionResult(queuedView, 'queued');
-  console.log('ok');
-
-  process.stdout.write('[smoke] start worker and wait for finished result... ');
-  startLocalWorkerProcess();
   const finishedView = await waitForSubmissionResult(
     submissionId,
     studentToken,
@@ -286,11 +249,9 @@ async function main() {
     runStep('seed user+problem', 'npm run local:db:setup');
     startLocalApiProcess();
     await runFlow();
-    await stopLocalWorkerProcess();
     await stopLocalApiProcess();
     console.log('SMOKE PASS');
   } catch (error) {
-    await stopLocalWorkerProcess();
     await stopLocalApiProcess();
     const message = error instanceof Error ? error.message : String(error);
     console.error(`SMOKE FAIL: ${message}`);

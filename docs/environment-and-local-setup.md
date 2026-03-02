@@ -76,11 +76,13 @@ npm run local:db:setup
 DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj PORT=3100 npm run api:start
 ```
 
-5. Start the worker runtime:
+5. Use the compose worker runtime:
 
 ```bash
-DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj DOCKER_IMAGE_PYTHON=python:3.12-alpine npm run worker:start
+npm run local:ps
 ```
+
+The compose `worker` service is the real judge worker runtime. Do not start a second host-side `npm run worker:start` alongside it unless you intentionally want competing workers.
 
 ## Friendly Port-Conflict Guidance
 

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { PostgresJudgeResultRepository, PostgresJudgeJobQueue, PostgresSubmissionRepository } from '@packages/infrastructure/src';
 import type { Verdict } from '@packages/domain/src/judge';
 import type { SubmissionStatus } from '@packages/domain/src/submission';
+import { createWorkerLogger } from './observability/WorkerLogger';
 import { PythonRunnerPlugin } from './runner/PythonRunnerPlugin';
 import { RunnerRegistry } from './runner/RunnerRegistry';
 import { createLocalPostgresSqlClient } from './runtime/localPostgresSqlClient';
@@ -171,6 +172,12 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
     if (!job) {
       return;
     }
+    const logger = createWorkerLogger(job.submissionId);
+    logger.info('worker.job.claimed', {
+      submissionId: job.submissionId,
+      ownerUserId: job.ownerUserId,
+      problemId: job.problemId
+    });
 
     const submission = await dependencies.submissions.findById(job.submissionId);
     if (!submission) {
@@ -182,6 +189,10 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
       existingResult &&
       (submission.status === 'finished' || submission.status === 'failed')
     ) {
+      logger.info('worker.job.duplicate_ignored', {
+        submissionId: job.submissionId,
+        status: submission.status
+      });
       dependencies.logger?.info(
         `worker.job.duplicate_ignored submissionId=${job.submissionId} status=${submission.status}`
       );
@@ -195,6 +206,10 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
         ...submission,
         status: 'running' as SubmissionStatus
       });
+      logger.info('worker.submission.running', {
+        submissionId: job.submissionId,
+        status: 'running'
+      });
       await dependencies.submissions.save({
         ...submission,
         status: 'failed' as SubmissionStatus
@@ -205,6 +220,11 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
         timeMs: 0,
         memoryKb: 0
       });
+      logger.info('worker.submission.completed', {
+        submissionId: job.submissionId,
+        status: 'failed',
+        verdict: 'CE'
+      });
       await dependencies.queue.acknowledge(job.submissionId);
       return;
     }
@@ -212,6 +232,10 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
     await dependencies.submissions.save({
       ...submission,
       status: 'running' as SubmissionStatus
+    });
+    logger.info('worker.submission.running', {
+      submissionId: job.submissionId,
+      status: 'running'
     });
 
     const result = await runPythonJudgeExecution({
@@ -230,6 +254,13 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
     await dependencies.results.save({
       submissionId: job.submissionId,
       verdict: result.verdict as Verdict,
+      timeMs: result.timeMs,
+      memoryKb: result.memoryKb
+    });
+    logger.info('worker.submission.completed', {
+      submissionId: job.submissionId,
+      status: result.status,
+      verdict: result.verdict,
       timeMs: result.timeMs,
       memoryKb: result.memoryKb
     });
