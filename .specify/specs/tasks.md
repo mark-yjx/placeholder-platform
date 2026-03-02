@@ -600,3 +600,93 @@ Acceptance checks:
 - Data persists across extension reload
 - No in-memory fallback logic exists
 - Health endpoints accessible from extension
+
+# Phase 8 – Release & Go-Live (User-facing)
+
+Goal:
+Make the extension usable by real users with a stable local setup, clear onboarding, and a repeatable release process.
+
+## 72. End-to-end demo checklist + user QA script
+
+Acceptance checks:
+- Provide a step-by-step manual QA checklist that a non-developer can follow
+- Covers: install VSIX → configure API URL → login → fetch → open problem → submit → see result → favorites/reviews
+- Includes expected UI feedback and common failure troubleshooting
+
+Scope:
+IN:
+- docs only (README/docs)
+OUT:
+- code changes (unless fixing doc inaccuracies)
+
+## 73. Extension UX polish (minimum viable)
+
+Acceptance checks:
+- Problem item click opens a read-only problem detail (markdown doc or virtual document)
+- “Submit code” uses active editor Python file when present; otherwise prompts input
+- Clear progress indication for queued/running (status bar or notification)
+- Errors are actionable (suggest next action)
+
+Scope:
+IN:
+- extension UI + command behavior only
+OUT:
+- backend changes unless required by API contract mismatch
+
+## 74. Environment & configuration hardening
+
+Acceptance checks:
+- Single documented source of truth for required env vars (API + worker)
+- local:up prints the ports and key endpoints
+- Detect and explain common port conflicts (3000/5432/6379) in a friendly way
+- Provide one command to reset local state (down -v, etc.) with warning
+
+Scope:
+IN:
+- scripts + docs
+OUT:
+- feature work
+
+## 75. CI: release-ready workflow
+
+Acceptance checks:
+- CI runs: typecheck + unit tests + build
+- Optional: smoke E2E can be enabled via workflow input or schedule
+- Artifacts: VSIX is produced on release workflow run
+
+Scope:
+IN:
+- GitHub Actions workflow updates
+OUT:
+- adding new tests beyond smoke wiring
+
+## 76. Versioning + changelog + packaging hygiene
+
+Acceptance checks:
+- Extension has consistent versioning strategy (semver)
+- CHANGELOG.md updated
+- VSCE packaging includes only intended files
+- Repository metadata present (license/repo/homepage where applicable)
+
+Scope:
+IN:
+- package.json / docs / packaging config
+OUT:
+- feature work
+
+## 77. Release Runbook
+
+Acceptance checks:
+- A documented “how to release” runbook:
+  - bump version
+  - build
+  - package vsix
+  - tag/release notes
+  - attach artifact
+- Includes rollback guidance and “known issues” section
+
+Scope:
+IN:
+- docs only
+OUT:
+- code changes

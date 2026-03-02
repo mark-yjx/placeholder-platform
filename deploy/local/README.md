@@ -15,7 +15,8 @@ npm run local:up
 
 This maps:
 - Postgres: `localhost:5432`
-- API health: `http://localhost:3000/health`
+- Placeholder API health: `http://localhost:3000/health`
+- Real local API runtime: `http://localhost:3100`
 
 ## Observability + readiness contracts
 - API request-id context uses `x-request-id` (or generated UUID) and structured logs include `requestId`.
@@ -75,3 +76,4 @@ npm run local:down
 ## Notes
 - This definition is intentionally local-first and self-contained for MVP deployment topology checks.
 - API and worker are local runtime containers with health checks to validate orchestration wiring.
+- The compose `api` service on `localhost:3000` is only a placeholder health server; the extension should target the real API runtime on `localhost:3100` unless you explicitly override `oj.apiBaseUrl`.

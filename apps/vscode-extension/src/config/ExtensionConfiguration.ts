@@ -1,6 +1,6 @@
 export const OJ_CONFIGURATION_NAMESPACE = 'oj';
 export const OJ_API_BASE_URL_SETTING = 'apiBaseUrl';
-export const DEFAULT_OJ_API_BASE_URL = 'http://localhost:3000';
+export const DEFAULT_OJ_API_BASE_URL = 'http://localhost:3100';
 
 export type WorkspaceConfigurationLike = {
   get<T>(section: string, defaultValue: T): T;

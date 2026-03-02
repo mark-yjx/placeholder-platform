@@ -36,7 +36,7 @@
       "properties": {
         "oj.apiBaseUrl": {
           "type": "string",
-          "default": "http://localhost:3000",
+          "default": "http://localhost:3100",
           "description": "Base URL for the OJ API used by the extension."
         }
       }
