@@ -45,6 +45,12 @@ type WorkerTickDependencies = {
     }) => Promise<void>;
   };
   results: {
+    findBySubmissionId: (submissionId: string) => Promise<{
+      submissionId: string;
+      verdict: Verdict;
+      timeMs: number;
+      memoryKb: number;
+    } | null>;
     save: (result: {
       submissionId: string;
       verdict: Verdict;
@@ -61,6 +67,9 @@ type WorkerTickDependencies = {
   sandbox: DockerSandboxAdapter;
   runners: RunnerRegistry;
   image: string;
+  logger?: {
+    info: (message: string) => void;
+  };
 };
 
 const DOCKER_RUN_FLAGS_WITH_VALUES = new Set([
@@ -151,7 +160,8 @@ export function createLocalWorkerTick(): () => Promise<void> {
     judgeConfigs,
     sandbox,
     runners,
-    image
+    image,
+    logger: console
   });
 }
 
@@ -166,6 +176,19 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
     if (!submission) {
       throw new Error(`Submission not found for job ${job.submissionId}`);
     }
+
+    const existingResult = await dependencies.results.findBySubmissionId(job.submissionId);
+    if (
+      existingResult &&
+      (submission.status === 'finished' || submission.status === 'failed')
+    ) {
+      dependencies.logger?.info(
+        `worker.job.duplicate_ignored submissionId=${job.submissionId} status=${submission.status}`
+      );
+      await dependencies.queue.acknowledge(job.submissionId);
+      return;
+    }
+
     const judgeConfig = await dependencies.judgeConfigs.findByProblemVersionId(job.problemVersionId);
     if (!judgeConfig) {
       await dependencies.submissions.save({

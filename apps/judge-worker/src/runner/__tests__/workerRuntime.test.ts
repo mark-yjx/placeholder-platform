@@ -189,6 +189,9 @@ test('worker tick uses problem tests and records AC for a correct submission', a
       }
     },
     results: {
+      async findBySubmissionId() {
+        return null;
+      },
       async save(result) {
         savedResults.push(result);
       }
@@ -268,6 +271,9 @@ test('worker tick returns WA when hidden tests fail and result does not leak hid
       }
     },
     results: {
+      async findBySubmissionId() {
+        return null;
+      },
       async save(result) {
         savedResults.push(result as unknown as Record<string, unknown>);
       }
@@ -357,6 +363,9 @@ test('worker tick marks submission failed with CE and acknowledges job when judg
       }
     },
     results: {
+      async findBySubmissionId() {
+        return null;
+      },
       async save(result) {
         savedResults.push(result);
       }
@@ -392,4 +401,97 @@ test('worker tick marks submission failed with CE and acknowledges job when judg
     }
   ]);
   assert.equal(acknowledgedSubmissionId, 'submission-missing-config');
+});
+
+test('worker tick acknowledges and logs duplicate completion without rewriting terminal result', async () => {
+  const { createWorkerTick } = loadWorkerRuntime();
+  const logs: string[] = [];
+  const savedStatuses: string[] = [];
+  const savedResults: Array<Record<string, unknown>> = [];
+  const sandboxCalls: string[] = [];
+  let acknowledgedSubmissionId = '';
+
+  const tick = createWorkerTick({
+    queue: {
+      async claimNext() {
+        return {
+          submissionId: 'submission-duplicate',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v2',
+          language: 'python',
+          sourceCode: 'def solve(*args):\n    return 0\n'
+        };
+      },
+      async acknowledge(submissionId: string) {
+        acknowledgedSubmissionId = submissionId;
+      }
+    },
+    submissions: {
+      async findById() {
+        return {
+          id: 'submission-duplicate',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v2',
+          language: 'python',
+          sourceCode: 'def solve(*args):\n    return 0\n',
+          status: 'finished' as import('@packages/domain/src/submission').SubmissionStatus
+        };
+      },
+      async save(submission) {
+        savedStatuses.push(submission.status);
+      }
+    },
+    results: {
+      async findBySubmissionId() {
+        return {
+          submissionId: 'submission-duplicate',
+          verdict: 'WA' as import('@packages/domain/src/judge').Verdict,
+          timeMs: 1083,
+          memoryKb: 0
+        };
+      },
+      async save(result) {
+        savedResults.push(result as unknown as Record<string, unknown>);
+      }
+    },
+    judgeConfigs: {
+      async findByProblemVersionId() {
+        throw new Error('judge config lookup should not run for duplicate terminal completion');
+      }
+    },
+    sandbox: new DockerSandboxAdapter(async () => {
+      sandboxCalls.push('executed');
+      return {
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+        timeMs: 1,
+        memoryKb: 1
+      };
+    }),
+    runners: new RunnerRegistry([
+      {
+        language: 'python',
+        resolve() {
+          return { language: 'python', runArgs: ['python', '/sandbox/main.py'] };
+        }
+      }
+    ]),
+    image: 'python:3.12-alpine',
+    logger: {
+      info: (message) => logs.push(message)
+    }
+  });
+
+  await tick();
+
+  assert.equal(acknowledgedSubmissionId, 'submission-duplicate');
+  assert.deepEqual(savedStatuses, []);
+  assert.deepEqual(savedResults, []);
+  assert.deepEqual(sandboxCalls, []);
+  assert.deepEqual(logs, [
+    'worker.job.duplicate_ignored submissionId=submission-duplicate status=finished'
+  ]);
 });
