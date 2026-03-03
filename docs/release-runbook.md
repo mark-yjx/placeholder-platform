@@ -55,6 +55,12 @@ npm install
 
 Expected:
 - `package-lock.json` matches the new extension version
+- the local `@vscode/vsce` dependency is available before packaging
+
+Packaging assumption:
+- `npm run extension:package` uses the already-installed `node_modules/@vscode/vsce` binary
+- packaging should not need `npx --yes` or an extra package download after `npm install`
+- the remaining network-sensitive step is dependency installation itself
 
 ### 3. Run Quality Gates
 
@@ -77,12 +83,19 @@ Expected artifacts:
 - `apps/vscode-extension/oj-vscode-extension-<version>.vsix`
 - `dist/oj-vscode.vsix`
 
+Packaging behavior:
+- the versioned VSIX filename is derived from `apps/vscode-extension/package.json`
+- `dist/oj-vscode.vsix` is the stable copy used by the release workflow artifact upload
+- run packaging from a clean checkout after `npm install` to keep the result reproducible
+
 ### 5. Smoke Check The Package
 
 Recommended:
 1. Install the generated VSIX into VS Code.
 2. Set `oj.apiBaseUrl`.
 3. Run the manual checklist in [OJ VSCode Demo Checklist](/home/mark/src/oj-vscode/docs/extension-demo-checklist.md).
+4. Confirm the installed extension activates and loads the `OJ Problems` and `OJ Submissions` views.
+5. Remove the installed VSIX if the rehearsal build should not remain installed.
 
 Minimum expected flow:
 - login
@@ -164,7 +177,8 @@ Current known issues for release planning:
 2. Run `npm install`.
 3. Run typecheck, tests, and build.
 4. Run `npm run extension:package`.
-5. Install and smoke-test the VSIX.
-6. Create release notes.
-7. Tag `v<version>`.
-8. Publish release and attach artifact.
+5. Confirm `apps/vscode-extension/oj-vscode-extension-<version>.vsix` and `dist/oj-vscode.vsix` exist.
+6. Install and smoke-test the VSIX.
+7. Create release notes.
+8. Tag `v<version>`.
+9. Publish release and attach artifact.

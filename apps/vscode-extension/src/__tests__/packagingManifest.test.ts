@@ -7,6 +7,10 @@ function readExtensionPackageJson(): {
   main: string;
   version: string;
   license?: string;
+  scripts: {
+    build: string;
+    'package:vsix': string;
+  };
   repository?: {
     type?: string;
     url?: string;
@@ -45,6 +49,12 @@ test('extension package keeps production packaging whitelist and activation even
     url: 'https://github.com/mark-yjx/comp9021-oj/issues'
   });
   assert.equal(manifest.main, './dist/extension.js');
+  assert.equal(manifest.scripts.build, 'rm -rf dist && tsc -p tsconfig.build.json');
+  assert.match(
+    manifest.scripts['package:vsix'],
+    /node \.\.\/\.\.\/node_modules\/@vscode\/vsce\/vsce package --no-dependencies --skip-license --out oj-vscode-extension-\$\(node -p/
+  );
+  assert.doesNotMatch(manifest.scripts['package:vsix'], /npx --yes/);
   assert.ok(manifest.activationEvents.includes('onCommand:oj.login'));
   assert.ok(manifest.activationEvents.includes('onView:ojProblems'));
   assert.ok(manifest.activationEvents.includes('onView:ojSubmissions'));

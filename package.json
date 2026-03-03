@@ -28,7 +28,7 @@
     "smoke:local": "node tools/scripts/local-smoke.mjs",
     "api:start": "PORT=${PORT:-3100} DATABASE_URL=${DATABASE_URL:-postgresql://oj:oj@127.0.0.1:5432/oj} npm -w @apps/api run start",
     "worker:start": "npm -w @apps/judge-worker run start",
-    "extension:package": "mkdir -p dist && npm -w oj-vscode-extension run build && npm -w oj-vscode-extension run package:vsix && cp apps/vscode-extension/oj-vscode-extension-0.1.0.vsix dist/oj-vscode.vsix"
+    "extension:package": "mkdir -p dist && npm -w oj-vscode-extension run package:vsix && cp apps/vscode-extension/oj-vscode-extension-$(node -p \"require('./apps/vscode-extension/package.json').version\").vsix dist/oj-vscode.vsix"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
