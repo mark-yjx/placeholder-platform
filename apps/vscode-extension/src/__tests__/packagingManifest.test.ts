@@ -4,9 +4,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 function readExtensionPackageJson(): {
+  description: string;
+  icon?: string;
   main: string;
   version: string;
   license?: string;
+  categories?: readonly string[];
+  keywords?: readonly string[];
   scripts: {
     build: string;
     'package:vsix': string;
@@ -21,6 +25,7 @@ function readExtensionPackageJson(): {
   };
   activationEvents: readonly string[];
   contributes: {
+    commands?: readonly { command: string; title: string }[];
     views: Record<string, readonly { id: string; name: string }[]>;
   };
 } {
@@ -37,9 +42,15 @@ function readExtensionPackageJson(): {
 
 test('extension package keeps production packaging whitelist and activation events stable', () => {
   const manifest = readExtensionPackageJson();
+  const packageRoot = path.dirname(
+    [path.resolve(process.cwd(), 'package.json'), path.resolve(process.cwd(), 'apps/vscode-extension/package.json')].find(
+      (candidate) => fs.existsSync(candidate)
+    ) as string
+  );
 
   assert.equal(manifest.version, '0.1.0');
   assert.equal(manifest.license, 'UNLICENSED');
+  assert.match(manifest.description, /Local-first COMP9021 online judge workflow/);
   assert.deepEqual(manifest.repository, {
     type: 'git',
     url: 'git+https://github.com/mark-yjx/comp9021-oj.git'
@@ -49,15 +60,45 @@ test('extension package keeps production packaging whitelist and activation even
     url: 'https://github.com/mark-yjx/comp9021-oj/issues'
   });
   assert.equal(manifest.main, './dist/extension.js');
+  assert.deepEqual(manifest.categories, ['Education', 'Programming Languages']);
+  assert.deepEqual(manifest.keywords, [
+    'online-judge',
+    'comp9021',
+    'python',
+    'practice',
+    'education'
+  ]);
+  assert.equal(manifest.icon, 'media/icon.png');
+  assert.ok(fs.existsSync(path.join(packageRoot, 'CHANGELOG.md')));
+  assert.ok(fs.existsSync(path.join(packageRoot, 'LICENSE.txt')));
+  assert.ok(fs.existsSync(path.join(packageRoot, 'media', 'icon.png')));
   assert.equal(manifest.scripts.build, 'rm -rf dist && tsc -p tsconfig.build.json');
   assert.match(
     manifest.scripts['package:vsix'],
-    /node \.\.\/\.\.\/node_modules\/@vscode\/vsce\/vsce package --no-dependencies --skip-license --out oj-vscode-extension-\$\(node -p/
+    /node \.\.\/\.\.\/node_modules\/@vscode\/vsce\/vsce package --no-dependencies --out oj-vscode-extension-\$\(node -p/
   );
-  assert.doesNotMatch(manifest.scripts['package:vsix'], /npx --yes/);
-  assert.ok(manifest.activationEvents.includes('onCommand:oj.login'));
-  assert.ok(manifest.activationEvents.includes('onView:ojProblems'));
-  assert.ok(manifest.activationEvents.includes('onView:ojSubmissions'));
+  assert.doesNotMatch(manifest.scripts['package:vsix'], /npx --yes|--skip-license/);
+  for (const command of manifest.contributes.commands ?? []) {
+    assert.ok(
+      manifest.activationEvents.includes(`onCommand:${command.command}`),
+      `missing activation event for ${command.command}`
+    );
+  }
+  assert.deepEqual(manifest.activationEvents, [
+    'onCommand:oj.login',
+    'onCommand:oj.practice.fetchProblems',
+    'onCommand:oj.practice.submitCode',
+    'onCommand:oj.practice.submitCurrentFile',
+    'onCommand:oj.practice.viewResult',
+    'onCommand:oj.practice.cancelPolling',
+    'onCommand:oj.practice.selectSubmission',
+    'onView:ojProblems',
+    'onView:ojSubmissions',
+    'onCommand:oj.engagement.favoriteProblem',
+    'onCommand:oj.engagement.submitReview',
+    'onCommand:oj.stats.show',
+    'onCommand:oj.ranking.show'
+  ]);
   assert.deepEqual(manifest.contributes.views.explorer, [
     { id: 'ojProblems', name: 'OJ Problems' },
     { id: 'ojSubmissions', name: 'OJ Submissions' }

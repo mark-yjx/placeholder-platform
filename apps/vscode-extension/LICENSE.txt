@@ -1,0 +1,8 @@
+OJ VSCode Extension
+Copyright (c) 2026 Mark
+
+This package is provided as UNLICENSED software.
+All rights are reserved.
+
+You may not copy, modify, distribute, sublicense, or publish this package
+without prior written permission from the copyright holder.

@@ -13,6 +13,11 @@ Before releasing:
 - CI is green
 - changelog is updated for the target version
 - extension metadata in `apps/vscode-extension/package.json` is correct
+- extension metadata assets exist and match the manifest:
+  - `apps/vscode-extension/CHANGELOG.md`
+  - `apps/vscode-extension/LICENSE.txt`
+  - `apps/vscode-extension/media/icon.png`
+  - `description`, `categories`, `keywords`, and `activationEvents`
 
 CI lanes:
 - blocking for merge: `CI / checks`
@@ -42,6 +47,8 @@ Update the extension version in:
 
 Also update:
 - `apps/vscode-extension/CHANGELOG.md`
+- `apps/vscode-extension/LICENSE.txt` if release ownership or distribution terms changed
+- `apps/vscode-extension/media/icon.png` if marketplace branding changed
 - any docs that mention the packaged VSIX filename
 
 Versioning rule:
@@ -72,6 +79,14 @@ npm run -ws --if-present build
 
 Expected:
 - all commands pass before packaging
+
+### 3a. Verify Metadata Consistency
+
+Confirm before packaging:
+- `apps/vscode-extension/package.json` matches the intended release description, categories, keywords, icon path, and activation events
+- `apps/vscode-extension/CHANGELOG.md` matches the release notes scope
+- `apps/vscode-extension/LICENSE.txt` matches the `license` field and intended distribution status
+- `apps/vscode-extension/media/icon.png` exists at the path referenced by the manifest
 
 ### 4. Build And Package The VSIX
 

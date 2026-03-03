@@ -1,11 +1,23 @@
 {
   "name": "oj-vscode-extension",
   "displayName": "OJ VSCode",
-  "description": "COMP9021 practice extension scaffold",
+  "description": "Local-first COMP9021 online judge workflow for login, problem browsing, starter files, submission polling, and result inspection in VS Code.",
   "private": true,
   "publisher": "local",
   "version": "0.1.0",
   "license": "UNLICENSED",
+  "icon": "media/icon.png",
+  "categories": [
+    "Education",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "online-judge",
+    "comp9021",
+    "python",
+    "practice",
+    "education"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mark-yjx/comp9021-oj.git"
@@ -24,6 +36,7 @@
     "onCommand:oj.practice.submitCurrentFile",
     "onCommand:oj.practice.viewResult",
     "onCommand:oj.practice.cancelPolling",
+    "onCommand:oj.practice.selectSubmission",
     "onView:ojProblems",
     "onView:ojSubmissions",
     "onCommand:oj.engagement.favoriteProblem",
@@ -113,6 +126,6 @@
     "lint": "node -e \"console.log('lint @apps/vscode-extension')\"",
     "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/__tests__/*.test.js",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "package:vsix": "npm run build && node ../../node_modules/@vscode/vsce/vsce package --no-dependencies --skip-license --out oj-vscode-extension-$(node -p \"require('./package.json').version\").vsix"
+    "package:vsix": "npm run build && node ../../node_modules/@vscode/vsce/vsce package --no-dependencies --out oj-vscode-extension-$(node -p \"require('./package.json').version\").vsix"
   }
 }
