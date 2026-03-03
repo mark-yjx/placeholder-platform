@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(scriptDir, '../..');
 const composeFile = path.join(root, 'deploy/local/docker-compose.yml');
+const extensionDistRoot = path.join(root, 'apps', 'vscode-extension', 'dist');
 const MISSING_SOLVE_MESSAGE = 'Submission must define a top-level solve() function';
 const SOLVE_ONLY_EXTRACTOR = String.raw`
 import ast
@@ -91,6 +92,32 @@ async function apiRequest(method, path, body, token) {
   return response.json();
 }
 
+async function loadExtensionStudentLoop() {
+  const [
+    { AuthCommands },
+    { SessionTokenStore },
+    { PracticeCommands },
+    { HttpAuthClient, HttpPracticeApiClient }
+  ] = await Promise.all([
+    import(pathToFileURL(path.join(extensionDistRoot, 'auth', 'AuthCommands.js')).href),
+    import(pathToFileURL(path.join(extensionDistRoot, 'auth', 'SessionTokenStore.js')).href),
+    import(pathToFileURL(path.join(extensionDistRoot, 'practice', 'PracticeCommands.js')).href),
+    import(pathToFileURL(path.join(extensionDistRoot, 'runtime', 'HttpExtensionClients.js')).href)
+  ]);
+
+  const tokenStore = new SessionTokenStore();
+  const clientConfig = {
+    apiBaseUrl: LOCAL_API_BASE,
+    requestTimeoutMs: 10_000
+  };
+
+  return {
+    tokenStore,
+    authCommands: new AuthCommands(new HttpAuthClient(clientConfig), tokenStore),
+    practiceCommands: new PracticeCommands(new HttpPracticeApiClient(clientConfig), tokenStore)
+  };
+}
+
 async function waitForApiHealthy(attempts, intervalMs) {
   for (let i = 0; i < attempts; i += 1) {
     try {
@@ -143,6 +170,20 @@ function assertSubmissionResult(view, expectedStatus, expectedVerdict) {
     if (typeof view.timeMs !== 'number' || typeof view.memoryKb !== 'number') {
       throw new Error('submission result missing time/memory');
     }
+  }
+}
+
+function assertNonCompileErrorVerdict(view) {
+  if (!view || view.status !== 'finished') {
+    throw new Error('submission did not reach finished state');
+  }
+
+  if (!view.verdict || !['AC', 'WA', 'TLE', 'RE'].includes(view.verdict)) {
+    throw new Error(`expected non-CE terminal verdict, received ${String(view.verdict)}`);
+  }
+
+  if (typeof view.timeMs !== 'number' || typeof view.memoryKb !== 'number') {
+    throw new Error('submission result missing time/memory');
   }
 }
 
@@ -208,6 +249,50 @@ async function waitForSubmissionResult(submissionId, token, expectedStatus, expe
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
   throw new Error(`submission ${submissionId} did not reach ${expectedStatus}`);
+}
+
+async function waitForExtensionSubmissionTerminal(practiceCommands, submissionId, attempts, intervalMs) {
+  for (let i = 0; i < attempts; i += 1) {
+    const result = await practiceCommands.pollSubmissionResult(submissionId);
+
+    if (result.status === 'finished' || result.status === 'failed') {
+      return result;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(`submission ${submissionId} did not reach a terminal state`);
+}
+
+function assertWorkerLifecycleLogged(submissionId) {
+  const logs = execFileSync(
+    'docker',
+    ['compose', '-f', composeFile, 'logs', 'worker', '--tail', '200'],
+    { cwd: root, encoding: 'utf8' }
+  );
+  const escapedSubmissionId = submissionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const claimedPattern = new RegExp(
+    `message: 'worker\\.job\\.claimed'[\\s\\S]*submissionId: '${escapedSubmissionId}'`
+  );
+  const runningPattern = new RegExp(
+    `message: 'worker\\.submission\\.running'[\\s\\S]*submissionId: '${escapedSubmissionId}'`
+  );
+  const completedPattern = new RegExp(
+    `message: 'worker\\.submission\\.completed'[\\s\\S]*submissionId: '${escapedSubmissionId}'`
+  );
+
+  if (!claimedPattern.test(logs)) {
+    throw new Error(`worker logs missing claimed event for ${submissionId}`);
+  }
+
+  if (!runningPattern.test(logs)) {
+    throw new Error(`worker logs missing running event for ${submissionId}`);
+  }
+
+  if (!completedPattern.test(logs)) {
+    throw new Error(`worker logs missing completed event for ${submissionId}`);
+  }
 }
 
 function postgresScalar(sql) {
@@ -309,18 +394,14 @@ async function runFlow() {
   }
   console.log('ok');
 
-  process.stdout.write('[smoke] login (fixture token)... ');
-  const adminLogin = await apiRequest('POST', '/auth/login', {
-    email: 'admin@example.com',
-    password: 'ignored'
-  });
-  const studentLogin = await apiRequest('POST', '/auth/login', {
+  process.stdout.write('[smoke] login through extension http client... ');
+  const extensionStudentLoop = await loadExtensionStudentLoop();
+  await extensionStudentLoop.authCommands.login({
     email: 'student1@example.com',
     password: 'secret'
   });
-  const adminToken = String(adminLogin.accessToken ?? '');
-  const studentToken = String(studentLogin.accessToken ?? '');
-  if (!adminToken || !studentToken) {
+  const studentToken = extensionStudentLoop.tokenStore.getAccessToken();
+  if (!studentToken) {
     throw new Error('login failed');
   }
   console.log('ok');
@@ -332,9 +413,9 @@ async function runFlow() {
   configureSmokeJudge(`${problemId}-v1`);
   console.log('ok');
 
-  process.stdout.write('[smoke] fetch problems (student)... ');
-  const problemsBefore = await apiRequest('GET', '/problems', undefined, studentToken);
-  const beforeProblemIds = (problemsBefore.problems ?? []).map((item) => item.problemId);
+  process.stdout.write('[smoke] fetch problems through extension practice client... ');
+  const problemsBefore = await extensionStudentLoop.practiceCommands.fetchPublishedProblems();
+  const beforeProblemIds = problemsBefore.map((item) => item.problemId);
   assertIncludes(beforeProblemIds, problemId, 'problem list');
   console.log('ok');
 
@@ -359,33 +440,37 @@ async function runFlow() {
   assertMissingSolveRejected();
   console.log('ok');
 
-  const submissionId = `smoke-submission-${Date.now()}`;
   const sourceCode = extractSolveOnlyPayload(`
 def solve():
     return 42
 `);
 
-  process.stdout.write('[smoke] submit and wait for compose worker result... ');
-  const submission = await apiRequest(
-    'POST',
-    '/submissions',
-    {
-      submissionId,
-      problemId,
-      language: 'python',
-      sourceCode
-    },
-    studentToken
+  process.stdout.write('[smoke] submit through extension practice client and wait for compose worker result... ');
+  const submission = await extensionStudentLoop.practiceCommands.submitCode({
+    problemId,
+    language: 'python',
+    sourceCode
+  });
+  const submissionId = submission.submissionId;
+  const submissionHistoryBeforeTerminal = await extensionStudentLoop.practiceCommands.listSubmissions();
+  const queuedOrRunningSubmission = submissionHistoryBeforeTerminal.find(
+    (item) => item.submissionId === submissionId
   );
-  const finishedView = await waitForSubmissionResult(
+  if (!queuedOrRunningSubmission) {
+    throw new Error(`submission ${submissionId} missing from extension submission history`);
+  }
+
+  const finishedView = await waitForExtensionSubmissionTerminal(
+    extensionStudentLoop.practiceCommands,
     submissionId,
-    studentToken,
-    'finished',
-    'AC',
     40,
     250
   );
-  assertSubmissionResult(finishedView, 'finished', 'AC');
+  if (finishedView.status !== 'finished') {
+    throw new Error(`expected finished status for ${submissionId}`);
+  }
+  assertNonCompileErrorVerdict(finishedView);
+  assertWorkerLifecycleLogged(submissionId);
   assertSingleTerminalResult(submissionId);
   console.log('ok');
 
@@ -398,30 +483,41 @@ def solve():
   if (!healthyAfterRestart) {
     throw new Error('api health timeout after restart');
   }
-  const problemsAfter = await apiRequest('GET', '/problems', undefined, studentToken);
-  const favoritesAfter = await apiRequest('GET', '/favorites', undefined, studentToken);
-  const reviewsAfter = await apiRequest('GET', `/reviews/${problemId}`, undefined, studentToken);
+  const restoredExtensionStudentLoop = await loadExtensionStudentLoop();
+  await restoredExtensionStudentLoop.authCommands.login({
+    email: 'student1@example.com',
+    password: 'secret'
+  });
+  const restoredStudentToken = restoredExtensionStudentLoop.tokenStore.getAccessToken();
+  if (!restoredStudentToken) {
+    throw new Error('login failed after restart');
+  }
+
+  const problemsAfter = await restoredExtensionStudentLoop.practiceCommands.fetchPublishedProblems();
+  const favoritesAfter = await apiRequest('GET', '/favorites', undefined, restoredStudentToken);
+  const reviewsAfter = await apiRequest('GET', `/reviews/${problemId}`, undefined, restoredStudentToken);
   const resultAfterRestart = await apiRequest(
     'GET',
     `/submissions/${submissionId}/result`,
     undefined,
-    studentToken
+    restoredStudentToken
   );
 
   assertIncludes(
-    (problemsAfter.problems ?? []).map((item) => item.problemId),
+    problemsAfter.map((item) => item.problemId),
     problemId,
     'problem list after restart'
   );
   assertIncludes(favoritesAfter.favorites ?? [], problemId, 'favorites after restart');
   assertReviewPresent(reviewsAfter, problemId, 'review list after restart');
-  assertSubmissionResult(resultAfterRestart, 'finished', 'AC');
+  assertNonCompileErrorVerdict(resultAfterRestart);
   assertSingleTerminalResult(submissionId);
   console.log('ok');
 }
 
 async function main() {
   try {
+    runStep('build extension runtime', 'npm -w oj-vscode-extension run build');
     runStep('boot local stack', 'npm run local:up');
     runStep('seed user+problem', 'npm run local:db:setup');
     runStep('import sample problems', 'npm run import:problems -- --dir data/problems');

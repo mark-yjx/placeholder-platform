@@ -11,6 +11,7 @@ npm run smoke:local
 ```
 
 What it does:
+- builds and exercises the extension login/fetch/submit flow against the live API
 - starts the compose-managed stack
 - applies schema and seed data
 - imports sample problems from `data/problems`
