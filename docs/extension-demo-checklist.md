@@ -1,20 +1,8 @@
-# OJ VSCode Demo Checklist
+# OJ VSCode Student Smoke Checklist
 
-This guide is for manual QA of the packaged VS Code extension by a non-developer.
+This checklist verifies the current student shell against the real local stack.
 
-## Before You Start
-
-You need:
-- VS Code
-- the packaged extension file: `apps/vscode-extension/oj-vscode-extension-0.1.0.vsix`
-- a running OJ API reachable from VS Code
-
-For the local stack used in this repository:
-- Docker must be running
-- Postgres stack must be up
-- the real OJ API should run on `http://localhost:3100`
-
-Repository operator setup:
+Use it after:
 
 ```bash
 npm install
@@ -23,7 +11,12 @@ npm run local:db:setup
 DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj PORT=3100 npm run api:start
 ```
 
-Health check:
+Local runtime assumptions:
+- real API base URL: `http://localhost:3100`
+- compose `worker` service is running
+- fixture student login is available through `OJ: Login`
+
+Health check before opening VS Code:
 
 ```bash
 curl http://localhost:3100/healthz
@@ -37,276 +30,148 @@ Expected:
 {"status":"ready"}
 ```
 
-## 1. Install The VSIX
+## Student Success Path
 
-1. Open VS Code.
-2. Open Extensions.
-3. Open the `...` menu.
-4. Choose `Install from VSIX...`.
-5. Select `oj-vscode-extension-0.1.0.vsix`.
+### 1. Install and configure the extension
 
-Expected:
-- the extension `OJ VSCode` appears as installed
-- after reload, the `OJ VSCode` output channel is available
-
-If you use Remote SSH:
-- install the VSIX into the remote extension host, not only on your local machine
-
-## 2. Configure The API URL
-
-1. Open Command Palette.
-2. Run `Preferences: Open Settings (JSON)`.
-3. Add:
+1. Install `apps/vscode-extension/oj-vscode-extension-0.1.0.vsix`.
+2. Open Settings JSON.
+3. Set:
 
 ```json
 {
-  "oj.apiBaseUrl": "http://localhost:3100"
+  "oj.apiBaseUrl": "http://localhost:3100",
+  "oj.requestTimeoutMs": 10000
 }
 ```
 
 Expected:
-- after `Developer: Reload Window`, the output channel shows:
+- the `OJ VSCode` output channel opens on activation
+- activation logs show:
+  - `OJ VSCode extension activated`
+  - `API base URL: http://localhost:3100`
+  - `Request timeout: 10000ms`
+  - `Auth tokens are stored in VS Code SecretStorage on this machine.`
 
-```text
-OJ VSCode extension activated
-API base URL: http://localhost:3100
-API health: ok
-API readiness: ready
-```
+### 2. Login
 
-## 3. Login
+1. Run `OJ: Login`.
 
-1. Open Command Palette.
-2. Run `OJ: Login`.
-
-Expected UI:
+Expected:
 - notification: `[oj.login] success`
+- output includes `Authenticated`
 
-Expected output:
-
-```text
-[oj.login] start
-Authenticated
-[oj.login] success
-```
-
-Notes:
-- the current demo build uses the seeded fixture student login
-- login state should persist across reload through SecretStorage
-
-## 4. Fetch Problems
+### 3. Fetch published problems
 
 1. Run `OJ: Fetch Problems`.
 
-Expected UI:
-- if problems exist: `Loaded <n> problems.`
-- if no problems exist: `No published problems available.`
+Expected:
+- `OJ Problems` and `OJ Submissions` views are available in Explorer
+- the problems list is loaded from the real API
+- output includes:
+  - `[oj.practice.fetchProblems] start`
+  - `Problems loaded: <n>`
+  - `[oj.practice.fetchProblems] success`
 
-Expected output:
+### 4. Open a problem statement and starter file
 
-```text
-[oj.practice.fetchProblems] start
-Problems loaded: <n>
-[oj.practice.fetchProblems] success
-```
-
-Expected Explorer views:
-- `OJ Problems`
-- `OJ Submissions`
-
-Expected data:
-- `OJ Problems` shows published problems from the database
-
-If the view is not visible:
-1. Open Explorer.
-2. Open the `...` menu.
-3. Open `Views`.
-4. Enable `OJ Problems` and `OJ Submissions`.
-
-## 5. Open A Problem
-
-Current packaged behavior:
-- problem items are visible in the `OJ Problems` tree
-- clicking a problem does not yet open a separate detail document in this build
-
-Pass criteria for the current demo:
-- the problem list is visible
-- each problem shows its title and id
-
-Known limitation:
-- read-only problem detail view is planned for Task 73
-
-## 6. Submit Code
-
-1. Run `OJ: Submit Code`.
-
-Expected UI:
-- notification: `[oj.practice.submitCode] success`
-
-Expected output:
-
-```text
-[oj.practice.submitCode] start
-Submitted: <submission-id>
-[oj.practice.submitCode] success
-```
-
-Expected Explorer behavior:
-- a new item appears in `OJ Submissions` immediately
-- initial status is a submitted or waiting state
-
-Current packaged behavior:
-- the command submits a built-in Python snippet for the first visible problem
-
-## 7. See The Result
-
-1. Run `OJ: View Result`.
+1. In `OJ Problems`, click a problem item.
 
 Expected:
-- if judging is still in progress, the extension shows a queued or running state
-- if judging is complete, the extension shows verdict, time, and memory
+- the selected problem is revealed in the `OJ Problems` tree
+- the statement is shown in VS Code UI for the selected problem
+- a local editable starter file opens at `.oj/problems/<problemId>.py`
+- the starter file content comes from the backend problem detail, not a hardcoded template
 
-Expected output examples:
+Manual check:
+- edit the opened `.oj/problems/<problemId>.py` file and save it
 
-```text
-Submission <submission-id>: status=running
+### 5. Submit the current editor file
+
+1. Keep the `.oj/problems/<problemId>.py` file focused.
+2. Run `OJ: Submit Current File`.
+
+Expected:
+- notification confirms submission success
+- output includes `Submitted current file: <submissionId>`
+- a new submission row appears immediately in `OJ Submissions`
+- the initial submission state is `queued`
+
+### 6. Observe polling through terminal state
+
+Expected without any extra action:
+- the same submission row transitions from `queued` to `running`
+- the final row transitions to `finished` or `failed`
+- polling stops automatically after the terminal state is reached
+
+Optional manual check:
+1. Run `OJ: Cancel Polling` while a submission is still `queued` or `running`.
+2. Confirm the extension reports cancellation cleanly.
+
+### 7. Inspect the final result
+
+1. Select the submission row in `OJ Submissions`.
+2. Run `OJ: Show Submission Detail`.
+3. Run `OJ: View Result`.
+
+Expected:
+- terminal output and/or result UI shows the current terminal state
+- `finished` results show verdict and, when available, time and memory
+- `failed` results show a visible failure reason
+- no hidden test input or expected output is shown
+
+## Student Failure Path
+
+Use this path to verify error UX without changing backend code.
+
+### 8. Invalid configuration path
+
+1. Change settings JSON to:
+
+```json
+{
+  "oj.apiBaseUrl": "localhost:3100",
+  "oj.requestTimeoutMs": 10000
+}
 ```
 
-or
+2. Reload the VS Code window.
 
-```text
-Submission <submission-id>: verdict=AC, time=120ms, memory=2048KB
-```
+Expected:
+- activation fails fast with a clear error message about `oj.apiBaseUrl`
+- the output channel includes `Extension configuration error: ...`
+- the message tells the student to use a valid `http://` or `https://` URL
 
-Expected Explorer behavior:
-- the same submission row updates to the latest result
-- once the result is terminal, it should stay terminal
+### 9. Failed submission path
 
-## 8. Favorites
+1. Restore `oj.apiBaseUrl` to `http://localhost:3100`.
+2. Reload the VS Code window.
+3. Open the starter file again.
+4. Replace the current file with a deliberately broken implementation for the selected problem.
+5. Run `OJ: Submit Current File`.
 
-1. Run `OJ: Favorite Problem`.
+Expected:
+- the submission still transitions `queued` -> `running` -> `finished|failed`
+- if the result is `failed`, `OJ: View Result` shows a non-empty failure reason
+- if the result is `finished` with `CE` or `RE`, the extension shows that terminal verdict instead of collapsing it into a generic transport error
 
-Expected UI:
-- notification: `[oj.engagement.favoriteProblem] success`
+## Persistence Check
 
-Expected output:
-
-```text
-[oj.engagement.favoriteProblem] start
-Favorites: problem-1
-[oj.engagement.favoriteProblem] success
-```
-
-Current packaged behavior:
-- the command favorites the seeded fixture problem `problem-1`
-
-## 9. Reviews
-
-1. Run `OJ: Submit Review`.
-
-Expected UI:
-- notification: `[oj.engagement.submitReview] success`
-
-Expected output:
-
-```text
-[oj.engagement.submitReview] start
-Reviews for problem-1: <n>
-[oj.engagement.submitReview] success
-```
-
-Current packaged behavior:
-- the command submits a fixture review for `problem-1`
-
-## 10. Reload Persistence Check
+### 10. Reload the window
 
 1. Run `Developer: Reload Window`.
 
-Expected output:
-
-```text
-OJ VSCode extension activated
-API base URL: http://localhost:3100
-API health: ok
-API readiness: ready
-Session restored from SecretStorage
-Restored <n> problems and <m> submissions from API
-```
-
 Expected:
-- login remains active
-- problems are restored
-- submissions are restored
+- session token restores from VS Code SecretStorage
+- the previously selected problem can be restored
+- the last opened `.oj/problems/<problemId>.py` file remains usable
+- the last submission id for the selected problem remains available in the submissions view
 
-## Common Failures And Fixes
+## Pass Criteria
 
-### `API base URL: http://localhost:3000`
-
-Cause:
-- old setting or old VSIX build
-
-Fix:
-- set `"oj.apiBaseUrl": "http://localhost:3100"`
-- reload window
-- if needed, reinstall the VSIX
-
-### `API health probe failed: Unexpected token 'o', "not found" is not valid JSON`
-
-Cause:
-- port `3000` is pointing at the placeholder compose service, not the real API
-
-Fix:
-- use `http://localhost:3100`
-- verify `curl http://localhost:3100/healthz`
-
-### `API health probe failed: fetch failed`
-
-Cause:
-- nothing is listening on `3100`
-
-Fix:
-- start the API:
-
-```bash
-DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj PORT=3100 npm run api:start
-```
-
-### `Practice state restore failed: Not Found`
-
-Cause:
-- the API is running, but not with the database-backed local runtime
-
-Fix:
-- ensure the DB stack is up
-- ensure the API is started with `DATABASE_URL`
-
-### `OJ Problems` is missing even after fetch succeeds
-
-Cause:
-- the view is hidden, or an old VSIX is installed
-
-Fix:
-- enable the views from Explorer `...` -> `Views`
-- reinstall the latest VSIX
-- reload VS Code
-
-### Remote SSH: extension cannot reach the API
-
-Cause:
-- `localhost` resolves on the remote machine where the extension host runs
-
-Fix:
-- run the API on the SSH host, or use a reachable remote URL
-- install the extension on the remote side, not only locally
-
-## Demo Pass Criteria
-
-The demo passes when all of these are true:
-- VSIX installs successfully
-- API URL is configured and health/readiness are green
-- login succeeds
-- problems load into `OJ Problems`
-- a submission is created and appears in `OJ Submissions`
-- result can be viewed from the real API
-- favorite and review commands succeed
-- reload restores session and practice state
+The checklist passes when all of the following are true:
+- login, fetch, open, edit, submit, poll, and result inspection all work against `http://localhost:3100`
+- the extension uses the real HTTP API path, not in-memory clients
+- a submission visibly transitions `queued` -> `running` -> `finished|failed`
+- a student can see a terminal verdict or a visible failure reason
+- hidden tests are not exposed in any extension UI
