@@ -13,6 +13,7 @@ import { ApiErrorPayload, ExtensionApiError } from '../errors/ExtensionErrorMapp
 
 export type ExtensionApiClientConfig = {
   apiBaseUrl: string;
+  requestTimeoutMs: number;
 };
 
 type RequestJsonOptions = {
@@ -47,11 +48,33 @@ async function requestJson<T>(
     headers.set('authorization', `Bearer ${options.accessToken}`);
   }
 
-  const response = await fetch(`${config.apiBaseUrl}${path}`, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs);
+  let response: Response;
+
+  try {
+    response = await fetch(`${config.apiBaseUrl}${path}`, {
+      method: options.method ?? 'GET',
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'name' in error &&
+      (error as { name?: unknown }).name === 'AbortError'
+    ) {
+      throw Object.assign(
+        new Error(`Request timed out after ${config.requestTimeoutMs}ms. Check oj.requestTimeoutMs and try again.`),
+        { code: 'ETIMEDOUT' }
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     throw new ExtensionApiError(response.status, await parseApiErrorPayload(response));

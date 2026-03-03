@@ -5,8 +5,12 @@ import { AuthCommands } from './auth/AuthCommands';
 import { SessionTokenStore } from './auth/SessionTokenStore';
 import { PracticeCommands } from './practice/PracticeCommands';
 import {
+  describeTokenStorageBehavior,
+  DEFAULT_OJ_REQUEST_TIMEOUT_MS,
   OJ_CONFIGURATION_NAMESPACE,
-  resolveApiBaseUrl
+  resolveApiBaseUrl,
+  resolveRequestTimeoutMs,
+  validateApiBaseUrl
 } from './config/ExtensionConfiguration';
 import {
   HttpAuthClient,
@@ -21,10 +25,24 @@ import { PracticeTreeViews } from './ui/PracticeTreeViews';
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('OJ VSCode');
   output.show(true);
-  const apiBaseUrl = resolveApiBaseUrl(vscode.workspace.getConfiguration(OJ_CONFIGURATION_NAMESPACE));
+  const configuration = vscode.workspace.getConfiguration(OJ_CONFIGURATION_NAMESPACE);
+  let apiBaseUrl: string;
+  let requestTimeoutMs: number;
+
+  try {
+    apiBaseUrl = validateApiBaseUrl(resolveApiBaseUrl(configuration));
+    requestTimeoutMs = resolveRequestTimeoutMs(configuration);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    output.appendLine(`Extension configuration error: ${message}`);
+    output.appendLine(`Default timeout remains ${DEFAULT_OJ_REQUEST_TIMEOUT_MS}ms when configuration is valid.`);
+    vscode.window.showErrorMessage(message);
+    return;
+  }
+
   const tokenStore = new SessionTokenStore(context.secrets);
   await tokenStore.hydrate();
-  const clientConfig = { apiBaseUrl };
+  const clientConfig = { apiBaseUrl, requestTimeoutMs };
 
   const authCommands = new AuthCommands(new HttpAuthClient(clientConfig), tokenStore);
   const practiceCommands = new PracticeCommands(new HttpPracticeApiClient(clientConfig), tokenStore);
@@ -69,6 +87,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   output.appendLine('OJ VSCode extension activated');
   output.appendLine(`API base URL: ${apiBaseUrl}`);
+  output.appendLine(`Request timeout: ${requestTimeoutMs}ms`);
+  output.appendLine(describeTokenStorageBehavior());
   await restorePracticeStateOnStartup({
     apiBaseUrl,
     tokenStore,

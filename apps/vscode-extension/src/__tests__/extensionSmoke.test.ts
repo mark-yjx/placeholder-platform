@@ -172,11 +172,11 @@ test('smoke validates login -> fetch -> submit -> poll -> reload restoration ove
     await tokenStore.hydrate();
 
     const authCommands = new AuthCommands(
-      new HttpAuthClient({ apiBaseUrl: 'http://oj.test' }),
+      new HttpAuthClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 }),
       tokenStore
     );
     const practiceCommands = new PracticeCommands(
-      new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test' }),
+      new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 }),
       tokenStore
     );
 
@@ -219,7 +219,7 @@ test('smoke validates login -> fetch -> submit -> poll -> reload restoration ove
     await restorePracticeState({
       tokenStore: restoredTokenStore,
       practiceCommands: new PracticeCommands(
-        new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test' }),
+        new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 }),
         restoredTokenStore
       ),
       practiceViews: restoredViews,
@@ -302,7 +302,7 @@ test('startup skips practice restore when the API is unavailable', async () => {
       apiBaseUrl: 'http://oj.test',
       tokenStore,
       practiceCommands: new RecordingPracticeCommands(
-        new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test' }),
+        new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 }),
         tokenStore
       ),
       practiceViews: new RecordingPracticeViews(),
@@ -383,7 +383,7 @@ test('startup restores per-problem local state and drops missing file paths', as
       apiBaseUrl: 'http://oj.test',
       tokenStore,
       practiceCommands: new PracticeCommands(
-        new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test' }),
+        new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 }),
         tokenStore
       ),
       practiceViews,

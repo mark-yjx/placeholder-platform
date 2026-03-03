@@ -305,19 +305,25 @@ export function startWorkerRuntime(options?: WorkerRuntimeOptions): WorkerRuntim
   const logger = options?.logger ?? console;
 
   let stopping = false;
+  let tickInFlight = false;
   let runningTick = Promise.resolve();
 
   logger.info('worker.runtime.started');
 
   const interval = setInterval(() => {
-    if (stopping) {
+    if (stopping || tickInFlight) {
       return;
     }
 
-    runningTick = Promise.resolve(onTick()).catch((error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.error(`worker.runtime.tick_error: ${message}`);
-    });
+    tickInFlight = true;
+    runningTick = Promise.resolve(onTick())
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error(`worker.runtime.tick_error: ${message}`);
+      })
+      .finally(() => {
+        tickInFlight = false;
+      });
   }, pollIntervalMs);
 
   return {

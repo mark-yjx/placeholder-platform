@@ -31,7 +31,7 @@ test('http auth client posts credentials and surfaces invalid login mapping', as
   };
 
   try {
-    const client = new HttpAuthClient({ apiBaseUrl: 'http://oj.test' });
+    const client = new HttpAuthClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 });
     await assert.rejects(
       client.login({ email: 'student@example.com', password: 'wrong' }),
       (error: unknown) => {
@@ -103,7 +103,7 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
   };
 
   try {
-    const client = new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test' });
+    const client = new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 });
 
     assert.deepEqual(await client.listPublishedProblems('student-token'), [
       { problemId: 'problem-1', title: 'Two Sum' }
@@ -157,7 +157,7 @@ test('http practice client preserves running submission state without inventing 
   };
 
   try {
-    const client = new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test' });
+    const client = new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 });
     assert.deepEqual(await client.getSubmissionResult('student-token', 'submission-running-1'), {
       submissionId: 'submission-running-1',
       status: 'running',
@@ -216,7 +216,7 @@ test('http engagement client uses live favorites and reviews endpoints', async (
   };
 
   try {
-    const client = new HttpEngagementApiClient({ apiBaseUrl: 'http://oj.test' });
+    const client = new HttpEngagementApiClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 });
     await client.addFavorite('student-token', 'problem-1');
     await client.removeFavorite('student-token', 'problem-1');
     assert.deepEqual(await client.listFavorites('student-token'), ['problem-1']);
@@ -239,6 +239,38 @@ test('http engagement client uses live favorites and reviews endpoints', async (
       'GET /favorites',
       'PUT /reviews/problem-1'
     ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('http practice client surfaces timeout errors with actionable message', async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (_input, init) => {
+    const signal = init?.signal;
+    await new Promise((resolve, reject) => {
+      signal?.addEventListener('abort', () => {
+        reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      });
+    });
+    return createJsonResponse({});
+  };
+
+  try {
+    const client = new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 1 });
+    await assert.rejects(
+      client.listPublishedProblems('student-token'),
+      (error: unknown) => {
+        assert.equal(error instanceof Error, true);
+        assert.equal((error as Error & { code?: string }).code, 'ETIMEDOUT');
+        assert.match(
+          String((error as Error).message),
+          /Request timed out after 1ms\. Check oj\.requestTimeoutMs and try again\./
+        );
+        return true;
+      }
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

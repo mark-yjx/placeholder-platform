@@ -121,6 +121,41 @@ test('worker runtime starts, idles with ticks, and stops cleanly', async () => {
   assert.ok(logs.includes('worker.runtime.stopped'));
 });
 
+test('worker runtime does not overlap ticks when a previous tick is still running', async () => {
+  const { startWorkerRuntime } = loadWorkerRuntime();
+  let activeTicks = 0;
+  let maxActiveTicks = 0;
+  let ticks = 0;
+  let releaseTick: (() => void) | undefined;
+  const firstTickStarted = new Promise<void>((resolve) => {
+    releaseTick = resolve;
+  });
+
+  const runtime = startWorkerRuntime({
+    pollIntervalMs: 5,
+    onTick: async () => {
+      ticks += 1;
+      activeTicks += 1;
+      maxActiveTicks = Math.max(maxActiveTicks, activeTicks);
+      if (ticks === 1) {
+        await firstTickStarted;
+      }
+      activeTicks -= 1;
+    }
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(ticks, 1);
+  assert.equal(maxActiveTicks, 1);
+
+  releaseTick?.();
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  await runtime.stop();
+
+  assert.ok(ticks >= 2);
+  assert.equal(maxActiveTicks, 1);
+});
+
 test('worker runtime resolves docker image after flags that include colon-valued arguments', () => {
   const { __internal__ } = loadWorkerRuntime();
 

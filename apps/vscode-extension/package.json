@@ -23,6 +23,7 @@
     "onCommand:oj.practice.submitCode",
     "onCommand:oj.practice.submitCurrentFile",
     "onCommand:oj.practice.viewResult",
+    "onCommand:oj.practice.cancelPolling",
     "onView:ojProblems",
     "onView:ojSubmissions",
     "onCommand:oj.engagement.favoriteProblem",
@@ -39,6 +40,12 @@
           "type": "string",
           "default": "http://localhost:3100",
           "description": "Base URL for the OJ API used by the extension."
+        },
+        "oj.requestTimeoutMs": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 1,
+          "description": "HTTP request timeout in milliseconds for OJ API requests. Tokens are stored locally in VS Code SecretStorage."
         }
       }
     },
@@ -62,6 +69,10 @@
       {
         "command": "oj.practice.viewResult",
         "title": "OJ: View Result"
+      },
+      {
+        "command": "oj.practice.cancelPolling",
+        "title": "OJ: Cancel Polling"
       },
       {
         "command": "oj.practice.selectSubmission",
