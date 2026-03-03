@@ -7,6 +7,7 @@ import { formatSubmissionDetail } from './ui/PracticeViewState';
 import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { extractSubmitPayload } from './submission/SubmissionPayloadExtraction';
 import { LocalPracticeStateStore } from './runtime/LocalPracticeStateStore';
+import { createLoginViewModel } from './auth/AuthViews';
 
 export type DisposableLike = { dispose: () => void };
 
@@ -38,6 +39,7 @@ export type WindowLike = {
     prompt?: string;
     placeHolder?: string;
     value?: string;
+    password?: boolean;
     ignoreFocusOut?: boolean;
   }) => Promise<string | undefined>;
   activeTextEditor?: {
@@ -81,11 +83,15 @@ export function registerExtensionCommands(
   const maxPollBackoffMs = 8_000;
 
   const runWithHandling =
-    (commandId: string, run: (...args: unknown[]) => Promise<void>) =>
+    (commandId: string, run: (...args: unknown[]) => Promise<void | false>) =>
     async (...args: unknown[]) => {
     dependencies.output.appendLine(`[${commandId}] start`);
     try {
-      await run(...args);
+      const result = await run(...args);
+      if (result === false) {
+        dependencies.output.appendLine(`[${commandId}] cancelled`);
+        return;
+      }
       dependencies.output.appendLine(`[${commandId}] success`);
       dependencies.window.showInformationMessage(`[${commandId}] success`);
     } catch (error) {
@@ -250,14 +256,40 @@ export function registerExtensionCommands(
     );
   };
 
+  const promptForLoginRequest = async (): Promise<{ email: string; password: string } | null> => {
+    const loginView = createLoginViewModel();
+    const email = await dependencies.window.showInputBox({
+      prompt: `${loginView.title}: email`,
+      placeHolder: 'student1@example.com or admin@example.com',
+      ignoreFocusOut: true
+    });
+    if (email === undefined) {
+      return null;
+    }
+
+    const password = await dependencies.window.showInputBox({
+      prompt: `${loginView.title}: password`,
+      placeHolder: 'Enter your password',
+      password: true,
+      ignoreFocusOut: true
+    });
+    if (password === undefined) {
+      return null;
+    }
+
+    return { email, password };
+  };
+
   return [
     dependencies.registerCommand(
       'oj.login',
       runWithHandling('oj.login', async () => {
-        await dependencies.authCommands.login({
-          email: 'student1@example.com',
-          password: 'secret'
-        });
+        const request = await promptForLoginRequest();
+        if (!request) {
+          return false;
+        }
+
+        await dependencies.authCommands.login(request);
         dependencies.output.appendLine('Authenticated');
       })
     ),

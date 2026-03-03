@@ -34,6 +34,6 @@ test('authenticated student can run protected command after login', async () => 
 
 test('login view model exposes auth fields', () => {
   const view = createLoginViewModel();
-  assert.equal(view.title, 'Student Login');
+  assert.equal(view.title, 'OJ Login');
   assert.deepEqual(view.fields, ['email', 'password']);
 });
