@@ -34,7 +34,11 @@ test('local smoke talks to live API endpoints for login, problem, submissions, f
 test('local smoke verifies compose worker processing and persistence after API restart', () => {
   const script = readSmokeScript();
   assert.match(script, /submit and wait for compose worker result/);
+  assert.match(script, /configureSmokeJudge/);
   assert.match(script, /waitForSubmissionResult/);
+  assert.match(script, /assertSingleTerminalResult/);
+  assert.match(script, /COUNT\(\*\) FROM judge_results/);
+  assert.match(script, /COUNT\(\*\) FROM judge_jobs/);
   assert.match(script, /restart local api runtime/);
   assert.match(script, /await restartLocalApiProcess\(\)/);
   assert.match(script, /fetch persisted data after restart/);

@@ -1,5 +1,11 @@
 #!/usr/bin/env node
-import { execSync, spawn } from 'node:child_process';
+import { execFileSync, execSync, spawn } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(scriptDir, '../..');
+const composeFile = path.join(root, 'deploy/local/docker-compose.yml');
 
 function runStep(name, command) {
   process.stdout.write(`[smoke] ${name}... `);
@@ -125,6 +131,97 @@ async function waitForSubmissionResult(submissionId, token, expectedStatus, expe
   throw new Error(`submission ${submissionId} did not reach ${expectedStatus}`);
 }
 
+function postgresScalar(sql) {
+  return execFileSync(
+    'docker',
+    ['compose', '-f', composeFile, 'exec', '-T', 'postgres', 'psql', '-U', 'oj', '-d', 'oj', '-At', '-c', sql],
+    { cwd: root, encoding: 'utf8' }
+  ).trim();
+}
+
+function configureSmokeJudge(problemVersionId) {
+  postgresScalar(`
+INSERT INTO problem_version_assets (
+  problem_version_id,
+  entry_function,
+  language,
+  visibility,
+  time_limit_ms,
+  memory_limit_kb,
+  starter_code,
+  content_digest
+)
+VALUES (
+  '${problemVersionId}',
+  'solve',
+  'python',
+  'public',
+  2000,
+  131072,
+  E'def solve():\\n    return 42\\n',
+  'local-smoke-${problemVersionId}'
+)
+ON CONFLICT (problem_version_id) DO UPDATE SET
+  entry_function = EXCLUDED.entry_function,
+  language = EXCLUDED.language,
+  visibility = EXCLUDED.visibility,
+  time_limit_ms = EXCLUDED.time_limit_ms,
+  memory_limit_kb = EXCLUDED.memory_limit_kb,
+  starter_code = EXCLUDED.starter_code,
+  content_digest = EXCLUDED.content_digest;
+
+INSERT INTO problem_version_tests (problem_version_id, test_type, position, input, expected)
+VALUES ('${problemVersionId}', 'public', 1, 'null'::jsonb, '42'::jsonb)
+ON CONFLICT (problem_version_id, test_type, position) DO UPDATE SET
+  input = EXCLUDED.input,
+  expected = EXCLUDED.expected;
+`);
+}
+
+function createPublishedSmokeProblem(problemId) {
+  postgresScalar(`
+INSERT INTO problems (id, title, publication_state)
+VALUES ('${problemId}', 'Smoke Problem', 'published')
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  publication_state = EXCLUDED.publication_state;
+
+INSERT INTO problem_versions (
+  id,
+  problem_id,
+  version_number,
+  title,
+  statement,
+  publication_state
+)
+VALUES (
+  '${problemId}-v1',
+  '${problemId}',
+  1,
+  'Smoke Problem',
+  'Smoke statement',
+  'published'
+)
+ON CONFLICT (id) DO NOTHING;
+`);
+}
+
+function assertSingleTerminalResult(submissionId) {
+  const resultCount = Number(
+    postgresScalar(`SELECT COUNT(*) FROM judge_results WHERE submission_id = '${submissionId}'`)
+  );
+  const queuedJobs = Number(
+    postgresScalar(`SELECT COUNT(*) FROM judge_jobs WHERE submission_id = '${submissionId}'`)
+  );
+
+  if (resultCount !== 1) {
+    throw new Error(`expected exactly one judge result for ${submissionId}, found ${resultCount}`);
+  }
+  if (queuedJobs !== 0) {
+    throw new Error(`expected no queued judge job for ${submissionId}, found ${queuedJobs}`);
+  }
+}
+
 async function runFlow() {
   process.stdout.write('[smoke] wait for API health... ');
   const healthy = await waitForApiHealthy(40, 250);
@@ -151,18 +248,9 @@ async function runFlow() {
 
   const problemId = `smoke-problem-${Date.now()}`;
 
-  process.stdout.write('[smoke] create problem (admin)... ');
-  await apiRequest(
-    'POST',
-    '/problems',
-    {
-      problemId,
-      versionId: `${problemId}-v1`,
-      title: 'Smoke Problem',
-      statement: 'Smoke statement'
-    },
-    adminToken
-  );
+  process.stdout.write('[smoke] prepare published smoke problem... ');
+  createPublishedSmokeProblem(problemId);
+  configureSmokeJudge(`${problemId}-v1`);
   console.log('ok');
 
   process.stdout.write('[smoke] fetch problems (student)... ');
@@ -211,6 +299,7 @@ async function runFlow() {
     250
   );
   assertSubmissionResult(finishedView, 'finished', 'AC');
+  assertSingleTerminalResult(submissionId);
   console.log('ok');
 
   process.stdout.write('[smoke] restart local api runtime... ');
@@ -240,6 +329,7 @@ async function runFlow() {
   assertIncludes(favoritesAfter.favorites ?? [], problemId, 'favorites after restart');
   assertReviewPresent(reviewsAfter, problemId, 'review list after restart');
   assertSubmissionResult(resultAfterRestart, 'finished', 'AC');
+  assertSingleTerminalResult(submissionId);
   console.log('ok');
 }
 

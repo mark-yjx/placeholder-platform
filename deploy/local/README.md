@@ -16,7 +16,7 @@ npm run local:up
 This maps:
 - Postgres: `localhost:5432`
 - Placeholder API health: `http://localhost:3000/health`
-- Real judge worker: compose `worker` service
+- Real judge worker: compose `worker` service only
 - Real local API runtime: `http://localhost:3100`
 
 ## Observability + readiness contracts
@@ -60,11 +60,12 @@ The smoke command performs:
 2. seed DB
 3. start local API runtime on `localhost:3100`
 4. login using fixture token flow
-5. admin create problem
+5. admin create problem and attach a real judge config for the smoke version
 6. student fetch + favorite + review
 7. submit and wait for the compose worker to finish judging
-8. restart the same local API runtime under test
-9. fetch again and assert persistence
+8. assert exactly one persisted judge result row and no remaining queue row for the submission
+9. restart the same local API runtime under test
+10. fetch again and assert persistence plus the same single-result invariant
 
 Expected terminal end line:
 - success: `SMOKE PASS`
@@ -78,4 +79,5 @@ npm run local:down
 ## Notes
 - This definition is intentionally local-first and self-contained for MVP deployment topology checks.
 - The compose `worker` service runs the real judge worker runtime against local Postgres and the host Docker socket.
+- The compose `worker` service is the only supported local worker path. Do not start a second host-side `npm run worker:start` for normal local development.
 - The compose `api` service on `localhost:3000` is only a placeholder health server; the extension should target the real API runtime on `localhost:3100` unless you explicitly override `oj.apiBaseUrl`.

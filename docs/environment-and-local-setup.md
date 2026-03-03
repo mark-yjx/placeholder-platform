@@ -82,7 +82,9 @@ DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj PORT=3100 npm run api:start
 npm run local:ps
 ```
 
-The compose `worker` service is the real judge worker runtime. Do not start a second host-side `npm run worker:start` alongside it unless you intentionally want competing workers.
+The compose `worker` service is the only supported judge worker path for normal local use.
+Do not start a second host-side `npm run worker:start`.
+If you start a second worker anyway, you are outside the supported local workflow and you must expect competing queue consumers.
 
 ## Friendly Port-Conflict Guidance
 
