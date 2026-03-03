@@ -8,11 +8,11 @@ Use it after:
 npm install
 npm run local:up
 npm run local:db:setup
-DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj PORT=3100 npm run api:start
 ```
 
 Local runtime assumptions:
 - real API base URL: `http://localhost:3100`
+- compose `api` service is the real API runtime
 - compose `worker` service is running
 - fixture student login is available through `OJ: Login`
 

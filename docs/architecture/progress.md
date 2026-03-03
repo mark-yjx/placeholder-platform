@@ -40,8 +40,8 @@
 - The worker runtime loop exists as a real long-running process scaffold, and the Docker sandbox contract path is covered by tests.
 
 ### Still scaffolded, stubbed, or not yet proven end-to-end
-- The local Docker Compose `api` service is still a placeholder health server rather than the full application runtime.
-- The local Docker Compose `worker` service is still a placeholder keepalive process rather than the full judge execution service.
+- The local Docker Compose `api` service now runs the full application runtime on `http://localhost:3100`.
+- The local Docker Compose `worker` service now runs the full judge worker runtime.
 - Authentication is present as application/runtime scaffolding, but the current local smoke path uses fixture login behavior rather than a full production-grade identity flow.
 - The judge pipeline architecture is defined and partially tested, but a fully real submission-to-judge-to-result loop is not yet proven end-to-end in local runtime.
 - Rankings and public stats exist as implemented modules and tests, but they are not yet presented in this repository state as a fully proven live production-style loop tied to a real judged submission flow.

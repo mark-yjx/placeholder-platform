@@ -20,7 +20,7 @@ function readSmokeScript(): string {
 
 test('local smoke talks to live API endpoints for login, problem, submissions, favorites, and reviews', () => {
   const script = readSmokeScript();
-  assert.match(script, /spawn\('npm', \['run', 'api:start'\]/);
+  assert.doesNotMatch(script, /spawn\('npm', \['run', 'api:start'\]/);
   assert.match(script, /waitForApiHealthy/);
   assert.match(script, /\/healthz/);
   assert.match(script, /\/auth\/login/);
@@ -39,7 +39,8 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /assertSingleTerminalResult/);
   assert.match(script, /COUNT\(\*\) FROM judge_results/);
   assert.match(script, /COUNT\(\*\) FROM judge_jobs/);
-  assert.match(script, /restart local api runtime/);
+  assert.match(script, /restart compose api service/);
+  assert.match(script, /docker', \['compose', '-f', composeFile, 'restart', 'api']/);
   assert.match(script, /await restartLocalApiProcess\(\)/);
   assert.match(script, /fetch persisted data after restart/);
   assert.match(script, /assertSubmissionResult\(resultAfterRestart, 'finished', 'AC'\)/);

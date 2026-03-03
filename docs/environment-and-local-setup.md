@@ -46,7 +46,6 @@ Use [.env.example](/home/mark/src/oj-vscode/.env.example) as the local starting 
 ## Local Stack Ports
 
 - `5432`: local Postgres container
-- `3000`: placeholder API container health endpoint from `docker compose`
 - `3100`: real OJ API runtime expected by the extension
 - `6379`: not used by the current local stack, but commonly occupied by Redis on developer machines
 
@@ -70,18 +69,15 @@ npm run local:up
 npm run local:db:setup
 ```
 
-4. Start the real API runtime:
-
-```bash
-DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj PORT=3100 npm run api:start
-```
-
-5. Use the compose worker runtime:
+4. Verify the real API runtime and compose worker:
 
 ```bash
 npm run local:ps
+curl http://localhost:3100/healthz
+curl http://localhost:3100/readyz
 ```
 
+The compose `api` service on `3100` is the real local API runtime used by the extension.
 The compose `worker` service is the only supported judge worker path for normal local use.
 Do not start a second host-side `npm run worker:start`.
 If you start a second worker anyway, you are outside the supported local workflow and you must expect competing queue consumers.
@@ -91,7 +87,7 @@ If you start a second worker anyway, you are outside the supported local workflo
 `npm run local:up` now checks common ports and prints warnings before starting containers.
 
 What the warnings mean:
-- `3000` occupied: another web app may block the placeholder API container
+- `3100` occupied: another web app may block the real local API container
 - `5432` occupied: another Postgres instance may block the local DB container
 - `6379` occupied: usually Redis; safe to ignore for the current stack, but worth knowing about
 

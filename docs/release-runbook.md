@@ -145,9 +145,8 @@ Example:
 ## Known Issues
 
 Current known issues for release planning:
-- local development can be confusing if `oj.apiBaseUrl` still points to `http://localhost:3000`; the real local API runtime is expected on `http://localhost:3100`
+- local development still fails if `oj.apiBaseUrl` does not point to the real compose API runtime at `http://localhost:3100`
 - in Remote SSH setups, `localhost` resolves on the remote host where the extension runs
-- the local compose service on port `3000` is only a placeholder health endpoint, not the full API runtime
 - release packaging assumes the extension remains `UNLICENSED`; update metadata if licensing changes
 
 ## Quick Checklist

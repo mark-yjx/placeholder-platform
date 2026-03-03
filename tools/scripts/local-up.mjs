@@ -10,10 +10,10 @@ const composeFile = path.join(root, 'deploy/local/docker-compose.yml');
 
 const portChecks = [
   {
-    port: 3000,
+    port: 3100,
     service: 'api',
     message:
-      'Port 3000 is used by the placeholder local API container health endpoint. If another app is already bound here, local:up may fail.'
+      'Port 3100 is used by the real local API container. If another app is already bound here, the local API cannot start.'
   },
   {
     port: 5432,
@@ -73,13 +73,12 @@ function printEndpoints() {
   console.log('');
   console.log('Local stack endpoints:');
   console.log('- Postgres: localhost:5432');
-  console.log('- Placeholder API health: http://localhost:3000/health');
   console.log('- Real OJ API runtime: http://localhost:3100');
   console.log('- Extension setting: oj.apiBaseUrl=http://localhost:3100');
   console.log('');
   console.log('Next commands:');
   console.log('- npm run local:db:setup');
-  console.log('- DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj PORT=3100 npm run api:start');
+  console.log('- npm run smoke:local');
 }
 
 const runningServices = getRunningServices();

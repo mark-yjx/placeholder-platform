@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFileSync, execSync, spawn } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,36 +18,11 @@ const LOCAL_API_BASE = `http://127.0.0.1:${LOCAL_API_PORT}`;
 
 let apiProcess = null;
 
-function startLocalApiProcess() {
-  apiProcess = spawn('npm', ['run', 'api:start'], {
-    stdio: 'ignore',
-    env: {
-      ...process.env,
-      PORT: String(LOCAL_API_PORT),
-      DATABASE_URL: 'postgresql://oj:oj@127.0.0.1:5432/oj'
-    }
-  });
-}
-
-async function stopLocalApiProcess() {
-  if (!apiProcess) {
-    return;
-  }
-  await new Promise((resolve) => {
-    apiProcess.once('exit', () => resolve(undefined));
-    apiProcess.kill('SIGTERM');
-    setTimeout(() => {
-      if (apiProcess && !apiProcess.killed) {
-        apiProcess.kill('SIGKILL');
-      }
-    }, 1500);
-  });
-  apiProcess = null;
-}
-
 async function restartLocalApiProcess() {
-  await stopLocalApiProcess();
-  startLocalApiProcess();
+  execFileSync('docker', ['compose', '-f', composeFile, 'restart', 'api'], {
+    cwd: root,
+    stdio: 'ignore'
+  });
 }
 
 async function apiRequest(method, path, body, token) {
@@ -302,7 +277,7 @@ async function runFlow() {
   assertSingleTerminalResult(submissionId);
   console.log('ok');
 
-  process.stdout.write('[smoke] restart local api runtime... ');
+  process.stdout.write('[smoke] restart compose api service... ');
   await restartLocalApiProcess();
   console.log('ok');
 
@@ -337,12 +312,9 @@ async function main() {
   try {
     runStep('boot local stack', 'npm run local:up');
     runStep('seed user+problem', 'npm run local:db:setup');
-    startLocalApiProcess();
     await runFlow();
-    await stopLocalApiProcess();
     console.log('SMOKE PASS');
   } catch (error) {
-    await stopLocalApiProcess();
     const message = error instanceof Error ? error.message : String(error);
     console.error(`SMOKE FAIL: ${message}`);
     process.exit(1);
