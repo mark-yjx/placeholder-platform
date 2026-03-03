@@ -36,6 +36,9 @@ export class InMemorySubmissionRepository
     }
 
     assertValidSubmissionTransition(existing.status, record.status);
+    if (existing.status === record.status) {
+      return;
+    }
     this.submissions.set(record.id, { ...record });
   }
 

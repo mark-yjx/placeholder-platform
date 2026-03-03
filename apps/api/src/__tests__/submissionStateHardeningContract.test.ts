@@ -44,3 +44,16 @@ test('submission seed populates problem version ids for persisted records', () =
   assert.match(sql, /'problem-1-v1'/i);
   assert.match(sql, /'problem-2-v1'/i);
 });
+
+test('submission failure reason migration adds persisted failure_reason column', () => {
+  const sql = readFromRoot(
+    'deploy',
+    'local',
+    'sql',
+    'migrations',
+    '007_submission_failure_reason.sql'
+  );
+
+  assert.match(sql, /ALTER TABLE submissions/i);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS failure_reason TEXT/i);
+});

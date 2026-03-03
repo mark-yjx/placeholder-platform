@@ -57,6 +57,7 @@ class InMemorySubmissionStateRepository {
       language: string;
       sourceCode: string;
       status: SubmissionStatusValue;
+      failureReason?: string;
       createdAt: string;
     }
   >();
@@ -69,6 +70,7 @@ class InMemorySubmissionStateRepository {
     language: string;
     sourceCode: string;
     status: SubmissionStatusValue;
+    failureReason?: string;
     createdAt?: string;
   }) {
     this.records.set(seed.id, {
@@ -89,6 +91,7 @@ class InMemorySubmissionStateRepository {
     language: string;
     sourceCode: string;
     status: SubmissionStatusValue;
+    failureReason?: string;
     createdAt?: string;
   }) {
     const existing = this.records.get(record.id);
@@ -103,6 +106,7 @@ class InMemorySubmissionStateRepository {
       id: string;
       ownerUserId: string;
       status: SubmissionStatusValue;
+      failureReason?: string;
       createdAt: string;
     }[]
   > {
@@ -207,6 +211,7 @@ test('result query keeps newest submissions first and does not require judge res
     language: 'python',
     sourceCode: 'print(1)',
     status: 'failed',
+    failureReason: 'sandbox could not start',
     createdAt: '2026-02-24T00:00:00.000Z'
   });
   await submissions.save({
@@ -242,7 +247,8 @@ test('result query keeps newest submissions first and does not require judge res
     {
       submissionId: 'submission-old',
       ownerUserId: 'student-1',
-      status: 'failed'
+      status: 'failed',
+      failureReason: 'sandbox could not start'
     }
   ]);
 });

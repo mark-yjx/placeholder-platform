@@ -42,6 +42,14 @@ function createRuntime() {
       },
       submissionResults: {
         async getBySubmissionId(submissionId: string) {
+          if (submissionId === 'submission-failed-1') {
+            return {
+              submissionId,
+              ownerUserId: 'student-1',
+              status: 'failed',
+              failureReason: 'sandbox could not start'
+            };
+          }
           if (submissionId !== 'submission-1') {
             throw new Error('Submission not found');
           }
@@ -661,4 +669,20 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     'submissionResults.getBySubmissionId:submission-1',
     'submissionResults.getBySubmissionId:submission-1'
   ]);
+});
+
+test('student submission detail returns failureReason for failed submissions', async () => {
+  const response = await invoke({
+    path: '/submissions/submission-failed-1',
+    headers: { authorization: 'Bearer token-student-1' },
+    runtime: createRuntime()
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body, {
+    submissionId: 'submission-failed-1',
+    ownerUserId: 'student-1',
+    status: 'failed',
+    failureReason: 'sandbox could not start'
+  });
 });

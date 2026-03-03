@@ -46,6 +46,7 @@ type SubmissionRow = {
   language: string;
   source_code: string;
   status: string;
+  failure_reason: string | null;
   created_at: string;
 };
 
@@ -83,6 +84,7 @@ class FakePostgresSubmissionSqlClient {
         language: String(params?.[4] ?? ''),
         source_code: String(params?.[5] ?? ''),
         status: String(params?.[6] ?? ''),
+        failure_reason: params?.[7] == null ? null : String(params[7]),
         created_at: new Date().toISOString()
       });
       return;
@@ -94,7 +96,11 @@ class FakePostgresSubmissionSqlClient {
       if (!existing) {
         throw new Error('Submission not found');
       }
-      this.rows.set(id, { ...existing, status: String(params?.[1] ?? '') });
+      this.rows.set(id, {
+        ...existing,
+        status: String(params?.[1] ?? ''),
+        failure_reason: params?.[2] == null ? null : String(params[2])
+      });
       return;
     }
 
@@ -163,6 +169,7 @@ test('postgres submission repository preserves status across repository restart 
   const restartedRepository = new PostgresSubmissionRepository(client);
   const persisted = await restartedRepository.findById('submission-1');
   assert.equal(persisted?.status, SubmissionStatus.RUNNING);
+  assert.equal(persisted?.failureReason, undefined);
 });
 
 test('postgres submission repository enforces queued -> running -> finished and terminal immutability', async () => {
@@ -243,4 +250,46 @@ test('postgres submission repository rejects invalid direct queued -> finished t
     }),
     /Invalid transition: queued -> finished/
   );
+});
+
+test('postgres submission repository persists failure reason on running -> failed transition', async () => {
+  const { PostgresSubmissionRepository } = loadSubmissionRepositoryModule();
+  const { SubmissionStatus } = loadSubmissionStatusModule();
+  const client = new FakePostgresSubmissionSqlClient();
+  const repository = new PostgresSubmissionRepository(client);
+
+  await repository.save({
+    id: 'submission-4',
+    ownerUserId: 'student-1',
+    problemId: 'problem-1',
+    problemVersionId: 'problem-1-v1',
+    language: 'python',
+    sourceCode: 'print(4)',
+    status: SubmissionStatus.QUEUED
+  });
+
+  await repository.save({
+    id: 'submission-4',
+    ownerUserId: 'student-1',
+    problemId: 'problem-1',
+    problemVersionId: 'problem-1-v1',
+    language: 'python',
+    sourceCode: 'print(4)',
+    status: SubmissionStatus.RUNNING
+  });
+
+  await repository.save({
+    id: 'submission-4',
+    ownerUserId: 'student-1',
+    problemId: 'problem-1',
+    problemVersionId: 'problem-1-v1',
+    language: 'python',
+    sourceCode: 'print(4)',
+    status: SubmissionStatus.FAILED,
+    failureReason: 'sandbox could not start'
+  });
+
+  const persisted = await repository.findById('submission-4');
+  assert.equal(persisted?.status, SubmissionStatus.FAILED);
+  assert.equal(persisted?.failureReason, 'sandbox could not start');
 });

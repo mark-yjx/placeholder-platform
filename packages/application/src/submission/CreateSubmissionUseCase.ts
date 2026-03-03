@@ -13,6 +13,7 @@ export type SubmissionRecord = {
   language: string;
   sourceCode: string;
   status: SubmissionStatus;
+  failureReason?: string;
 };
 
 export interface SubmissionCreationRepository {
@@ -73,7 +74,8 @@ export class CreateSubmissionUseCase {
       problemVersionId: problem.latestVersion.id,
       language: command.language,
       sourceCode: command.sourceCode,
-      status: submission.status
+      status: submission.status,
+      failureReason: undefined
     };
     await this.submissions.save(record);
     const judgeJob: Judge.JudgeJob = {

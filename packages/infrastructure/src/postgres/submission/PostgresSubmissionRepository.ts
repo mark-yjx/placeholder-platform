@@ -24,6 +24,7 @@ type SubmissionRow = {
   language: string;
   source_code: string;
   status: SubmissionStatus;
+  failure_reason: string | null;
   created_at: string;
 };
 
@@ -36,6 +37,7 @@ SELECT
   language,
   source_code,
   status,
+  failure_reason,
   created_at
 FROM submissions
 WHERE id = $1
@@ -50,6 +52,7 @@ SELECT
   language,
   source_code,
   status,
+  failure_reason,
   created_at
 FROM submissions
 ORDER BY created_at DESC, id DESC
@@ -63,14 +66,16 @@ INSERT INTO submissions (
   problem_version_id,
   language,
   source_code,
-  status
+  status,
+  failure_reason
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `;
 
 const UPDATE_SUBMISSION_STATUS_SQL = `
 UPDATE submissions
-SET status = $2
+SET status = $2,
+    failure_reason = $3
 WHERE id = $1
 `;
 
@@ -92,6 +97,7 @@ function toSubmissionRecord(row: SubmissionRow): SubmissionReadRecord {
     language: row.language,
     sourceCode: row.source_code,
     status: row.status,
+    failureReason: row.failure_reason ?? undefined,
     createdAt: row.created_at
   };
 }
@@ -137,7 +143,8 @@ export class PostgresSubmissionRepository
         record.problemVersionId,
         record.language,
         record.sourceCode,
-        record.status
+        record.status,
+        record.failureReason ?? null
       ]);
       return;
     }
@@ -149,7 +156,11 @@ export class PostgresSubmissionRepository
       return;
     }
 
-    await this.client.execute(UPDATE_SUBMISSION_STATUS_SQL, [record.id, record.status]);
+    await this.client.execute(UPDATE_SUBMISSION_STATUS_SQL, [
+      record.id,
+      record.status,
+      record.failureReason ?? null
+    ]);
   }
 
   async listAll(): Promise<readonly SubmissionReadRecord[]> {

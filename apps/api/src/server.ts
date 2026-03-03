@@ -97,6 +97,7 @@ type LocalApiRuntime = {
         submissionId: string;
         ownerUserId: string;
         status: string;
+        failureReason?: string;
         verdict?: string;
         timeMs?: number;
         memoryKb?: number;
@@ -106,6 +107,7 @@ type LocalApiRuntime = {
           submissionId: string;
           ownerUserId: string;
           status: string;
+          failureReason?: string;
           verdict?: string;
           timeMs?: number;
           memoryKb?: number;

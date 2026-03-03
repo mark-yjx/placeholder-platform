@@ -5,6 +5,7 @@ export type SubmissionResultView = {
   submissionId: string;
   ownerUserId: string;
   status: SubmissionStatus;
+  failureReason?: string;
   verdict?: string;
   timeMs?: number;
   memoryKb?: number;
@@ -14,6 +15,7 @@ type SubmissionReadModel = {
   id: string;
   ownerUserId: string;
   status: SubmissionStatus;
+  failureReason?: string;
   createdAt: string;
 };
 
@@ -66,6 +68,10 @@ export class ResultQueryService {
       ownerUserId: submission.ownerUserId,
       status: submission.status
     };
+
+    if (submission.failureReason) {
+      view.failureReason = submission.failureReason;
+    }
 
     if (submission.status === SubmissionStatus.FINISHED) {
       const result = await this.results.findBySubmissionId(submission.id);

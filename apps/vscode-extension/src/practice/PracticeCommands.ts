@@ -79,6 +79,10 @@ export function formatSubmissionResult(result: SubmissionResult): string {
     return `${result.status.toUpperCase()} | waiting for judge result`;
   }
 
+  if (result.status === 'failed' && result.failureReason?.trim()) {
+    return `FAILED | ${result.failureReason.trim()}`;
+  }
+
   if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
     return `${result.verdict} | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB`;
   }

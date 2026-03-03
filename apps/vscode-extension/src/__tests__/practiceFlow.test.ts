@@ -131,3 +131,30 @@ test('view submission result handles running state without verdict metrics', asy
     'RUNNING | waiting for judge result'
   );
 });
+
+test('view submission result displays failure reason for failed submissions', async () => {
+  const tokenStore = new SessionTokenStore();
+  const authCommands = new AuthCommands(new FakeAuthClient(), tokenStore);
+
+  class FailedPracticeApiClient extends FakePracticeApiClient {
+    override async getSubmissionResult(): Promise<SubmissionResult> {
+      return {
+        submissionId: 'sub-failed-1',
+        status: 'failed',
+        failureReason: 'sandbox could not start'
+      };
+    }
+  }
+
+  const practiceCommands = new PracticeCommands(
+    new FailedPracticeApiClient(['AC']),
+    tokenStore
+  );
+
+  await authCommands.login({ email: 'student@example.com', password: 'secret' });
+
+  assert.equal(
+    await practiceCommands.viewSubmissionResult('sub-failed-1'),
+    'FAILED | sandbox could not start'
+  );
+});

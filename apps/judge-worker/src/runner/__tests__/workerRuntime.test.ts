@@ -326,7 +326,7 @@ test('worker tick returns WA when hidden tests fail and result does not leak hid
 
 test('worker tick marks submission failed with CE and acknowledges job when judge config is missing', async () => {
   const { createWorkerTick } = loadWorkerRuntime();
-  const savedStatuses: string[] = [];
+  const savedSubmissions: Array<{ status: string; failureReason?: string }> = [];
   const savedResults: Array<{ submissionId: string; verdict: string; timeMs: number; memoryKb: number }> = [];
   let acknowledgedSubmissionId = '';
 
@@ -359,7 +359,10 @@ test('worker tick marks submission failed with CE and acknowledges job when judg
         };
       },
       async save(submission) {
-        savedStatuses.push(submission.status);
+        savedSubmissions.push({
+          status: submission.status,
+          failureReason: submission.failureReason
+        });
       }
     },
     results: {
@@ -391,7 +394,13 @@ test('worker tick marks submission failed with CE and acknowledges job when judg
 
   await tick();
 
-  assert.deepEqual(savedStatuses, ['running', 'failed']);
+  assert.deepEqual(savedSubmissions, [
+    { status: 'running', failureReason: undefined },
+    {
+      status: 'failed',
+      failureReason: 'Judge config not found for problem version problem-1-v1'
+    }
+  ]);
   assert.deepEqual(savedResults, [
     {
       submissionId: 'submission-missing-config',
@@ -401,6 +410,115 @@ test('worker tick marks submission failed with CE and acknowledges job when judg
     }
   ]);
   assert.equal(acknowledgedSubmissionId, 'submission-missing-config');
+});
+
+test('worker tick persists failure reason and acknowledges job when result ingestion fails', async () => {
+  const { createWorkerTick } = loadWorkerRuntime();
+  const workerLogs: Array<Record<string, unknown>> = [];
+  const savedSubmissions: Array<{ status: string; failureReason?: string }> = [];
+  let acknowledgedSubmissionId = '';
+
+  const tick = createWorkerTick({
+    queue: {
+      async claimNext() {
+        return {
+          submissionId: 'submission-result-error',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v2',
+          language: 'python',
+          sourceCode: 'def solve(*args):\n    return 0\n'
+        };
+      },
+      async acknowledge(submissionId: string) {
+        acknowledgedSubmissionId = submissionId;
+      }
+    },
+    submissions: {
+      async findById() {
+        return {
+          id: 'submission-result-error',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v2',
+          language: 'python',
+          sourceCode: 'def solve(*args):\n    return 0\n',
+          status: 'queued' as import('@packages/domain/src/submission').SubmissionStatus
+        };
+      },
+      async save(submission) {
+        savedSubmissions.push({
+          status: submission.status,
+          failureReason: submission.failureReason
+        });
+      }
+    },
+    results: {
+      async findBySubmissionId() {
+        return null;
+      },
+      async save() {
+        throw new Error('judge result write failed');
+      }
+    },
+    judgeConfigs: {
+      async findByProblemVersionId() {
+        return {
+          entryFunction: 'solve',
+          tests: [{ testType: 'public', position: 1, inputJson: '1', expectedJson: '0' }]
+        };
+      }
+    },
+    sandbox: new DockerSandboxAdapter(async () => {
+      return {
+        stdout: '0\n',
+        stderr: '',
+        exitCode: 0,
+        timeMs: 9,
+        memoryKb: 128
+      };
+    }),
+    runners: new RunnerRegistry([
+      {
+        language: 'python',
+        resolve() {
+          return { language: 'python', runArgs: ['python', '/sandbox/main.py'] };
+        }
+      }
+    ]),
+    image: 'python:3.12-alpine'
+  });
+
+  const originalConsoleLog = console.log;
+  console.log = (entry: unknown) => {
+    if (entry && typeof entry === 'object') {
+      workerLogs.push(entry as Record<string, unknown>);
+    }
+  };
+
+  try {
+    await tick();
+  } finally {
+    console.log = originalConsoleLog;
+  }
+
+  assert.equal(acknowledgedSubmissionId, 'submission-result-error');
+  assert.deepEqual(savedSubmissions, [
+    { status: 'running', failureReason: undefined },
+    { status: 'failed', failureReason: 'judge result write failed' }
+  ]);
+  assert.equal(
+    workerLogs.some(
+      (entry) =>
+        entry.message === 'worker.submission.failed' &&
+        entry.jobId === 'submission-result-error' &&
+        (entry.fields as { submissionId?: string; error?: string } | undefined)?.submissionId ===
+          'submission-result-error' &&
+        (entry.fields as { submissionId?: string; error?: string } | undefined)?.error ===
+          'judge result write failed'
+    ),
+    true
+  );
 });
 
 test('worker tick acknowledges and logs duplicate completion without rewriting terminal result', async () => {

@@ -119,6 +119,7 @@ export class HttpPracticeApiClient implements PracticeApiClient {
     const response = await requestJson<{
       submissionId: string;
       status: SubmissionResult['status'];
+      failureReason?: string;
       verdict?: SubmissionResult['verdict'];
       timeMs?: number;
       memoryKb?: number;
@@ -126,13 +127,19 @@ export class HttpPracticeApiClient implements PracticeApiClient {
       accessToken
     });
 
-    return {
+    const result: SubmissionResult = {
       submissionId: response.submissionId,
       status: response.status,
       verdict: response.verdict,
       timeMs: response.timeMs,
       memoryKb: response.memoryKb
     };
+
+    if (response.failureReason !== undefined) {
+      result.failureReason = response.failureReason;
+    }
+
+    return result;
   }
 }
 

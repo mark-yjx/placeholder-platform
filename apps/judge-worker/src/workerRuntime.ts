@@ -34,6 +34,7 @@ type WorkerTickDependencies = {
       language: string;
       sourceCode: string;
       status: SubmissionStatus;
+      failureReason?: string;
     } | null>;
     save: (submission: {
       id: string;
@@ -43,6 +44,7 @@ type WorkerTickDependencies = {
       language: string;
       sourceCode: string;
       status: SubmissionStatus;
+      failureReason?: string;
     }) => Promise<void>;
   };
   results: {
@@ -72,6 +74,15 @@ type WorkerTickDependencies = {
     info: (message: string) => void;
   };
 };
+
+function toFailureReason(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message.trim();
+  }
+
+  const text = String(error).trim();
+  return text.length > 0 ? text : 'Unknown worker execution failure';
+}
 
 const DOCKER_RUN_FLAGS_WITH_VALUES = new Set([
   '--cpus',
@@ -204,15 +215,18 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
     if (!judgeConfig) {
       await dependencies.submissions.save({
         ...submission,
-        status: 'running' as SubmissionStatus
+        status: 'running' as SubmissionStatus,
+        failureReason: undefined
       });
       logger.info('worker.submission.running', {
         submissionId: job.submissionId,
         status: 'running'
       });
+      const failureReason = `Judge config not found for problem version ${job.problemVersionId}`;
       await dependencies.submissions.save({
         ...submission,
-        status: 'failed' as SubmissionStatus
+        status: 'failed' as SubmissionStatus,
+        failureReason
       });
       await dependencies.results.save({
         submissionId: job.submissionId,
@@ -223,7 +237,8 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
       logger.info('worker.submission.completed', {
         submissionId: job.submissionId,
         status: 'failed',
-        verdict: 'CE'
+        verdict: 'CE',
+        failureReason
       });
       await dependencies.queue.acknowledge(job.submissionId);
       return;
@@ -231,40 +246,56 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
 
     await dependencies.submissions.save({
       ...submission,
-      status: 'running' as SubmissionStatus
+      status: 'running' as SubmissionStatus,
+      failureReason: undefined
     });
     logger.info('worker.submission.running', {
       submissionId: job.submissionId,
       status: 'running'
     });
 
-    const result = await runPythonJudgeExecution({
-      sandbox: dependencies.sandbox,
-      runners: dependencies.runners,
-      image: dependencies.image,
-      sourceCode: job.sourceCode,
-      entryFunction: judgeConfig.entryFunction,
-      tests: judgeConfig.tests
-    });
+    try {
+      const result = await runPythonJudgeExecution({
+        sandbox: dependencies.sandbox,
+        runners: dependencies.runners,
+        image: dependencies.image,
+        sourceCode: job.sourceCode,
+        entryFunction: judgeConfig.entryFunction,
+        tests: judgeConfig.tests
+      });
 
-    await dependencies.submissions.save({
-      ...submission,
-      status: result.status as SubmissionStatus
-    });
-    await dependencies.results.save({
-      submissionId: job.submissionId,
-      verdict: result.verdict as Verdict,
-      timeMs: result.timeMs,
-      memoryKb: result.memoryKb
-    });
-    logger.info('worker.submission.completed', {
-      submissionId: job.submissionId,
-      status: result.status,
-      verdict: result.verdict,
-      timeMs: result.timeMs,
-      memoryKb: result.memoryKb
-    });
-    await dependencies.queue.acknowledge(job.submissionId);
+      await dependencies.results.save({
+        submissionId: job.submissionId,
+        verdict: result.verdict as Verdict,
+        timeMs: result.timeMs,
+        memoryKb: result.memoryKb
+      });
+      await dependencies.submissions.save({
+        ...submission,
+        status: result.status as SubmissionStatus,
+        failureReason: undefined
+      });
+      logger.info('worker.submission.completed', {
+        submissionId: job.submissionId,
+        status: result.status,
+        verdict: result.verdict,
+        timeMs: result.timeMs,
+        memoryKb: result.memoryKb
+      });
+      await dependencies.queue.acknowledge(job.submissionId);
+    } catch (error) {
+      const failureReason = toFailureReason(error);
+      logger.error('worker.submission.failed', {
+        submissionId: job.submissionId,
+        error: failureReason
+      });
+      await dependencies.submissions.save({
+        ...submission,
+        status: 'failed' as SubmissionStatus,
+        failureReason
+      });
+      await dependencies.queue.acknowledge(job.submissionId);
+    }
   };
 }
 
