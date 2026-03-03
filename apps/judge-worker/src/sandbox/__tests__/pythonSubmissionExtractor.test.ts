@@ -155,9 +155,10 @@ def solve():
     return 42
 `.trim());
 
-  assert.match(runnable, /^def solve\(\):$/m);
-  assert.match(runnable, /^if __name__ == "__main__":$/m);
-  assert.match(runnable, /^    solve\(\)$/m);
+  assert.match(runnable, /__oj_module_source = /);
+  assert.match(runnable, /spec_from_file_location\("oj_submission_module"/);
+  assert.match(runnable, /__oj_submission\.solve\(\)/);
+  assert.match(runnable, /def solve\(\):\\n    return 42\\n/);
 });
 
 test('runnable judged source calls configured entryFunction when solve is absent', () => {
@@ -169,8 +170,9 @@ def collapse():
     'collapse'
   );
 
-  assert.match(runnable, /^def collapse\(\):$/m);
-  assert.match(runnable, /^    collapse\(\)$/m);
+  assert.match(runnable, /def collapse\(\):\\n    return 42\\n/);
+  assert.match(runnable, /def solve\(\*args, \*\*kwargs\):\\n    return collapse\(\*args, \*\*kwargs\)\\n/);
+  assert.match(runnable, /__oj_submission\.solve\(\)/);
 });
 
 test('runnable judged source serializes test input through json harness', () => {
@@ -185,6 +187,6 @@ def collapse(value):
 
   assert.match(runnable, /^    import json$/m);
   assert.match(runnable, /json\.loads\("-1111222232222111"\)/);
-  assert.match(runnable, /__oj_result = collapse\(__oj_input\)/);
+  assert.match(runnable, /__oj_result = __oj_submission\.solve\(__oj_input\)/);
   assert.match(runnable, /print\(json\.dumps\(__oj_result\)\)/);
 });

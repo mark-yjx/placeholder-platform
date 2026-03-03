@@ -66,6 +66,86 @@ def collapse(value):
   });
 });
 
+test('solve-based submission takes precedence over configured entryFunction and wrong output returns WA, not CE', async () => {
+  const sandbox = new DockerSandboxAdapter(async () => ({
+    stdout: '0\n',
+    stderr: '',
+    exitCode: 0,
+    timeMs: 111,
+    memoryKb: 1024
+  }));
+
+  const result = await runPythonJudgeExecution({
+    sandbox,
+    runners: createRegistry(),
+    image: 'python:3.12-alpine',
+    sourceCode: `
+def helper(value):
+    return value
+
+def collapse(value):
+    return helper(value + 1)
+
+def solve(value):
+    return 0
+`.trim(),
+    entryFunction: 'collapse',
+    tests: [
+      { testType: 'public', position: 1, inputJson: '12321', expectedJson: '12321' },
+      { testType: 'hidden', position: 1, inputJson: '1000000000000000000001', expectedJson: '101' }
+    ]
+  });
+
+  assert.deepEqual(result, {
+    status: 'finished',
+    verdict: 'WA',
+    timeMs: 111,
+    memoryKb: 1024
+  });
+});
+
+test('solve-based submission takes precedence over configured entryFunction and correct output returns AC', async () => {
+  let callCount = 0;
+  const sandbox = new DockerSandboxAdapter(async () => {
+    callCount += 1;
+    return {
+      stdout: callCount === 1 ? '12321\n' : '101\n',
+      stderr: '',
+      exitCode: 0,
+      timeMs: 50,
+      memoryKb: 2048
+    };
+  });
+
+  const result = await runPythonJudgeExecution({
+    sandbox,
+    runners: createRegistry(),
+    image: 'python:3.12-alpine',
+    sourceCode: `
+def helper(value):
+    return value
+
+def collapse(value):
+    return value - 1
+
+def solve(value):
+    return helper(value)
+`.trim(),
+    entryFunction: 'collapse',
+    tests: [
+      { testType: 'public', position: 1, inputJson: '12321', expectedJson: '12321' },
+      { testType: 'hidden', position: 1, inputJson: '101', expectedJson: '101' }
+    ]
+  });
+
+  assert.deepEqual(result, {
+    status: 'finished',
+    verdict: 'AC',
+    timeMs: 100,
+    memoryKb: 2048
+  });
+});
+
 test('wrong output results in finished with verdict WA and recorded time/memory', async () => {
   const sandbox = new DockerSandboxAdapter(async () => ({
     stdout: '41\n',
@@ -160,14 +240,16 @@ if __name__ == "__main__":
   assert.equal(calls[0]?.args.includes('--network'), true);
   assert.equal(calls[0]?.args.includes('none'), true);
   assert.deepEqual(calls[0]?.args.slice(-2), ['python', '/sandbox/main.py']);
-  assert.match(calls[0]?.stdin ?? '', /^import math$/m);
-  assert.match(calls[0]?.stdin ?? '', /^VALUE = 40$/m);
-  assert.match(calls[0]?.stdin ?? '', /^def helper\(\):$/m);
-  assert.match(calls[0]?.stdin ?? '', /^def solve\(value\):$/m);
-  assert.doesNotMatch(calls[0]?.stdin ?? '', /^def unused\(\):$/m);
+  assert.match(calls[0]?.stdin ?? '', /import math\\n/);
+  assert.match(calls[0]?.stdin ?? '', /VALUE = 40\\n/);
+  assert.match(calls[0]?.stdin ?? '', /def helper\(\):\\n/);
+  assert.match(calls[0]?.stdin ?? '', /def solve\(value\):\\n/);
+  assert.doesNotMatch(calls[0]?.stdin ?? '', /def unused\(\):\\n/);
   assert.doesNotMatch(calls[0]?.stdin ?? '', /print\("debug"\)/);
   assert.doesNotMatch(calls[0]?.stdin ?? '', /doctest/);
-  assert.match(calls[0]?.stdin ?? '', /^if __name__ == "__main__":$/m);
+  assert.match(calls[0]?.stdin ?? '', /importlib\.util/);
+  assert.match(calls[0]?.stdin ?? '', /tempfile\.NamedTemporaryFile/);
+  assert.match(calls[0]?.stdin ?? '', /__oj_submission\.solve\(__oj_input\)/);
 });
 
 test('missing solve and missing configured entryFunction result in CE without invoking the sandbox', async () => {
