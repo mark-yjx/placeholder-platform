@@ -97,7 +97,7 @@ npm run smoke:local
 
 For the supported one-command local demo:
 - run `npm run smoke:local`
-- this boots the compose stack, imports sample problems from `data/problems`, waits for readiness, and verifies a real submission through `queued -> running -> finished|failed`
+- this boots the compose stack, imports sample problems from `data/problems`, verifies the extension `solve()` submit contract, waits for readiness, and verifies a real submission through `queued -> running -> finished|failed`
 
 ## Documentation
 

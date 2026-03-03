@@ -1,16 +1,67 @@
 #!/usr/bin/env node
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import os from 'node:os';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(scriptDir, '../..');
 const composeFile = path.join(root, 'deploy/local/docker-compose.yml');
+const MISSING_SOLVE_MESSAGE = 'Submission must define a top-level solve() function';
+const SOLVE_ONLY_EXTRACTOR = String.raw`
+import ast
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    source = handle.read()
+
+try:
+    module = ast.parse(source)
+except SyntaxError as exc:
+    raise SystemExit(str(exc))
+
+lines = source.splitlines()
+
+def slice_source(node):
+    segment = ast.get_source_segment(source, node)
+    if segment is not None:
+        return segment.rstrip() + "\n"
+    start = max(getattr(node, "lineno", 1) - 1, 0)
+    end = max(getattr(node, "end_lineno", getattr(node, "lineno", 1)), 1)
+    return "\n".join(lines[start:end]).rstrip() + "\n"
+
+for node in module.body:
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "solve":
+        sys.stdout.write(slice_source(node))
+        raise SystemExit(0)
+
+raise SystemExit("Submission must define a top-level solve() function")
+`;
+
+let cachedPythonCommand;
 
 function runStep(name, command) {
   process.stdout.write(`[smoke] ${name}... `);
   execSync(command, { stdio: 'ignore' });
   console.log('ok');
+}
+
+function resolvePythonCommand() {
+  if (cachedPythonCommand !== undefined) {
+    return cachedPythonCommand;
+  }
+
+  for (const candidate of ['python3', 'python']) {
+    const result = spawnSync(candidate, ['--version'], { encoding: 'utf8' });
+    if (result.status === 0) {
+      cachedPythonCommand = candidate;
+      return cachedPythonCommand;
+    }
+  }
+
+  cachedPythonCommand = null;
+  return cachedPythonCommand;
 }
 
 const LOCAL_API_PORT = 3100;
@@ -93,6 +144,59 @@ function assertSubmissionResult(view, expectedStatus, expectedVerdict) {
       throw new Error('submission result missing time/memory');
     }
   }
+}
+
+export function extractSolveOnlyPayload(sourceCode) {
+  const trimmedSource = String(sourceCode ?? '').trim();
+  if (!trimmedSource) {
+    throw new Error('Source code is required');
+  }
+
+  const python = resolvePythonCommand();
+  if (!python) {
+    throw new Error('Python interpreter unavailable for local smoke submission extraction');
+  }
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oj-local-smoke-'));
+  const scriptPath = path.join(tempDir, 'extract.py');
+  const sourcePath = path.join(tempDir, 'submission.py');
+
+  try {
+    fs.writeFileSync(scriptPath, SOLVE_ONLY_EXTRACTOR, 'utf8');
+    fs.writeFileSync(sourcePath, trimmedSource, 'utf8');
+
+    const result = spawnSync(python, [scriptPath, sourcePath], {
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024
+    });
+
+    if (result.status !== 0) {
+      const details = result.stderr.trim() || result.stdout.trim() || 'unknown extraction failure';
+      throw new Error(details);
+    }
+
+    const extractedSourceCode = result.stdout.trimEnd();
+    if (!extractedSourceCode) {
+      throw new Error('Submission extraction produced no runnable solve() payload');
+    }
+
+    return `${extractedSourceCode}\n`;
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+export function assertMissingSolveRejected() {
+  try {
+    extractSolveOnlyPayload('print(42)\n');
+  } catch (error) {
+    if (error instanceof Error && error.message === MISSING_SOLVE_MESSAGE) {
+      return;
+    }
+    throw error;
+  }
+
+  throw new Error('Expected missing solve() payload to be rejected');
 }
 
 async function waitForSubmissionResult(submissionId, token, expectedStatus, expectedVerdict, attempts, intervalMs) {
@@ -251,7 +355,15 @@ async function runFlow() {
   assertReviewPresent(reviewsBefore, problemId, 'review list before restart');
   console.log('ok');
 
+  process.stdout.write('[smoke] reject missing solve() payload... ');
+  assertMissingSolveRejected();
+  console.log('ok');
+
   const submissionId = `smoke-submission-${Date.now()}`;
+  const sourceCode = extractSolveOnlyPayload(`
+def solve():
+    return 42
+`);
 
   process.stdout.write('[smoke] submit and wait for compose worker result... ');
   const submission = await apiRequest(
@@ -261,7 +373,7 @@ async function runFlow() {
       submissionId,
       problemId,
       language: 'python',
-      sourceCode: 'print(42)'
+      sourceCode
     },
     studentToken
   );
@@ -322,4 +434,6 @@ async function main() {
   }
 }
 
-void main();
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  void main();
+}
