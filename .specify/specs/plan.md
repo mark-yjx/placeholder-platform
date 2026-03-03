@@ -1,5 +1,23 @@
 ## Technical Plan
 
+### Current Status
+
+Done:
+- Phases 1-8 are functionally implemented in the repository.
+- The API runtime uses PostgreSQL-backed adapters for problems, submissions, results, favorites, reviews, and judge jobs.
+- The compose `worker` service runs the real judge worker runtime rather than a placeholder keepalive process.
+- The worker consumes queued judge jobs, transitions submissions `queued -> running -> finished|failed`, and persists exactly one terminal result per submission.
+- Judge result persistence is idempotent for duplicate identical completion events.
+- The VS Code extension is a usable shell for login, fetch problems, open starter files, submit code, poll submission status, and display submission state in the tree view.
+- The extension uses HTTP clients, not in-memory runtime clients, in normal activation wiring.
+- The `solve()`-first judge contract is implemented in the runner harness and covered by unit tests.
+
+Not done:
+- The local judged submission flow still has a known CE caveat that is not yet closed as a fully proven end-to-end local runtime guarantee.
+- The compose API service is still a placeholder health server on `localhost:3000`; the real API runtime under local development remains the host-side process on `localhost:3100`.
+- Announcements, full admin oversight UX, release packaging discipline, and deployment hardening are not yet presented as completed end-to-end product workflows.
+- The extension is still a functional shell, not a polished end-user experience.
+
 ### 1. System Architecture Diagram Description
 
 ```text
@@ -172,3 +190,64 @@ Performance and integrity:
 - FK constraints for integrity.
 - Optimistic locking/version columns for contested admin edits.
 - Audit log for admin actions and rejudge/delete/export operations.
+
+### Phase 9: Judge Contract Stabilization
+
+Goals:
+- Make the Python judge contract deterministic around `solve()` as the student submission entrypoint.
+- Ensure hidden and public tests execute through the same `solve()` contract without leaking hidden test data to clients.
+- Ensure duplicate judge completion handling is a no-op for identical terminal results.
+- Eliminate CE/WA ambiguity caused by harness/import mismatch for valid Python submissions.
+
+Non-goals:
+- No worker architecture rewrite.
+- No new language support.
+- No changes to ranking, stats, or extension UX beyond what is required to prove judge semantics.
+
+Acceptance checks:
+- Submitting a deliberately wrong `solve()` implementation returns `WA`, not `CE`, for a problem with active hidden tests.
+- Submitting a correct `solve()` implementation returns `AC`.
+- Worker/runtime tests prove extraction keeps `solve()` and only required same-level helpers/imports/constants.
+- Hidden tests are not returned by any student-facing API response or extension output.
+- Duplicate identical completion handling does not create a second result row and does not throw an immutability error.
+- Valid Python syntax with a top-level `solve()` function does not fail due to harness import/name mismatch.
+
+### Phase 10: Extension UX Hardening
+
+Goals:
+- Make the VS Code extension reliable for the core student practice loop.
+- Keep submission status visible from submit time through terminal verdict.
+- Make problem open/edit/submit flow consistent with the local runtime contract.
+- Improve user-facing error messages for API unavailable, auth failure, and submission failures.
+
+Non-goals:
+- No UI framework rewrite.
+- No new feature areas such as announcements, plagiarism checks, or advanced admin dashboards.
+- No cross-editor support beyond the current VS Code extension surface.
+
+Acceptance checks:
+- After submit, the extension immediately shows `queued`, then `running`, then the terminal verdict in the submissions tree.
+- Polling stops once the submission reaches `finished` or `failed`.
+- The user can fetch problems, open starter content, edit a Python file, submit, and inspect the final result without manual state refresh.
+- Extension tests cover queued/running/finished/failed polling behavior and transient poll retry behavior.
+- Extension errors for unreachable API or invalid auth are surfaced with actionable user messages.
+
+### Phase 11: Release/Deployment
+
+Goals:
+- Make local compose topology and release docs match the actual runtime model.
+- Treat compose and documented startup flows as the source of truth for local verification.
+- Define a repeatable release path for the extension package and runtime documentation.
+- Keep verification steps explicit enough to serve as a release checklist.
+
+Non-goals:
+- No production cloud deployment design.
+- No CI/CD platform migration.
+- No container orchestration beyond the existing local compose topology.
+
+Acceptance checks:
+- Documentation states exactly which services are real compose services versus host-side processes.
+- Local verification docs include executable steps for compose boot, DB setup, API boot, submit, judge, and result inspection.
+- The compose worker can be started with `docker compose up` and process queue work without a second manual worker process.
+- Release docs include a concrete VSIX packaging/checklist path and the expected API base URL configuration for the extension.
+- Documentation contradictions between implemented runtime behavior and planning docs are removed.
