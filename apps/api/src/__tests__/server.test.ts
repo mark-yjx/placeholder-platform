@@ -1,9 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type { Role } from '@packages/domain/src/identity';
 import { createApiRequestHandler } from '../server';
+import { HmacSessionTokenIssuer } from '../sessionTokens';
 
 function createRuntime() {
+  const tokenIssuer = new HmacSessionTokenIssuer('local-dev-jwt-secret');
+
   return {
+    auth: {
+      async login(input: { email: string; password: string }) {
+        if (input.email === 'admin@example.com' && input.password === 'ignored') {
+          return {
+            userId: 'admin-1',
+            token: await tokenIssuer.issue({ userId: 'admin-1', roles: ['admin' as Role] }),
+            roles: ['admin' as Role] as const
+          };
+        }
+
+        if (input.email === 'student1@example.com' && input.password === 'secret') {
+          return {
+            userId: 'student-1',
+            token: await tokenIssuer.issue({ userId: 'student-1', roles: ['student' as Role] }),
+            roles: ['student' as Role] as const
+          };
+        }
+
+        throw new Error('Authentication failed');
+      }
+    },
     persistence: {
       problemAdmin: { async create() {} },
       problemPublication: { async publish() {} },
@@ -136,6 +161,22 @@ async function invoke(options: {
   };
 }
 
+async function loginAs(
+  runtime: unknown,
+  request: { email: string; password: string }
+): Promise<string> {
+  const response = await invoke({
+    path: '/auth/login',
+    method: 'POST',
+    body: request,
+    runtime
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = response.body as { accessToken: string };
+  return body.accessToken;
+}
+
 test('/healthz and /readyz are served by api:start runtime', async () => {
   const health = await invoke({ path: '/healthz', headers: { 'x-request-id': 'req-health' } });
   assert.equal(health.statusCode, 200);
@@ -202,10 +243,25 @@ test('/readyz probes dependencies and returns 503 when a dependency is down', as
 });
 
 test('api errors use unified auth and not-found structure', async () => {
+  const missingPassword = await invoke({
+    path: '/auth/login',
+    method: 'POST',
+    body: { email: 'student1@example.com' },
+    runtime: createRuntime()
+  });
+  assert.equal(missingPassword.statusCode, 400);
+  assert.deepEqual(missingPassword.body, {
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: 'invalid login payload',
+      details: [{ field: 'password', code: 'REQUIRED', message: 'password is required' }]
+    }
+  });
+
   const invalidLogin = await invoke({
     path: '/auth/login',
     method: 'POST',
-    body: { email: 'nobody@example.com', password: 'wrong' },
+    body: { email: 'student1@example.com', password: 'wrong' },
     runtime: createRuntime()
   });
   assert.equal(invalidLogin.statusCode, 401);
@@ -215,6 +271,25 @@ test('api errors use unified auth and not-found structure', async () => {
       message: 'invalid credentials'
     }
   });
+
+  const adminLogin = await invoke({
+    path: '/auth/login',
+    method: 'POST',
+    body: { email: 'admin@example.com', password: 'ignored' },
+    runtime: createRuntime()
+  });
+  assert.equal(adminLogin.statusCode, 200);
+  assert.equal((adminLogin.body as { role: string }).role, 'admin');
+
+  const studentLogin = await invoke({
+    path: '/auth/login',
+    method: 'POST',
+    body: { email: 'student1@example.com', password: 'secret' },
+    runtime: createRuntime()
+  });
+  assert.equal(studentLogin.statusCode, 200);
+  assert.equal((studentLogin.body as { role: string }).role, 'student');
+  assert.notEqual((studentLogin.body as { accessToken: string }).accessToken, 'token-student-1');
 
   const notFound = await invoke({ path: '/missing-route' });
   assert.equal(notFound.statusCode, 404);
@@ -227,9 +302,10 @@ test('api errors use unified auth and not-found structure', async () => {
 });
 
 test('protected endpoints return 401 for missing or invalid tokens and 403 for insufficient role', async () => {
+  const runtime = createRuntime();
   const missingToken = await invoke({
     path: '/favorites',
-    runtime: createRuntime()
+    runtime
   });
   assert.equal(missingToken.statusCode, 401);
   assert.deepEqual(missingToken.body, {
@@ -242,7 +318,7 @@ test('protected endpoints return 401 for missing or invalid tokens and 403 for i
   const invalidToken = await invoke({
     path: '/favorites',
     headers: { authorization: 'Bearer not-a-real-token' },
-    runtime: createRuntime()
+    runtime
   });
   assert.equal(invalidToken.statusCode, 401);
   assert.deepEqual(invalidToken.body, {
@@ -252,17 +328,22 @@ test('protected endpoints return 401 for missing or invalid tokens and 403 for i
     }
   });
 
+  const studentToken = await loginAs(runtime, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
+
   const insufficientRole = await invoke({
     path: '/problems',
     method: 'POST',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     body: {
       problemId: 'problem-1',
       versionId: 'problem-1-v1',
       title: 'Two Sum',
       statement: 'Solve it'
     },
-    runtime: createRuntime()
+    runtime
   });
   assert.equal(insufficientRole.statusCode, 403);
   assert.deepEqual(insufficientRole.body, {
@@ -274,10 +355,20 @@ test('protected endpoints return 401 for missing or invalid tokens and 403 for i
 });
 
 test('missing problem and submission resources return normalized 404 responses', async () => {
+  const runtime = createRuntime();
+  const studentToken = await loginAs(runtime, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
+  const adminToken = await loginAs(runtime, {
+    email: 'admin@example.com',
+    password: 'ignored'
+  });
+
   const missingProblem = await invoke({
     path: '/problems/problem-missing',
-    headers: { authorization: 'Bearer token-student-1' },
-    runtime: createRuntime()
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
   });
   assert.equal(missingProblem.statusCode, 404);
   assert.deepEqual(missingProblem.body, {
@@ -289,8 +380,8 @@ test('missing problem and submission resources return normalized 404 responses',
 
   const missingSubmission = await invoke({
     path: '/submissions/submission-missing/result',
-    headers: { authorization: 'Bearer token-admin-1' },
-    runtime: createRuntime()
+    headers: { authorization: `Bearer ${adminToken}` },
+    runtime
   });
   assert.equal(missingSubmission.statusCode, 404);
   assert.deepEqual(missingSubmission.body, {
@@ -302,10 +393,15 @@ test('missing problem and submission resources return normalized 404 responses',
 });
 
 test('submission list returns deterministic ordering with stable fields', async () => {
+  const runtime = createRuntime();
+  const studentToken = await loginAs(runtime, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
   const submissions = await invoke({
     path: '/submissions',
-    headers: { authorization: 'Bearer token-student-1' },
-    runtime: createRuntime()
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
   });
 
   assert.equal(submissions.statusCode, 200);
@@ -329,14 +425,19 @@ test('submission list returns deterministic ordering with stable fields', async 
 });
 
 test('validation errors expose consistent field-level details', async () => {
+  const runtime = createRuntime();
+  const adminToken = await loginAs(runtime, {
+    email: 'admin@example.com',
+    password: 'ignored'
+  });
   const invalidProblem = await invoke({
     path: '/problems',
     method: 'POST',
-    headers: { authorization: 'Bearer token-admin-1' },
+    headers: { authorization: `Bearer ${adminToken}` },
     body: {
       problemId: 'problem-1'
     },
-    runtime: createRuntime()
+    runtime
   });
 
   assert.equal(invalidProblem.statusCode, 400);
@@ -358,10 +459,15 @@ test('production errors do not expose raw stack traces', async () => {
   process.env.NODE_ENV = 'production';
 
   try {
+    const runtime = createRuntime();
+    const adminToken = await loginAs(runtime, {
+      email: 'admin@example.com',
+      password: 'ignored'
+    });
     const failure = await invoke({
       path: '/problems',
       method: 'POST',
-      headers: { authorization: 'Bearer token-admin-1' },
+      headers: { authorization: `Bearer ${adminToken}` },
       body: {
         problemId: 'problem-1',
         versionId: 'problem-1-v1',
@@ -369,8 +475,9 @@ test('production errors do not expose raw stack traces', async () => {
         statement: 'Solve it'
       },
       runtime: {
+        ...runtime,
         persistence: {
-          ...createRuntime().persistence,
+          ...runtime.persistence,
           problemAdmin: {
             async create() {
               throw { stack: 'sensitive trace' };
@@ -395,6 +502,7 @@ test('production errors do not expose raw stack traces', async () => {
 test('local runtime routes problem, favorites, and reviews through injected persistence services', async () => {
   const calls: string[] = [];
   const runtime = {
+    ...createRuntime(),
     persistence: {
       problemAdmin: {
         async create(input: { problemId: string }) {
@@ -513,10 +621,19 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     }
   };
 
+  const adminToken = await loginAs(runtime, {
+    email: 'admin@example.com',
+    password: 'ignored'
+  });
+  const studentToken = await loginAs(runtime, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
+
   const adminCreate = await invoke({
     path: '/problems',
     method: 'POST',
-    headers: { authorization: 'Bearer token-admin-1' },
+    headers: { authorization: `Bearer ${adminToken}` },
     body: {
       problemId: 'problem-1',
       versionId: 'problem-1-v1',
@@ -529,7 +646,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
 
   const studentProblems = await invoke({
     path: '/problems',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     runtime
   });
   assert.equal(studentProblems.statusCode, 200);
@@ -546,7 +663,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
 
   const studentProblemDetail = await invoke({
     path: '/problems/problem-1',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     runtime
   });
   assert.equal(studentProblemDetail.statusCode, 200);
@@ -561,14 +678,14 @@ test('local runtime routes problem, favorites, and reviews through injected pers
   const favorite = await invoke({
     path: '/favorites/problem-1',
     method: 'PUT',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     runtime
   });
   assert.equal(favorite.statusCode, 200);
 
   const favorites = await invoke({
     path: '/favorites',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     runtime
   });
   assert.deepEqual(favorites.body, { favorites: ['problem-1'] });
@@ -576,7 +693,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
   const review = await invoke({
     path: '/reviews/problem-1',
     method: 'PUT',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     body: { sentiment: 'like', content: 'helpful' },
     runtime
   });
@@ -602,7 +719,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
   const submission = await invoke({
     path: '/submissions',
     method: 'POST',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     body: {
       submissionId: 'submission-1',
       problemId: 'problem-1',
@@ -622,7 +739,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
 
   const studentSubmissionHistory = await invoke({
     path: '/submissions',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     runtime
   });
   assert.equal(studentSubmissionHistory.statusCode, 200);
@@ -646,7 +763,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
 
   const submissionResult = await invoke({
     path: '/submissions/submission-1',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     runtime
   });
   assert.equal(submissionResult.statusCode, 200);
@@ -661,7 +778,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
 
   const submissionResultCompat = await invoke({
     path: '/submissions/submission-1/result',
-    headers: { authorization: 'Bearer token-student-1' },
+    headers: { authorization: `Bearer ${studentToken}` },
     runtime
   });
   assert.equal(submissionResultCompat.statusCode, 200);
@@ -691,10 +808,15 @@ test('local runtime routes problem, favorites, and reviews through injected pers
 });
 
 test('student submission detail returns failureReason for failed submissions', async () => {
+  const runtime = createRuntime();
+  const studentToken = await loginAs(runtime, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
   const response = await invoke({
     path: '/submissions/submission-failed-1',
-    headers: { authorization: 'Bearer token-student-1' },
-    runtime: createRuntime()
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
   });
 
   assert.equal(response.statusCode, 200);

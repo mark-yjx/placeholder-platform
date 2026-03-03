@@ -72,3 +72,13 @@ test('phase hidden test migration defines public and hidden problem test storage
   assert.match(sql, /expected JSONB NOT NULL/i);
   assert.match(sql, /UNIQUE \(problem_version_id, test_type, position\)/i);
 });
+
+test('auth password migration stores password hashes for local login verification', () => {
+  const migration = readFromRoot('deploy', 'local', 'sql', 'migrations', '008_auth_passwords.sql');
+  const seed = readFromRoot('deploy', 'local', 'sql', 'seeds', '001_mvp_seed.sql');
+
+  assert.match(migration, /ALTER TABLE users\s+ADD COLUMN IF NOT EXISTS password_hash TEXT/i);
+  assert.match(migration, /ALTER TABLE users\s+ALTER COLUMN password_hash SET NOT NULL/i);
+  assert.match(seed, /INSERT INTO users \(id, email, role, password_hash\)/i);
+  assert.match(seed, /password_hash = EXCLUDED\.password_hash/i);
+});

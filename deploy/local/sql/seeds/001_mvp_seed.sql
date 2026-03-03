@@ -1,13 +1,14 @@
 BEGIN;
 
-INSERT INTO users (id, email, role)
+INSERT INTO users (id, email, role, password_hash)
 VALUES
-  ('admin-1', 'admin@example.com', 'admin'),
-  ('student-1', 'student1@example.com', 'student'),
-  ('student-2', 'student2@example.com', 'student')
+  ('admin-1', 'admin@example.com', 'admin', 'scrypt$oj-local-salt$5d579cb40595a26640cd9afa26ca4311172b9046e465a8a6d79f70a42a43571e690e040047100632901310f4cc9229ee32cbd0edd8205a87554b8ed4ae58be4e'),
+  ('student-1', 'student1@example.com', 'student', 'scrypt$oj-local-salt$3e8da74f3ca963c36be4bf3b076b1dc336d1b3f0a608e8696cd949d48f77cac8d46e74a6ed22a3df7675ed2e5877908f02fa0bccc4fcba301c41cf827f02a4e0'),
+  ('student-2', 'student2@example.com', 'student', 'scrypt$oj-local-salt$3e8da74f3ca963c36be4bf3b076b1dc336d1b3f0a608e8696cd949d48f77cac8d46e74a6ed22a3df7675ed2e5877908f02fa0bccc4fcba301c41cf827f02a4e0')
 ON CONFLICT (id) DO UPDATE
 SET email = EXCLUDED.email,
-    role = EXCLUDED.role;
+    role = EXCLUDED.role,
+    password_hash = EXCLUDED.password_hash;
 
 INSERT INTO problems (id, title, publication_state)
 VALUES

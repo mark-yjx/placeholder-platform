@@ -212,7 +212,7 @@ async function runFlow() {
   });
   const studentLogin = await apiRequest('POST', '/auth/login', {
     email: 'student1@example.com',
-    password: 'ignored'
+    password: 'secret'
   });
   const adminToken = String(adminLogin.accessToken ?? '');
   const studentToken = String(studentLogin.accessToken ?? '');

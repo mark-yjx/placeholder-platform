@@ -4,6 +4,7 @@ import type { Role } from '@packages/domain/src/identity';
 import { createApiRequestContext } from './observability/requestContext';
 import { createHealthRoutes } from './routes/healthRoutes';
 import { createLocalPostgresSqlClient } from './runtime/localPostgresSqlClient';
+import { HmacSessionTokenIssuer, resolveSessionToken } from './sessionTokens';
 import {
   ApiError,
   createErrorPayload,
@@ -26,6 +27,13 @@ type ReadinessSqlClient = {
 };
 
 type LocalApiRuntime = {
+  auth: {
+    login: (input: { email: string; password: string }) => Promise<{
+      userId: string;
+      token: string;
+      roles: readonly Role[];
+    }>;
+  };
   persistence: {
     problemAdmin: {
       create: (input: {
@@ -150,7 +158,8 @@ async function readJsonBody(request: IncomingMessage): Promise<Record<string, un
 }
 
 function resolveActorFromAuthorizationHeader(
-  headerValue: string | undefined
+  headerValue: string | undefined,
+  sessionSecret: string
 ): AuthorizationResolution {
   if (!headerValue) {
     return { kind: 'missing' };
@@ -159,13 +168,18 @@ function resolveActorFromAuthorizationHeader(
     return { kind: 'invalid' };
   }
   const token = headerValue.slice('Bearer '.length).trim();
-  if (token === 'token-admin-1') {
-    return { kind: 'authenticated', actor: { userId: 'admin-1', role: 'admin' } };
+  const session = resolveSessionToken(token, sessionSecret);
+  if (!session) {
+    return { kind: 'invalid' };
   }
-  if (token === 'token-student-1') {
-    return { kind: 'authenticated', actor: { userId: 'student-1', role: 'student' } };
-  }
-  return { kind: 'invalid' };
+
+  return {
+    kind: 'authenticated',
+    actor: {
+      userId: session.userId,
+      role: session.roles.includes('admin' as Role) ? 'admin' : 'student'
+    }
+  };
 }
 
 function requireAuthenticatedActor(resolution: AuthorizationResolution): AuthenticatedActor {
@@ -235,10 +249,20 @@ function createDefaultReadinessDependencies(sqlClient?: ReadinessSqlClient): rea
 
 function createLocalApiRuntime(): LocalApiRuntime {
   // Load workspace-bound adapters only when the local Postgres runtime is enabled.
+  const { PasswordCredentialAuthService } = require('@packages/application/src/auth/PasswordCredentialAuthService') as typeof import('@packages/application/src/auth/PasswordCredentialAuthService');
+  const { PostgresCredentialRepository } = require('@packages/infrastructure/src/postgres/identity/PostgresCredentialRepository') as typeof import('@packages/infrastructure/src/postgres/identity/PostgresCredentialRepository');
   const { createLocalPersistenceServices } = require('./runtime/localPersistenceWiring') as typeof import('./runtime/localPersistenceWiring');
   const { createLocalPostgresSqlClient } = require('./runtime/localPostgresSqlClient') as typeof import('./runtime/localPostgresSqlClient');
   const sqlClient = createLocalPostgresSqlClient();
+  const sessionSecret = process.env.JWT_SECRET?.trim() || 'local-dev-jwt-secret';
+  const authService = new PasswordCredentialAuthService(
+    new PostgresCredentialRepository(sqlClient),
+    new HmacSessionTokenIssuer(sessionSecret)
+  );
   return {
+    auth: {
+      login: authService.login.bind(authService)
+    },
     persistence: createLocalPersistenceServices({
       mode: 'postgres',
       sqlClients: {
@@ -265,6 +289,8 @@ export function createApiRequestHandler(
   dependencies: readonly ReadinessDependency[],
   localRuntime?: LocalApiRuntime
 ): (request: IncomingMessage, response: ServerResponse) => void | Promise<void> {
+  const sessionSecret = process.env.JWT_SECRET?.trim() || 'local-dev-jwt-secret';
+
   return async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
     const path = url.pathname;
@@ -288,17 +314,35 @@ export function createApiRequestHandler(
     const { persistence } = localRuntime;
 
     if (path === '/auth/login' && method === 'POST') {
-      const body = await readJsonBody(request);
-      const email = String(body.email ?? '');
-      if (email === 'admin@example.com') {
-        sendJson(response, 200, { accessToken: 'token-admin-1', role: 'admin' });
-        return;
+      try {
+        const body = await readJsonBody(request);
+        const email = String(body.email ?? '').trim();
+        const password = String(body.password ?? '').trim();
+        const missingFields = [
+          !email ? missingFieldDetail('email') : null,
+          !password ? missingFieldDetail('password') : null
+        ].filter((detail): detail is NonNullable<typeof detail> => detail !== null);
+        if (missingFields.length > 0) {
+          sendError(
+            response,
+            createValidationError('invalid login payload', missingFields)
+          );
+          return;
+        }
+
+        const session = await requireAuth(localRuntime).login({ email, password });
+        sendJson(response, 200, {
+          accessToken: session.token,
+          role: session.roles.includes('admin' as Role) ? 'admin' : 'student'
+        });
+      } catch (error) {
+        if (error instanceof Error && error.message === 'Authentication failed') {
+          sendError(response, new ApiError(401, 'AUTH_INVALID_CREDENTIALS', 'invalid credentials'));
+          return;
+        }
+
+        sendError(response, mapUnknownError(error));
       }
-      if (email === 'student1@example.com') {
-        sendJson(response, 200, { accessToken: 'token-student-1', role: 'student' });
-        return;
-      }
-      sendError(response, new ApiError(401, 'AUTH_INVALID_CREDENTIALS', 'invalid credentials'));
       return;
     }
 
@@ -306,7 +350,8 @@ export function createApiRequestHandler(
       try {
         const actor = requireAuthenticatedActor(
           resolveActorFromAuthorizationHeader(
-            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined,
+            sessionSecret
           )
         );
         ensureRole(actor, 'admin');
@@ -349,7 +394,8 @@ export function createApiRequestHandler(
           resolveActorFromAuthorizationHeader(
             typeof request.headers.authorization === 'string'
               ? request.headers.authorization
-              : undefined
+              : undefined,
+            sessionSecret
           )
         );
         const problems = await persistence.studentProblemQuery.listPublishedProblems();
@@ -367,7 +413,8 @@ export function createApiRequestHandler(
           resolveActorFromAuthorizationHeader(
             typeof request.headers.authorization === 'string'
               ? request.headers.authorization
-              : undefined
+              : undefined,
+            sessionSecret
           )
         );
         const problem = await persistence.studentProblemQuery.getPublishedProblemDetail(
@@ -384,7 +431,8 @@ export function createApiRequestHandler(
       try {
         const actor = requireAuthenticatedActor(
           resolveActorFromAuthorizationHeader(
-            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined,
+            sessionSecret
           )
         );
         ensureRole(actor, 'student');
@@ -434,7 +482,8 @@ export function createApiRequestHandler(
           resolveActorFromAuthorizationHeader(
             typeof request.headers.authorization === 'string'
               ? request.headers.authorization
-              : undefined
+              : undefined,
+            sessionSecret
           )
         );
         ensureRole(actor, 'student');
@@ -451,7 +500,8 @@ export function createApiRequestHandler(
       try {
         const actor = requireAuthenticatedActor(
           resolveActorFromAuthorizationHeader(
-            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined,
+            sessionSecret
           )
         );
 
@@ -475,7 +525,8 @@ export function createApiRequestHandler(
           resolveActorFromAuthorizationHeader(
             typeof request.headers.authorization === 'string'
               ? request.headers.authorization
-              : undefined
+              : undefined,
+            sessionSecret
           )
         );
         const problemId = favoriteMatch[1];
@@ -493,7 +544,8 @@ export function createApiRequestHandler(
           resolveActorFromAuthorizationHeader(
             typeof request.headers.authorization === 'string'
               ? request.headers.authorization
-              : undefined
+              : undefined,
+            sessionSecret
           )
         );
         const favorites = await persistence.favorites.list(actor.userId);
@@ -511,7 +563,8 @@ export function createApiRequestHandler(
           resolveActorFromAuthorizationHeader(
             typeof request.headers.authorization === 'string'
               ? request.headers.authorization
-              : undefined
+              : undefined,
+            sessionSecret
           )
         );
         const body = await readJsonBody(request);
@@ -558,6 +611,14 @@ export function createApiRequestHandler(
 
     sendError(response, new ApiError(404, 'NOT_FOUND', 'Not Found'));
   };
+}
+
+function requireAuth(localRuntime: LocalApiRuntime | undefined): LocalApiRuntime['auth'] {
+  if (!localRuntime) {
+    throw new ApiError(503, 'AUTH_UNAVAILABLE', 'Authentication is unavailable');
+  }
+
+  return localRuntime.auth;
 }
 
 export async function startApiServer(options?: {
