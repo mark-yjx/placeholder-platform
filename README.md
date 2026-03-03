@@ -95,6 +95,10 @@ npm run local:reset
 npm run smoke:local
 ```
 
+For the supported one-command local demo:
+- run `npm run smoke:local`
+- this boots the compose stack, imports sample problems from `data/problems`, waits for readiness, and verifies a real submission through `queued -> running -> finished|failed`
+
 ## Documentation
 
 - [OJ VSCode Demo Checklist](./docs/extension-demo-checklist.md)

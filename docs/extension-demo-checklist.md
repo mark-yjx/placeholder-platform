@@ -2,6 +2,25 @@
 
 This checklist verifies the current student shell against the real local stack.
 
+## One-Command Demo
+
+Use this command for the supported local demo path:
+
+```bash
+npm run smoke:local
+```
+
+What it does:
+- starts the compose-managed stack
+- applies schema and seed data
+- imports sample problems from `data/problems`
+- waits for API readiness instead of relying on fixed startup sleeps
+- submits a real solution through the live API and compose worker
+- verifies a terminal submission result with no duplicate worker processing
+
+Expected final line:
+- `SMOKE PASS`
+
 Use it after:
 
 ```bash

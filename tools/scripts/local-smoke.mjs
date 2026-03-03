@@ -312,6 +312,7 @@ async function main() {
   try {
     runStep('boot local stack', 'npm run local:up');
     runStep('seed user+problem', 'npm run local:db:setup');
+    runStep('import sample problems', 'npm run import:problems -- --dir data/problems');
     await runFlow();
     console.log('SMOKE PASS');
   } catch (error) {
