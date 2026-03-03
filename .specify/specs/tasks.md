@@ -774,3 +774,199 @@ Goal: Execute extracted submission code in the worker instead of the raw source.
 Files/areas touched: worker judge runner, execution pipeline wiring, worker integration tests.  
 Acceptance checks: Worker uses `extractedSourceCode` for execution; `__main__` block in starter/submission is not executed; integration test proves a submission with `solve` works and a submission without `solve` but with `entryFunction` works.
 Scope (OUT): no judge submission E2E in this phase.
+
+# Phase 9 – Judge Contract Stabilization
+
+Goal:
+Close the remaining contract gaps between extracted student code, hidden/public tests, and terminal verdict semantics so local judged submissions behave deterministically.
+
+## 84. Judge Contract: solve() extraction and helper closure
+
+Acceptance checks:
+- The runner extracts `solve()` and only the same-level helpers/imports/constants it actually references.
+- If `solve()` exists, configured legacy problem entrypoints do not override it.
+- If `solve()` is absent and a configured entrypoint exists, the runner still executes through a `solve()`-compatible harness contract.
+- Valid Python syntax with referenced helpers does not raise `NameError` due to extraction omissions.
+
+Scope:
+IN:
+- shared Python submission extraction contract
+- worker harness generation for extracted code
+- unit tests for helper/import/constant inclusion
+OUT:
+- worker architecture changes
+- extension UX work
+
+## 85. Judge Contract: hidden tests execute through solve() and stay server-only
+
+Acceptance checks:
+- Hidden tests invoke `solve()`, not problem-specific legacy function names such as `collapse()`.
+- Hidden test input/expected values are not returned by student-facing API responses.
+- Extension output and result views expose only status/verdict/time/memory, not hidden test payloads.
+- Unit/integration tests prove hidden tests can fail with `WA` without leaking hidden input/output.
+
+Scope:
+IN:
+- worker judge execution contract
+- API/result response verification
+- tests for hidden-test non-leakage
+OUT:
+- new problem authoring features
+- ranking/statistics changes
+
+## 86. Judge Contract: CE vs WA vs AC semantics
+
+Acceptance checks:
+- A deliberately wrong `solve()` submission returns `WA`, not `CE`, for a judged problem with hidden tests.
+- A correct `solve()` submission returns `AC`.
+- Valid Python syntax does not produce `CE` due to harness import mismatch or entrypoint mismatch.
+- Runtime exceptions still map to `RE`; extraction/harness failures only map to `CE` when the submission truly violates the contract.
+
+Scope:
+IN:
+- judge runner contract only
+- verdict mapping tests
+OUT:
+- worker process orchestration
+- extension polling/UI changes
+
+## 87. Judge Contract: duplicate completion idempotency verification
+
+Acceptance checks:
+- Duplicate identical judge completion events do not create a second persisted result row.
+- Duplicate identical completion events do not throw immutability errors.
+- Submission terminal states remain immutable once `finished` or `failed`.
+- Tests prove terminal state and persisted verdict/time/memory remain unchanged after duplicate completion.
+
+Scope:
+IN:
+- result ingestion idempotency path
+- worker/API duplicate completion verification
+- tests
+OUT:
+- queue redesign
+- schema changes unless strictly required
+
+# Phase 10 – Extension UX Hardening
+
+Goal:
+Harden the extension into a dependable student shell around the live API and judge pipeline.
+
+## 88. Extension UX: submission polling lifecycle
+
+Acceptance checks:
+- Immediately after submit, the extension shows `queued`.
+- Polling updates the submission display to `running`.
+- Terminal verdict/time/memory are shown once the submission reaches `finished` or `failed`.
+- Polling stops after terminal state and does not continue mutating terminal entries.
+
+Scope:
+IN:
+- extension polling loop
+- submissions TreeView state rendering
+- extension tests for queued/running/finished|failed transitions
+OUT:
+- backend API changes
+- ranking or review UX
+
+## 89. Extension UX: problem open creates editable starter file
+
+Acceptance checks:
+- Selecting/opening a problem creates or opens an editable local starter file under the workspace.
+- The file content comes from the backend starter payload, not a hardcoded template.
+- Existing local files are not overwritten without explicit confirmation.
+- Manual/unit checks prove the user can edit the starter file directly after open.
+
+Scope:
+IN:
+- extension problem open command
+- workspace file lifecycle
+- tests for create/reuse/no-overwrite behavior
+OUT:
+- judge contract changes
+- backend schema changes
+
+## 90. Extension UX: show starter and statement together
+
+Acceptance checks:
+- Problem detail fetch provides enough data to show the statement and create the starter file from the same backend response path.
+- Statement rendering remains readable after starter-file flow is added.
+- Missing starter content fails with a clear extension-side error.
+- Tests prove statement metadata and starter content stay aligned with the selected problem/version.
+
+Scope:
+IN:
+- extension problem detail handling
+- starter + statement presentation flow
+- tests
+OUT:
+- new backend endpoints unless strictly required by contradiction
+- release packaging work
+
+## 91. Extension UX: actionable error experience
+
+Acceptance checks:
+- API unavailable surfaces a clear user-facing message with the next action.
+- Authentication failure surfaces a clear login-required message.
+- Submission failure states remain visible in the submissions tree and result view.
+- No raw stack traces are shown in normal extension UI flows.
+
+Scope:
+IN:
+- extension error mapping and notifications
+- tests for common failure modes
+OUT:
+- API contract redesign
+- worker logic changes
+
+# Phase 11 – Release/Deployment
+
+Goal:
+Make runtime documentation and release steps match the implemented local stack and extension packaging flow.
+
+## 92. Deployment: compose is the documented source of truth
+
+Acceptance checks:
+- Local deployment docs state exactly which services are compose-managed and which remain host-side.
+- Compose worker startup is documented as the single worker process for local runs.
+- Docs do not instruct users to start duplicate worker processes for the same local verification flow.
+- Manual verification steps can be followed without guessing which runtime is authoritative.
+
+Scope:
+IN:
+- docs under `.specify/specs/`, `docs/`, and local runbooks as needed in future implementation tasks
+- compose/runtime documentation alignment
+OUT:
+- code changes to API or worker behavior in this planning task
+
+## 93. Deployment: README and local setup validation
+
+Acceptance checks:
+- README/local setup docs describe real ports, startup order, DB setup, and judge verification steps accurately.
+- Manual local validation covers compose boot, DB setup, host API boot, submit, poll, and result inspection.
+- Known caveats are documented concretely, including any remaining judge CE caveat.
+- Documentation contradictions between runtime behavior and setup docs are removed.
+
+Scope:
+IN:
+- README/local setup/runbook validation tasks
+- explicit validation checklist text
+OUT:
+- release automation
+- feature implementation
+
+## 94. Release: VSIX packaging and release checklist
+
+Acceptance checks:
+- A repeatable VSIX release checklist exists and is concrete enough to execute step by step.
+- The checklist includes version bump, build, package, install/test, release notes, and rollback guidance.
+- Expected extension configuration such as `oj.apiBaseUrl` is documented in the release path.
+- Packaging docs identify the intended artifact and installation path without ambiguity.
+
+Scope:
+IN:
+- release docs/checklist
+- packaging verification steps
+OUT:
+- publishing automation to marketplaces
+- backend deployment automation

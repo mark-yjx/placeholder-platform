@@ -4,6 +4,7 @@
 
 Done:
 - Phases 1-8 are functionally implemented in the repository.
+- Tasks through the currently documented implementation phases are substantially complete through the extension submit/extract/judge wiring path.
 - The API runtime uses PostgreSQL-backed adapters for problems, submissions, results, favorites, reviews, and judge jobs.
 - The compose `worker` service runs the real judge worker runtime rather than a placeholder keepalive process.
 - The worker consumes queued judge jobs, transitions submissions `queued -> running -> finished|failed`, and persists exactly one terminal result per submission.
@@ -13,7 +14,7 @@ Done:
 - The `solve()`-first judge contract is implemented in the runner harness and covered by unit tests.
 
 Not done:
-- The local judged submission flow still has a known CE caveat that is not yet closed as a fully proven end-to-end local runtime guarantee.
+- Phase 9 is not complete because the local judged submission flow still has a known CE caveat that is not yet closed as a fully proven end-to-end local runtime guarantee.
 - The compose API service is still a placeholder health server on `localhost:3000`; the real API runtime under local development remains the host-side process on `localhost:3100`.
 - Announcements, full admin oversight UX, release packaging discipline, and deployment hardening are not yet presented as completed end-to-end product workflows.
 - The extension is still a functional shell, not a polished end-user experience.
