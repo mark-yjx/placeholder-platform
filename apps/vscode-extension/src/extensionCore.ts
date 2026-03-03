@@ -76,6 +76,7 @@ export function registerExtensionCommands(
     dependencies.waitForNextPoll ??
     ((delayMs: number) => new Promise<void>((resolve) => setTimeout(resolve, delayMs)));
   const pollIntervalMs = 1_000;
+  const maxPollBackoffMs = 8_000;
 
   const runWithHandling =
     (commandId: string, run: (...args: unknown[]) => Promise<void>) =>
@@ -93,6 +94,28 @@ export function registerExtensionCommands(
     };
 
   let latestSubmissionId: string | null = null;
+  let activePollingSubmissionId: string | null = null;
+  const cancelledPollingSubmissionIds = new Set<string>();
+
+  const isTransientPollError = (error: unknown): boolean => {
+    const code =
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof (error as { code?: unknown }).code === 'string'
+        ? (error as { code: string }).code
+        : null;
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+
+    return (
+      code === 'ECONNREFUSED' ||
+      code === 'ENOTFOUND' ||
+      code === 'ETIMEDOUT' ||
+      message.includes('fetch failed') ||
+      message.includes('network') ||
+      message.includes('socket hang up')
+    );
+  };
 
   const presentSubmissionResult = (result: SubmissionResult): void => {
     dependencies.practiceViews?.showSubmissionResult(result);
@@ -102,28 +125,53 @@ export function registerExtensionCommands(
 
   const pollSubmissionLifecycle = async (submissionId: string): Promise<void> => {
     let retryCount = 0;
+    activePollingSubmissionId = submissionId;
+    cancelledPollingSubmissionIds.delete(submissionId);
 
     while (true) {
+      if (cancelledPollingSubmissionIds.has(submissionId)) {
+        dependencies.output.appendLine(`Polling cancelled for submission ${submissionId}.`);
+        if (activePollingSubmissionId === submissionId) {
+          activePollingSubmissionId = null;
+        }
+        return;
+      }
+
       try {
         const result = await dependencies.practiceCommands.pollSubmissionResult(submissionId);
         retryCount = 0;
         presentSubmissionResult(result);
 
         if (result.status === 'finished' || result.status === 'failed') {
+          if (activePollingSubmissionId === submissionId) {
+            activePollingSubmissionId = null;
+          }
           return;
         }
 
         await waitForNextPoll(pollIntervalMs);
       } catch (error) {
-        if (retryCount >= 1) {
+        if (cancelledPollingSubmissionIds.has(submissionId)) {
+          dependencies.output.appendLine(`Polling cancelled for submission ${submissionId}.`);
+          if (activePollingSubmissionId === submissionId) {
+            activePollingSubmissionId = null;
+          }
+          return;
+        }
+
+        if (!isTransientPollError(error)) {
+          if (activePollingSubmissionId === submissionId) {
+            activePollingSubmissionId = null;
+          }
           throw error;
         }
 
         retryCount += 1;
+        const backoffMs = Math.min(pollIntervalMs * 2 ** retryCount, maxPollBackoffMs);
         dependencies.output.appendLine(
-          `Retrying submission ${submissionId} status poll after transient error.`
+          `Retrying submission ${submissionId} status poll after transient error in ${backoffMs}ms.`
         );
-        await waitForNextPoll(pollIntervalMs);
+        await waitForNextPoll(backoffMs);
       }
     }
   };
@@ -218,6 +266,20 @@ export function registerExtensionCommands(
           problems.length === 0
             ? 'No published problems available.'
             : `Loaded ${problems.length} problems.`
+        );
+      })
+    ),
+    dependencies.registerCommand(
+      'oj.practice.cancelPolling',
+      runWithHandling('oj.practice.cancelPolling', async () => {
+        if (!activePollingSubmissionId) {
+          dependencies.window.showInformationMessage('No active submission polling to cancel.');
+          return;
+        }
+
+        cancelledPollingSubmissionIds.add(activePollingSubmissionId);
+        dependencies.window.showInformationMessage(
+          `Cancelled polling for submission ${activePollingSubmissionId}.`
         );
       })
     ),

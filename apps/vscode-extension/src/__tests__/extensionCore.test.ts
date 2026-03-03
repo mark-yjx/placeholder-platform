@@ -1313,6 +1313,7 @@ test('submit current file retries one transient poll error before succeeding', a
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const outputLines: string[] = [];
   const reportedResults: Array<{ submissionId: string; status: string }> = [];
+  const waitedDelays: number[] = [];
   let pollAttempts = 0;
 
   class RetryPollingPracticeCommands extends PracticeCommands {
@@ -1351,7 +1352,9 @@ test('submit current file retries one transient poll error before succeeding', a
       new InMemoryEngagementApiClient(),
       new SessionTokenStore()
     ),
-    waitForNextPoll: async () => undefined,
+    waitForNextPoll: async (delayMs) => {
+      waitedDelays.push(delayMs);
+    },
     practiceViews: {
       showProblems: () => undefined,
       showSubmissionCreated: () => undefined,
@@ -1394,10 +1397,169 @@ test('submit current file retries one transient poll error before succeeding', a
     { submissionId: 'submission-retry-1', status: 'running' },
     { submissionId: 'submission-retry-1', status: 'finished' }
   ]);
+  assert.deepEqual(waitedDelays, [2000, 1000]);
   assert.ok(
     outputLines.some((line) =>
-      line.includes('Retrying submission submission-retry-1 status poll after transient error.')
+      line.includes('Retrying submission submission-retry-1 status poll after transient error in 2000ms.')
     )
+  );
+});
+
+test('submit current file backs off repeatedly after transient poll errors', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const waitedDelays: number[] = [];
+  let pollAttempts = 0;
+
+  class BackoffPollingPracticeCommands extends PracticeCommands {
+    override async submitCode(): Promise<{ submissionId: string }> {
+      return { submissionId: 'submission-backoff-1' };
+    }
+
+    override async pollSubmissionResult(submissionId: string) {
+      pollAttempts += 1;
+
+      if (pollAttempts <= 2) {
+        throw new Error('fetch failed');
+      }
+
+      return {
+        submissionId,
+        status: 'finished' as const,
+        verdict: 'AC' as const,
+        timeMs: 55,
+        memoryKb: 66
+      };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new BackoffPollingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    waitForNextPoll: async (delayMs) => {
+      waitedDelays.push(delayMs);
+    },
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'def solve():\n    return 42\n'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.equal(pollAttempts, 3);
+  assert.deepEqual(waitedDelays, [2000, 4000]);
+});
+
+test('cancel polling stops further status requests without mutating the last known submission state', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const infoMessages: string[] = [];
+  const reportedResults: Array<{ submissionId: string; status: string }> = [];
+  const waitedDelays: number[] = [];
+  let pollAttempts = 0;
+
+  class CancellablePollingPracticeCommands extends PracticeCommands {
+    override async submitCode(): Promise<{ submissionId: string }> {
+      return { submissionId: 'submission-cancel-1' };
+    }
+
+    override async pollSubmissionResult(submissionId: string) {
+      pollAttempts += 1;
+      return { submissionId, status: 'running' as const };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new CancellablePollingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    waitForNextPoll: async (delayMs) => {
+      waitedDelays.push(delayMs);
+      await handlers.get('oj.practice.cancelPolling')?.();
+    },
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: (result) => {
+        reportedResults.push({ submissionId: result.submissionId, status: result.status });
+      },
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'def solve():\n    return 42\n'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: (message) => infoMessages.push(message),
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.equal(pollAttempts, 1);
+  assert.deepEqual(waitedDelays, [1000]);
+  assert.deepEqual(reportedResults, [
+    { submissionId: 'submission-cancel-1', status: 'queued' },
+    { submissionId: 'submission-cancel-1', status: 'running' }
+  ]);
+  assert.equal(
+    infoMessages.some((message) => message.includes('Cancelled polling for submission submission-cancel-1.')),
+    true
   );
 });
 
