@@ -50,6 +50,24 @@ test('problem details render as markdown content', () => {
   );
 });
 
+test('problem detail fetch updates cached statement for later reveal', () => {
+  const state = new PracticeViewState();
+  state.setProblems([{ problemId: 'problem-1', title: 'Two Sum' }]);
+
+  state.showProblemDetail({
+    problemId: 'problem-1',
+    versionId: 'problem-1-v1',
+    title: 'Two Sum',
+    statement: 'Return the sum of two integers.',
+    starterCode: 'def solve():\n    pass\n'
+  });
+
+  assert.equal(
+    state.getProblemDetail('problem-1'),
+    '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nReturn the sum of two integers.\n'
+  );
+});
+
 test('selected problem is tracked only for loaded problems', () => {
   const state = new PracticeViewState();
   state.setProblems([

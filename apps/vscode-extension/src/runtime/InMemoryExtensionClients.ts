@@ -45,6 +45,7 @@ export class InMemoryPracticeApiClient implements PracticeApiClient {
     return {
       ...problem,
       versionId: `${problemId}-v1`,
+      statement: `Solve ${problem.title}.`,
       starterCode: `def ${problemId.replace(/-/g, '_')}():\n    # YOUR CODE HERE\n    raise NotImplementedError\n`
     };
   }

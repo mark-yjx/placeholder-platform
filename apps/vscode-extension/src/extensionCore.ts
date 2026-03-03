@@ -2,7 +2,7 @@ import { EngagementCommands } from './engagement/EngagementCommands';
 import { AuthCommands } from './auth/AuthCommands';
 import { PracticeCommands } from './practice/PracticeCommands';
 import { mapExtensionError } from './errors/ExtensionErrorMapper';
-import { PublishedProblem, SubmissionResult } from './api/PracticeApiClient';
+import { ProblemDetail, PublishedProblem, SubmissionResult } from './api/PracticeApiClient';
 import { formatSubmissionDetail } from './ui/PracticeViewState';
 import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { extractSubmitPayload } from './submission/SubmissionPayloadExtraction';
@@ -55,6 +55,7 @@ export type ExtensionCommandDependencies = {
   waitForNextPoll?: (delayMs: number) => Promise<void>;
   practiceViews?: {
     showProblems: (problems: readonly PublishedProblem[]) => void;
+    showProblemDetail?: (problem: ProblemDetail) => void;
     showSubmissionCreated: (submissionId: string) => void;
     showSubmissionResult: (result: SubmissionResult) => void;
     revealSubmission: (submissionId: string) => void;
@@ -288,6 +289,11 @@ export function registerExtensionCommands(
         }
         dependencies.practiceViews?.setSelectedProblem?.(problemId);
         const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
+        dependencies.practiceViews?.showProblemDetail?.(problemDetail);
+        if (!problemDetail.statement?.trim()) {
+          throw new Error(`Problem statement is unavailable for ${problemId}`);
+        }
+        await dependencies.practiceViews?.revealProblem(problemId);
         await dependencies.problemStarterWorkspace?.openProblemStarter(problemDetail);
       })
     ),

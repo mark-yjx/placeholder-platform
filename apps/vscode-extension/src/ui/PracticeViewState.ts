@@ -1,4 +1,4 @@
-import { PublishedProblem, SubmissionResult } from '../api/PracticeApiClient';
+import { ProblemDetail, PublishedProblem, SubmissionResult } from '../api/PracticeApiClient';
 
 export type ProblemTreeNode = {
   readonly id: string;
@@ -65,13 +65,33 @@ export class PracticeViewState {
   private readonly results = new Map<string, SubmissionResult>();
 
   setProblems(problems: readonly PublishedProblem[]): void {
-    this.problems = [...problems];
+    const existingById = new Map(this.problems.map((problem) => [problem.problemId, problem]));
+    this.problems = problems.map((problem) => ({
+      ...existingById.get(problem.problemId),
+      ...problem
+    }));
     if (
       this.selectedProblemId &&
       !this.problems.some((problem) => problem.problemId === this.selectedProblemId)
     ) {
       this.selectedProblemId = null;
     }
+  }
+
+  showProblemDetail(problem: ProblemDetail): void {
+    const existing = this.problems.find((candidate) => candidate.problemId === problem.problemId);
+    const merged: PublishedProblem = {
+      ...existing,
+      ...problem
+    };
+    if (existing) {
+      this.problems = this.problems.map((candidate) =>
+        candidate.problemId === problem.problemId ? merged : candidate
+      );
+      return;
+    }
+
+    this.problems = [...this.problems, merged];
   }
 
   setSelectedProblem(problemId: string): void {

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { PublishedProblem, SubmissionResult } from '../api/PracticeApiClient';
+import { ProblemDetail, PublishedProblem, SubmissionResult } from '../api/PracticeApiClient';
 import { PracticeViewState } from './PracticeViewState';
 
 class ProblemsTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
@@ -81,6 +81,11 @@ export class PracticeTreeViews {
 
   showProblems(problems: readonly PublishedProblem[]): void {
     this.state.setProblems(problems);
+    this.problemsProvider.refresh();
+  }
+
+  showProblemDetail(problem: ProblemDetail): void {
+    this.state.showProblemDetail(problem);
     this.problemsProvider.refresh();
   }
 

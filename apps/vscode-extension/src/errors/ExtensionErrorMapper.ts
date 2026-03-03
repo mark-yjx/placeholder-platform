@@ -93,6 +93,16 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
     };
   }
 
+  if (
+    normalizedMessage.includes('problem statement is unavailable') ||
+    normalizedMessage.includes('problem starter code is unavailable')
+  ) {
+    return {
+      userMessage: rawMessage,
+      logMessage: rawMessage
+    };
+  }
+
   return {
     userMessage: 'Something went wrong. Check the OJ output channel for details, then try again.',
     logMessage: rawMessage

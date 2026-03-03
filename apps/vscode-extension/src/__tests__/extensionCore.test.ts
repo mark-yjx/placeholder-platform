@@ -23,6 +23,13 @@ test('registered command writes to output channel on success', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const practiceViewCalls = {
     problems: [] as readonly { problemId: string; title: string }[],
+    problemDetails: [] as readonly {
+      problemId: string;
+      versionId: string;
+      title: string;
+      statement?: string;
+      starterCode?: string;
+    }[],
     created: [] as readonly string[],
     results: [] as readonly {
       submissionId: string;
@@ -49,6 +56,9 @@ test('registered command writes to output channel on success', async () => {
     practiceViews: {
       showProblems: (problems) => {
         practiceViewCalls.problems = problems;
+      },
+      showProblemDetail: (problem) => {
+        practiceViewCalls.problemDetails = [...practiceViewCalls.problemDetails, problem];
       },
       showSubmissionCreated: (submissionId) => {
         practiceViewCalls.created = [...practiceViewCalls.created, submissionId];
@@ -127,12 +137,170 @@ test('registered command writes to output channel on success', async () => {
     }
   ]);
   assert.deepEqual(practiceViewCalls.revealed, ['submission-1', 'submission-1', 'submission-1']);
+  assert.deepEqual(practiceViewCalls.problemDetails, [
+    {
+      problemId: 'problem-1',
+      versionId: 'problem-1-v1',
+      title: 'Two Sum',
+      statement: 'Solve Two Sum.',
+      starterCode: 'def problem_1():\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
+    }
+  ]);
+  assert.deepEqual(practiceViewCalls.openedProblems, ['problem-1']);
   assert.deepEqual(practiceViewCalls.starterFiles, ['problem-1']);
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
   assert.ok(
     infoMessages.some((message) =>
       message.includes('Submission submission-1: status=queued')
     )
+  );
+});
+
+test('select problem reveals statement and opens starter from the same fetched detail', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const shownErrors: string[] = [];
+  const detailCalls: string[] = [];
+  const revealedProblems: string[] = [];
+  const openedStarters: string[] = [];
+  const detailedProblems: Array<{
+    problemId: string;
+    versionId: string;
+    title: string;
+    statement?: string;
+    starterCode?: string;
+  }> = [];
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      detailCalls.push(problemId);
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: 'Solve it',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showProblemDetail: (problem) => detailedProblems.push(problem),
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async (problemId) => {
+        revealedProblems.push(problemId);
+      },
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async (problem: { problemId: string }) => {
+        openedStarters.push(problem.problemId);
+      }
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: () => undefined },
+    window: {
+      showErrorMessage: (message) => shownErrors.push(message),
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.selectProblem')?.('problem-1');
+
+  assert.deepEqual(detailCalls, ['problem-1']);
+  assert.deepEqual(detailedProblems, [
+    {
+      problemId: 'problem-1',
+      versionId: 'problem-1-v1',
+      title: 'Two Sum',
+      statement: 'Solve it',
+      starterCode: 'def solve():\n    return 42\n'
+    }
+  ]);
+  assert.deepEqual(revealedProblems, ['problem-1']);
+  assert.deepEqual(openedStarters, ['problem-1']);
+  assert.deepEqual(shownErrors, []);
+});
+
+test('select problem reports a clear error when statement content is missing', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const shownErrors: string[] = [];
+  const openedStarters: string[] = [];
+
+  class MissingStatementPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: '',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new MissingStatementPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showProblemDetail: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async (problem: { problemId: string }) => {
+        openedStarters.push(problem.problemId);
+      }
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: () => undefined },
+    window: {
+      showErrorMessage: (message) => shownErrors.push(message),
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.selectProblem')?.('problem-1');
+
+  assert.deepEqual(openedStarters, []);
+  assert.equal(
+    shownErrors.some((message) => message.includes('Problem statement is unavailable for problem-1')),
+    true
   );
 });
 
