@@ -163,6 +163,57 @@ test('running submissions render status without verdict metrics', () => {
   ]);
 });
 
+test('failed submissions render failure reasons clearly in submission detail', () => {
+  const state = new PracticeViewState();
+
+  state.recordSubmissionResult({
+    submissionId: 'submission-failed-1',
+    status: 'failed',
+    failureReason: 'sandbox could not start'
+  });
+
+  assert.deepEqual(state.getSubmissionNodes(), [
+    {
+      id: 'submission-failed-1',
+      label: 'submission-failed-1 | failed | sandbox could not start',
+      description: 'failed | sandbox could not start',
+      detail: 'Submission submission-failed-1: failed - sandbox could not start'
+    }
+  ]);
+  assert.equal(
+    state.getSubmissionDetail('submission-failed-1'),
+    'Submission submission-failed-1: failed - sandbox could not start'
+  );
+});
+
+test('compile and runtime verdicts render as judged outcomes instead of generic failures', () => {
+  const compileError = {
+    submissionId: 'submission-ce-1',
+    status: 'finished' as const,
+    verdict: 'CE' as const,
+    timeMs: 10,
+    memoryKb: 20
+  };
+  const runtimeError = {
+    submissionId: 'submission-re-1',
+    status: 'finished' as const,
+    verdict: 'RE' as const,
+    timeMs: 30,
+    memoryKb: 40
+  };
+
+  assert.equal(formatSubmissionSummary(compileError), 'Compile Error (CE) | 10ms | 20KB');
+  assert.equal(
+    formatSubmissionDetail(compileError),
+    'Submission submission-ce-1: finished with compile error (CE), time=10ms, memory=20KB'
+  );
+  assert.equal(formatSubmissionSummary(runtimeError), 'Runtime Error (RE) | 30ms | 40KB');
+  assert.equal(
+    formatSubmissionDetail(runtimeError),
+    'Submission submission-re-1: finished with runtime error (RE), time=30ms, memory=40KB'
+  );
+});
+
 test('terminal submission results are not overwritten by later updates', () => {
   const state = new PracticeViewState();
 
@@ -208,5 +259,13 @@ test('submission result renderers stay stable', () => {
   assert.equal(
     formatSubmissionDetail({ submissionId: 'submission-3', status: 'running' }),
     'Submission submission-3: status=running'
+  );
+  assert.equal(
+    formatSubmissionDetail({
+      submissionId: 'submission-4',
+      status: 'failed',
+      failureReason: 'sandbox could not start'
+    }),
+    'Submission submission-4: failed - sandbox could not start'
   );
 });

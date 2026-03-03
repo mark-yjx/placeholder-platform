@@ -1407,6 +1407,146 @@ test('submit current file polls until failed and stops on terminal state', async
   ]);
 });
 
+test('judged runtime failures and API transport failures surface distinct user-visible messages', async () => {
+  const judgedHandlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const judgedOutputLines: string[] = [];
+  const judgedErrors: string[] = [];
+
+  class RuntimeErrorPracticeCommands extends PracticeCommands {
+    override async submitCode(): Promise<{ submissionId: string }> {
+      return { submissionId: 'submission-runtime-1' };
+    }
+
+    override async pollSubmissionResult(submissionId: string) {
+      return {
+        submissionId,
+        status: 'finished' as const,
+        verdict: 'RE' as const,
+        timeMs: 77,
+        memoryKb: 88
+      };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RuntimeErrorPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    waitForNextPoll: async () => undefined,
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: (line) => judgedOutputLines.push(line) },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'def solve():\n    return 42\n'
+        }
+      },
+      showErrorMessage: (message) => judgedErrors.push(message),
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      judgedHandlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await judgedHandlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.ok(
+    judgedOutputLines.some((line) =>
+      line.includes('Submission submission-runtime-1: status=queued')
+    )
+  );
+  assert.ok(
+    judgedOutputLines.some((line) =>
+      line.includes('Submission submission-runtime-1: finished with runtime error (RE), time=77ms, memory=88KB')
+    )
+  );
+  assert.equal(judgedErrors.length, 0);
+
+  const failingHandlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const transportErrors: string[] = [];
+
+  class TransportFailingPracticeCommands extends PracticeCommands {
+    override async submitCode(): Promise<{ submissionId: string }> {
+      throw Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:3100'), {
+        code: 'ECONNREFUSED'
+      });
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new TransportFailingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/tmp/solution.py',
+          getText: () => 'def solve():\n    return 42\n'
+        }
+      },
+      showErrorMessage: (message) => transportErrors.push(message),
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      failingHandlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await failingHandlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.ok(
+    transportErrors.some((message) =>
+      message.includes('Unable to reach the OJ API. Check that the server is running and verify oj.apiBaseUrl')
+    )
+  );
+});
+
 test('submit current file retries one transient poll error before succeeding', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const outputLines: string[] = [];

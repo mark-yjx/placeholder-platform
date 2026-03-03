@@ -102,6 +102,16 @@ test('user can complete fetch -> submit -> see AC/WA/TLE/RE/CE + time/memory', a
     });
 
     const rendered = await practiceCommands.viewSubmissionResult(submission.submissionId);
+    if (expectedVerdict === 'CE') {
+      assert.match(rendered, /^COMPILE ERROR \(CE\) \| time: \d+ms \| memory: \d+KB$/);
+      continue;
+    }
+
+    if (expectedVerdict === 'RE') {
+      assert.match(rendered, /^RUNTIME ERROR \(RE\) \| time: \d+ms \| memory: \d+KB$/);
+      continue;
+    }
+
     assert.match(rendered, new RegExp(`^${expectedVerdict} \\| time: \\d+ms \\| memory: \\d+KB$`));
   }
 });

@@ -22,13 +22,41 @@ function isTerminalStatus(status: SubmissionResult['status']): boolean {
   return status === 'finished' || status === 'failed';
 }
 
+function formatVerdictSummary(verdict: NonNullable<SubmissionResult['verdict']>): string {
+  if (verdict === 'CE') {
+    return 'Compile Error (CE)';
+  }
+
+  if (verdict === 'RE') {
+    return 'Runtime Error (RE)';
+  }
+
+  return verdict;
+}
+
+function formatVerdictDetail(verdict: NonNullable<SubmissionResult['verdict']>): string {
+  if (verdict === 'CE') {
+    return 'finished with compile error (CE)';
+  }
+
+  if (verdict === 'RE') {
+    return 'finished with runtime error (RE)';
+  }
+
+  return `verdict=${verdict}`;
+}
+
 export function formatSubmissionSummary(result: SubmissionResult): string {
   if (result.status === 'queued' || result.status === 'running') {
     return result.status;
   }
 
   if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
-    return `${result.verdict} | ${result.timeMs}ms | ${result.memoryKb}KB`;
+    return `${formatVerdictSummary(result.verdict)} | ${result.timeMs}ms | ${result.memoryKb}KB`;
+  }
+
+  if (result.status === 'failed' && result.failureReason?.trim()) {
+    return `failed | ${result.failureReason.trim()}`;
   }
 
   return result.status;
@@ -39,8 +67,19 @@ export function formatSubmissionDetail(result: SubmissionResult): string {
     return `Submission ${result.submissionId}: status=${result.status}`;
   }
 
+  if (result.status === 'failed') {
+    const failureReason = result.failureReason?.trim();
+    return failureReason
+      ? `Submission ${result.submissionId}: failed - ${failureReason}`
+      : `Submission ${result.submissionId}: failed - no failure reason available`;
+  }
+
   if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
-    return `Submission ${result.submissionId}: verdict=${result.verdict}, time=${result.timeMs}ms, memory=${result.memoryKb}KB`;
+    return `Submission ${result.submissionId}: ${formatVerdictDetail(result.verdict)}, time=${result.timeMs}ms, memory=${result.memoryKb}KB`;
+  }
+
+  if (result.verdict !== undefined) {
+    return `Submission ${result.submissionId}: ${formatVerdictDetail(result.verdict)}`;
   }
 
   return `Submission ${result.submissionId}: status=${result.status}`;

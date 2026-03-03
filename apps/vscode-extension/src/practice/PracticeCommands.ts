@@ -83,9 +83,33 @@ export function formatSubmissionResult(result: SubmissionResult): string {
     return `FAILED | ${result.failureReason.trim()}`;
   }
 
+  if (result.status === 'failed') {
+    return 'FAILED | no failure reason available';
+  }
+
   if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
+    if (result.verdict === 'CE') {
+      return `COMPILE ERROR (CE) | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB`;
+    }
+
+    if (result.verdict === 'RE') {
+      return `RUNTIME ERROR (RE) | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB`;
+    }
+
     return `${result.verdict} | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB`;
   }
 
-  return `${result.status.toUpperCase()} | result unavailable`;
+  if (result.verdict === 'CE') {
+    return 'COMPILE ERROR (CE)';
+  }
+
+  if (result.verdict === 'RE') {
+    return 'RUNTIME ERROR (RE)';
+  }
+
+  if (result.verdict !== undefined) {
+    return `${result.verdict} | no performance metrics reported`;
+  }
+
+  return `${result.status.toUpperCase()} | no result details available`;
 }
