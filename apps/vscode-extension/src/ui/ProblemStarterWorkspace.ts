@@ -45,7 +45,7 @@ export class ProblemStarterWorkspace {
     private readonly workspace: ProblemStarterWorkspaceLike
   ) {}
 
-  async openProblemStarter(problem: { problemId: string; starterCode?: string }): Promise<void> {
+  async openProblemStarter(problem: { problemId: string; starterCode?: string }): Promise<string> {
     const workspaceRoot = this.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceRoot) {
       throw new Error('Open a workspace folder before opening a problem');
@@ -78,5 +78,6 @@ export class ProblemStarterWorkspace {
 
     const document = await this.workspace.openTextDocument(problemPath);
     await this.window.showTextDocument(document, { preview: false });
+    return problemPath;
   }
 }

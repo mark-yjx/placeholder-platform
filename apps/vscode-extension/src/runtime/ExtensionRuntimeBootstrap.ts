@@ -1,6 +1,9 @@
 import { SessionTokenStore } from '../auth/SessionTokenStore';
 import { PracticeCommands } from '../practice/PracticeCommands';
 import { PublishedProblem, SubmissionResult } from '../api/PracticeApiClient';
+import { LocalPracticeStateStore } from './LocalPracticeStateStore';
+import { access } from 'node:fs/promises';
+import { constants } from 'node:fs';
 
 export type OutputChannelLike = {
   appendLine(value: string): void;
@@ -9,7 +12,21 @@ export type OutputChannelLike = {
 export type PracticeViewsLike = {
   showProblems(problems: readonly PublishedProblem[]): void;
   showSubmissionResult(result: SubmissionResult): void;
+  setSelectedProblem?(problemId: string): void;
 };
+
+export type ProblemStarterWorkspaceRestoreLike = {
+  openProblemStarter(problem: { problemId: string; starterCode?: string }): Promise<string>;
+};
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function probeApiHealth(apiBaseUrl: string): Promise<{
   healthz: string;
@@ -62,6 +79,8 @@ export async function restorePracticeStateOnStartup(options: {
   practiceCommands: PracticeCommands;
   practiceViews: PracticeViewsLike;
   output: OutputChannelLike;
+  localStateStore?: LocalPracticeStateStore;
+  problemStarterWorkspace?: ProblemStarterWorkspaceRestoreLike;
 }): Promise<void> {
   let apiReachable = false;
 
@@ -89,6 +108,41 @@ export async function restorePracticeStateOnStartup(options: {
 
   try {
     await restorePracticeState(options);
+    if (options.localStateStore) {
+      const persistedProblemStates = options.localStateStore.listProblemStates();
+      for (const [problemId, problemState] of Object.entries(persistedProblemStates)) {
+        const restoredFilePath = problemState.lastOpenedFilePath?.trim();
+        if (!restoredFilePath) {
+          continue;
+        }
+
+        if (await fileExists(restoredFilePath)) {
+          options.output.appendLine(
+            `Restored local workspace file for ${problemId}: ${restoredFilePath}`
+          );
+          continue;
+        }
+
+        await options.localStateStore.clearLastOpenedFile(problemId);
+        options.output.appendLine(
+          `Skipped missing local workspace file for ${problemId}: ${restoredFilePath}`
+        );
+      }
+    }
+
+    const selectedProblemId = options.localStateStore?.getSelectedProblemId();
+    if (selectedProblemId) {
+      options.practiceViews.setSelectedProblem?.(selectedProblemId);
+      options.output.appendLine(`Restored selected problem: ${selectedProblemId}`);
+
+      const persistedProblemState = options.localStateStore?.getProblemState(selectedProblemId);
+      const restoredSubmissionId = persistedProblemState?.lastSubmissionId?.trim();
+      if (restoredSubmissionId) {
+        options.output.appendLine(
+          `Restored last submission for ${selectedProblemId}: ${restoredSubmissionId}`
+        );
+      }
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     options.output.appendLine(`Practice state restore failed: ${message}`);

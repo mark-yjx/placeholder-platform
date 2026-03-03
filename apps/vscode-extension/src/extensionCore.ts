@@ -6,6 +6,7 @@ import { ProblemDetail, PublishedProblem, SubmissionResult } from './api/Practic
 import { formatSubmissionDetail } from './ui/PracticeViewState';
 import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { extractSubmitPayload } from './submission/SubmissionPayloadExtraction';
+import { LocalPracticeStateStore } from './runtime/LocalPracticeStateStore';
 
 export type DisposableLike = { dispose: () => void };
 
@@ -64,6 +65,7 @@ export type ExtensionCommandDependencies = {
     getSelectedProblemId?: () => string | null;
   };
   problemStarterWorkspace?: ProblemStarterWorkspace;
+  localStateStore?: LocalPracticeStateStore;
   output: OutputChannelLike;
   window: WindowLike;
   registerCommand: RegisterCommand;
@@ -179,6 +181,7 @@ export function registerExtensionCommands(
   const resolveSelectedProblemId = async (): Promise<string> => {
     const selectedProblemId = dependencies.practiceViews?.getSelectedProblemId?.();
     if (selectedProblemId) {
+      await dependencies.localStateStore?.setSelectedProblemId(selectedProblemId);
       return selectedProblemId;
     }
 
@@ -205,6 +208,7 @@ export function registerExtensionCommands(
     }
 
     dependencies.practiceViews?.setSelectedProblem?.(pickedProblem.problemId);
+    await dependencies.localStateStore?.setSelectedProblemId(pickedProblem.problemId);
     return pickedProblem.problemId;
   };
 
@@ -294,6 +298,7 @@ export function registerExtensionCommands(
           sourceCode
         });
         latestSubmissionId = submission.submissionId;
+        await dependencies.localStateStore?.recordLastSubmission(problemId, submission.submissionId);
         dependencies.practiceViews?.showSubmissionCreated(submission.submissionId);
         presentSubmissionResult({ submissionId: submission.submissionId, status: 'queued' });
         dependencies.output.appendLine(`Submitted: ${submission.submissionId}`);
@@ -314,6 +319,7 @@ export function registerExtensionCommands(
           sourceCode
         });
         latestSubmissionId = submission.submissionId;
+        await dependencies.localStateStore?.recordLastSubmission(problemId, submission.submissionId);
         dependencies.practiceViews?.showSubmissionCreated(submission.submissionId);
         presentSubmissionResult({ submissionId: submission.submissionId, status: 'queued' });
         dependencies.output.appendLine(`Submitted current file: ${submission.submissionId}`);
@@ -350,13 +356,17 @@ export function registerExtensionCommands(
           return;
         }
         dependencies.practiceViews?.setSelectedProblem?.(problemId);
+        await dependencies.localStateStore?.setSelectedProblemId(problemId);
         const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
         dependencies.practiceViews?.showProblemDetail?.(problemDetail);
         if (!problemDetail.statement?.trim()) {
           throw new Error(`Problem statement is unavailable for ${problemId}`);
         }
         await dependencies.practiceViews?.revealProblem(problemId);
-        await dependencies.problemStarterWorkspace?.openProblemStarter(problemDetail);
+        const openedFilePath = await dependencies.problemStarterWorkspace?.openProblemStarter(problemDetail);
+        if (openedFilePath) {
+          await dependencies.localStateStore?.recordLastOpenedFile(problemId, openedFilePath);
+        }
       })
     ),
     dependencies.registerCommand(

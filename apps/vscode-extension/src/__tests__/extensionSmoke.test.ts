@@ -12,7 +12,10 @@ import {
   restorePracticeState,
   restorePracticeStateOnStartup
 } from '../runtime/ExtensionRuntimeBootstrap';
+import { LocalPracticeStateStore, MementoLike } from '../runtime/LocalPracticeStateStore';
 import { PracticeViewState } from '../ui/PracticeViewState';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 
 class FakeSecretStorage implements SecretStorageLike {
   private readonly storeMap = new Map<string, string>();
@@ -36,6 +39,18 @@ class FakeSecretStorage implements SecretStorageLike {
   }
 }
 
+class FakeMemento implements MementoLike {
+  private readonly values = new Map<string, unknown>();
+
+  get<T>(key: string, defaultValue?: T): T | undefined {
+    return (this.values.has(key) ? this.values.get(key) : defaultValue) as T | undefined;
+  }
+
+  async update(key: string, value: unknown): Promise<void> {
+    this.values.set(key, value);
+  }
+}
+
 class RecordingPracticeViews implements PracticeViewsLike {
   readonly state = new PracticeViewState();
 
@@ -52,6 +67,10 @@ class RecordingPracticeViews implements PracticeViewsLike {
   }): void {
     this.state.recordSubmissionResult(result);
   }
+
+  setSelectedProblem(problemId: string): void {
+    this.state.setSelectedProblem(problemId);
+  }
 }
 
 function createJsonResponse(body: unknown, init?: { status?: number }): Response {
@@ -59,6 +78,17 @@ function createJsonResponse(body: unknown, init?: { status?: number }): Response
     status: init?.status ?? 200,
     headers: { 'content-type': 'application/json' }
   });
+}
+
+function resolveRepoRoot(): string {
+  const candidates = [process.cwd(), path.resolve(process.cwd(), '..', '..')];
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, 'apps', 'vscode-extension', 'src', 'extension.ts'))) {
+      return candidate;
+    }
+  }
+
+  throw new Error('Unable to resolve repository root for extension smoke tests');
 }
 
 test('smoke validates login -> fetch -> submit -> poll -> reload restoration over HTTP clients', async () => {
@@ -222,7 +252,7 @@ test('smoke validates login -> fetch -> submit -> poll -> reload restoration ove
 
 test('extension runtime wiring keeps http clients and no in-memory fallback import', () => {
   const source = fs.readFileSync(
-    path.join(process.cwd(), 'src', 'extension.ts'),
+    path.join(resolveRepoRoot(), 'apps', 'vscode-extension', 'src', 'extension.ts'),
     'utf8'
   );
 
@@ -287,6 +317,88 @@ test('startup skips practice restore when the API is unavailable', async () => {
         'Skipping practice state restore because the API at http://oj.test is unavailable.'
       )
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('startup restores per-problem local state and drops missing file paths', async () => {
+  const originalFetch = globalThis.fetch;
+  const existingRoot = await mkdtemp(path.join(tmpdir(), 'oj-local-state-'));
+  const existingFile = path.join(existingRoot, 'problem-1.py');
+  await writeFile(existingFile, 'def solve():\n    return 42\n', 'utf8');
+
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    const method = init?.method ?? 'GET';
+
+    if (url.endsWith('/healthz')) {
+      return createJsonResponse({ status: 'ok' });
+    }
+
+    if (url.endsWith('/readyz')) {
+      return createJsonResponse({ status: 'ready' });
+    }
+
+    if (url.endsWith('/problems') && method === 'GET') {
+      return createJsonResponse({
+        problems: [{ problemId: 'problem-1', title: 'Two Sum' }]
+      });
+    }
+
+    if (url.endsWith('/submissions') && method === 'GET') {
+      return createJsonResponse({
+        submissions: [
+          {
+            submissionId: 'submission-1',
+            status: 'finished',
+            verdict: 'AC',
+            timeMs: 120,
+            memoryKb: 2048
+          }
+        ]
+      });
+    }
+
+    throw new Error(`Unhandled request: ${method} ${url}`);
+  };
+
+  try {
+    const tokenStore = new SessionTokenStore(
+      new FakeSecretStorage({ 'oj.auth.accessToken': 'student-token' })
+    );
+    await tokenStore.hydrate();
+
+    const memento = new FakeMemento();
+    const localStateStore = new LocalPracticeStateStore(memento);
+    await localStateStore.setSelectedProblemId('problem-1');
+    await localStateStore.recordLastOpenedFile('problem-1', existingFile);
+    await localStateStore.recordLastSubmission('problem-1', 'submission-1');
+    await localStateStore.recordLastOpenedFile('problem-2', '/missing/problem-2.py');
+
+    const practiceViews = new RecordingPracticeViews();
+    const outputLines: string[] = [];
+
+    await restorePracticeStateOnStartup({
+      apiBaseUrl: 'http://oj.test',
+      tokenStore,
+      practiceCommands: new PracticeCommands(
+        new HttpPracticeApiClient({ apiBaseUrl: 'http://oj.test' }),
+        tokenStore
+      ),
+      practiceViews,
+      output: { appendLine: (value) => outputLines.push(value) },
+      localStateStore
+    });
+
+    assert.equal(practiceViews.state.getSelectedProblemId(), 'problem-1');
+    assert.ok(
+      outputLines.includes(`Restored local workspace file for problem-1: ${existingFile}`)
+    );
+    assert.ok(
+      outputLines.includes('Restored last submission for problem-1: submission-1')
+    );
+    assert.equal(localStateStore.getProblemState('problem-2')?.lastOpenedFilePath, undefined);
   } finally {
     globalThis.fetch = originalFetch;
   }

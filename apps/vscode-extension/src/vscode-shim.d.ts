@@ -40,9 +40,15 @@ declare module 'vscode' {
     store(key: string, value: string): Promise<void>;
     delete(key: string): Promise<void>;
   };
+  export type Memento = {
+    get<T>(key: string, defaultValue?: T): T | undefined;
+    update(key: string, value: unknown): Thenable<void>;
+  };
   export type ExtensionContext = {
     subscriptions: Disposable[];
     secrets: SecretStorage;
+    workspaceState: Memento;
+    globalState: Memento;
   };
 
   export const commands: {

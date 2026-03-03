@@ -16,6 +16,19 @@ import {
 import { ExtensionApiError } from '../errors/ExtensionErrorMapper';
 import { ProblemStarterWorkspace } from '../ui/ProblemStarterWorkspace';
 import { extractSubmitPayload } from '../submission/SubmissionPayloadExtraction';
+import { LocalPracticeStateStore, MementoLike } from '../runtime/LocalPracticeStateStore';
+
+class FakeMemento implements MementoLike {
+  private readonly values = new Map<string, unknown>();
+
+  get<T>(key: string, defaultValue?: T): T | undefined {
+    return (this.values.has(key) ? this.values.get(key) : defaultValue) as T | undefined;
+  }
+
+  async update(key: string, value: unknown): Promise<void> {
+    this.values.set(key, value);
+  }
+}
 
 test('registered command writes to output channel on success', async () => {
   const outputLines: string[] = [];
@@ -154,6 +167,91 @@ test('registered command writes to output channel on success', async () => {
       message.includes('Submission submission-1: status=queued')
     )
   );
+});
+
+test('select problem and submit current file persist per-problem local workspace state', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const localStateStore = new LocalPracticeStateStore(new FakeMemento());
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: 'Solve it',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+
+    override async submitCode(): Promise<{ submissionId: string }> {
+      return { submissionId: 'submission-local-state-1' };
+    }
+
+    override async pollSubmissionResult(submissionId: string) {
+      return {
+        submissionId,
+        status: 'finished' as const,
+        verdict: 'AC' as const,
+        timeMs: 10,
+        memoryKb: 20
+      };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    localStateStore,
+    waitForNextPoll: async () => undefined,
+    practiceViews: {
+      showProblems: () => undefined,
+      showProblemDetail: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => 'problem-1'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => '/workspace/.oj/problems/problem-1.py'
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/workspace/.oj/problems/problem-1.py',
+          getText: () => 'def solve():\n    return 42\n'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.selectProblem')?.('problem-1');
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.equal(localStateStore.getSelectedProblemId(), 'problem-1');
+  assert.deepEqual(localStateStore.getProblemState('problem-1'), {
+    lastOpenedFilePath: '/workspace/.oj/problems/problem-1.py',
+    lastSubmissionId: 'submission-local-state-1'
+  });
 });
 
 test('select problem reveals statement and opens starter from the same fetched detail', async () => {
