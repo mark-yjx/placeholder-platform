@@ -46,23 +46,19 @@ npm run -ws --if-present build
 
 ## Local Development
 
-Start local containers:
+Start the supported local stack:
 
 ```bash
 npm run local:up
 npm run local:db:setup
 ```
 
-Start the real API runtime:
+Verify the compose-managed runtime:
 
 ```bash
-DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj PORT=3100 npm run api:start
-```
-
-Start the worker runtime:
-
-```bash
-DATABASE_URL=postgresql://oj:oj@127.0.0.1:5432/oj DOCKER_IMAGE_PYTHON=python:3.12-alpine npm run worker:start
+docker compose -f deploy/local/docker-compose.yml ps
+curl http://localhost:3100/healthz
+curl http://localhost:3100/readyz
 ```
 
 Package the extension:
@@ -74,8 +70,12 @@ npm run extension:package
 ## Important Local Ports
 
 - `5432`: Postgres
-- `3000`: placeholder compose health service
-- `3100`: real API runtime expected by the extension
+- `3100`: real compose-managed API runtime expected by the extension
+
+For normal local use:
+- the compose `api` service is the real API runtime
+- the compose `worker` service is the only supported judge worker path
+- do not start an extra host-side `npm run api:start` or `npm run worker:start` for the same local verification flow
 
 For the extension, set:
 
