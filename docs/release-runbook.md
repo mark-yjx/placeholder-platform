@@ -14,6 +14,15 @@ Before releasing:
 - changelog is updated for the target version
 - extension metadata in `apps/vscode-extension/package.json` is correct
 
+CI lanes:
+- blocking for merge: `CI / checks`
+- optional diagnostics: `CI / smoke`
+
+Current workflow intent:
+- pull requests run install, typecheck, tests, and build in the fast `checks` lane
+- local smoke is optional and only runs on schedule or manual dispatch with `run_smoke=true`
+- the smoke lane verifies the end-to-end local loop reaches terminal submission states `queued` -> `running` -> `finished|failed`
+
 Recommended local verification:
 
 ```bash

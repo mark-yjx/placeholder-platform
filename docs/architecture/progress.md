@@ -76,7 +76,9 @@
 
 ### CI/CD
 - Maturity: moderate.
-- CI reliably runs install, typecheck, build, and test on push and pull request. Smoke support exists but is optional rather than always-on, and deployment automation is not yet the focus.
+- CI reliably runs install, typecheck, build, and test on push and pull request through the fast `checks` lane.
+- The `smoke` lane is optional by design and runs only on schedule or manual dispatch.
+- The smoke lane verifies the local loop reaches terminal submission states `queued` -> `running` -> `finished|failed`.
 
 ## 5. Next Phase Roadmap (Proposed Phase 4)
 
