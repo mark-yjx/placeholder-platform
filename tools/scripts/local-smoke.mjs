@@ -295,6 +295,32 @@ function assertWorkerLifecycleLogged(submissionId) {
   }
 }
 
+function assertNoDuplicateWorkerProcessing(submissionId) {
+  const logs = execFileSync(
+    'docker',
+    ['compose', '-f', composeFile, 'logs', 'worker', '--tail', '200'],
+    { cwd: root, encoding: 'utf8' }
+  );
+  const blocks = logs
+    .split(/(?=oj-local-worker\s+\|\s+\{)/)
+    .filter((block) => block.includes(`submissionId: '${submissionId}'`));
+  const claimedMatches = blocks.filter((block) => block.includes("message: 'worker.job.claimed'"));
+  const runningMatches = blocks.filter((block) => block.includes("message: 'worker.submission.running'"));
+  const completedMatches = blocks.filter((block) => block.includes("message: 'worker.submission.completed'"));
+
+  if (claimedMatches.length !== 1) {
+    throw new Error(`expected exactly one claimed worker event for ${submissionId}, found ${claimedMatches.length}`);
+  }
+
+  if (runningMatches.length !== 1) {
+    throw new Error(`expected exactly one running worker event for ${submissionId}, found ${runningMatches.length}`);
+  }
+
+  if (completedMatches.length !== 1) {
+    throw new Error(`expected exactly one completed worker event for ${submissionId}, found ${completedMatches.length}`);
+  }
+}
+
 function postgresScalar(sql) {
   return execFileSync(
     'docker',
@@ -511,6 +537,7 @@ def solve():
   assertIncludes(favoritesAfter.favorites ?? [], problemId, 'favorites after restart');
   assertReviewPresent(reviewsAfter, problemId, 'review list after restart');
   assertNonCompileErrorVerdict(resultAfterRestart);
+  assertNoDuplicateWorkerProcessing(submissionId);
   assertSingleTerminalResult(submissionId);
   console.log('ok');
 }

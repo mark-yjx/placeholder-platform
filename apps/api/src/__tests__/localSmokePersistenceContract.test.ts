@@ -53,7 +53,10 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /submit through extension practice client and wait for compose worker result/);
   assert.match(script, /waitForExtensionSubmissionTerminal/);
   assert.match(script, /assertWorkerLifecycleLogged/);
+  assert.match(script, /assertNoDuplicateWorkerProcessing/);
   assert.match(script, /worker logs missing running event/);
+  assert.match(script, /expected exactly one claimed worker event/);
+  assert.match(script, /expected exactly one completed worker event/);
   assert.match(script, /reject missing solve\(\) payload/);
   assert.match(script, /assertMissingSolveRejected/);
   assert.match(script, /extractSolveOnlyPayload/);
@@ -73,6 +76,7 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /await restartLocalApiProcess\(\)/);
   assert.match(script, /fetch persisted data after restart/);
   assert.match(script, /assertNonCompileErrorVerdict\(resultAfterRestart\)/);
+  assert.match(script, /assertNoDuplicateWorkerProcessing\(submissionId\)/);
 });
 
 test('local smoke submission helper rejects missing solve() and keeps solve()-only payloads', async () => {
