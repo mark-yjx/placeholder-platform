@@ -276,7 +276,7 @@ export function createApiRequestHandler(
     }
 
     if (path === '/readyz' && method === 'GET') {
-      sendJson(response, 200, { status: 'ready' });
+      await handleReadiness(request, response, dependencies);
       return;
     }
 

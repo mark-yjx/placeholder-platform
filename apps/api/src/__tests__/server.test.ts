@@ -143,10 +143,17 @@ test('/healthz and /readyz are served by api:start runtime', async () => {
 
   const readiness = await invoke({ path: '/readyz', headers: { 'x-request-id': 'req-ready' } });
   assert.equal(readiness.statusCode, 200);
-  assert.deepEqual(readiness.body, { status: 'ready' });
+  assert.deepEqual(readiness.body, {
+    status: 'ready',
+    requestId: 'req-ready',
+    dependencies: [
+      { name: 'postgres', status: 'up' },
+      { name: 'queue', status: 'up' }
+    ]
+  });
 });
 
-test('/readyz returns the simple ready response without probing dependencies yet', async () => {
+test('/readyz probes dependencies and returns 503 when a dependency is down', async () => {
   let checks = 0;
   const notReady = await createApiRequestHandler([
     {
@@ -155,10 +162,17 @@ test('/readyz returns the simple ready response without probing dependencies yet
         checks += 1;
         return false;
       }
+    },
+    {
+      name: 'queue',
+      check: async () => {
+        checks += 1;
+        return true;
+      }
     }
   ], createRuntime() as never);
 
-  const request = createRequest({ path: '/readyz' });
+  const request = createRequest({ path: '/readyz', headers: { 'x-request-id': 'req-not-ready' } });
   let ended = false;
   const response = {
     statusCode: 0,
@@ -175,10 +189,15 @@ test('/readyz returns the simple ready response without probing dependencies yet
 
   await notReady(request as never, response as never);
   assert.equal(ended, true);
-  assert.equal(checks, 0);
-  assert.equal(response.statusCode, 200);
+  assert.equal(checks, 2);
+  assert.equal(response.statusCode, 503);
   assert.deepEqual(JSON.parse(response.body), {
-    status: 'ready'
+    status: 'not_ready',
+    requestId: 'req-not-ready',
+    dependencies: [
+      { name: 'postgres', status: 'down' },
+      { name: 'queue', status: 'up' }
+    ]
   });
 });
 
