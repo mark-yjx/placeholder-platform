@@ -378,6 +378,7 @@ test('startup restores per-problem local state and drops missing file paths', as
 
     const practiceViews = new RecordingPracticeViews();
     const outputLines: string[] = [];
+    const reopenedFiles: string[] = [];
 
     await restorePracticeStateOnStartup({
       apiBaseUrl: 'http://oj.test',
@@ -388,12 +389,44 @@ test('startup restores per-problem local state and drops missing file paths', as
       ),
       practiceViews,
       output: { appendLine: (value) => outputLines.push(value) },
-      localStateStore
+      localStateStore,
+      problemStarterWorkspace: {
+        openProblemStarter: async () => existingFile,
+        reopenProblemStarter: async (filePath) => {
+          reopenedFiles.push(filePath);
+        }
+      }
     });
 
     assert.equal(practiceViews.state.getSelectedProblemId(), 'problem-1');
+    assert.deepEqual(
+      practiceViews.state.getProblemNodes(),
+      [
+        {
+          id: 'problem-1',
+          label: 'Two Sum',
+          description: 'problem-1',
+          detail: '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nNo statement available.\n'
+        }
+      ]
+    );
+    assert.deepEqual(
+      practiceViews.state.getSubmissionNodes(),
+      [
+        {
+          id: 'submission-1',
+          label: 'submission-1 | AC | 120ms | 2048KB',
+          description: 'AC | 120ms | 2048KB',
+          detail: 'Submission submission-1: verdict=AC, time=120ms, memory=2048KB'
+        }
+      ]
+    );
+    assert.deepEqual(reopenedFiles, [existingFile]);
     assert.ok(
       outputLines.includes(`Restored local workspace file for problem-1: ${existingFile}`)
+    );
+    assert.ok(
+      outputLines.includes(`Reopened starter workspace file for problem-1: ${existingFile}`)
     );
     assert.ok(
       outputLines.includes('Restored last submission for problem-1: submission-1')

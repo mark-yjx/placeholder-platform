@@ -80,4 +80,14 @@ export class ProblemStarterWorkspace {
     await this.window.showTextDocument(document, { preview: false });
     return problemPath;
   }
+
+  async reopenProblemStarter(filePath: string): Promise<void> {
+    const normalizedPath = filePath.trim();
+    if (!normalizedPath) {
+      throw new Error('Starter file path is required');
+    }
+
+    const document = await this.workspace.openTextDocument(normalizedPath);
+    await this.window.showTextDocument(document, { preview: false });
+  }
 }

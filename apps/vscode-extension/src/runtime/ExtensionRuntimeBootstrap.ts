@@ -17,6 +17,7 @@ export type PracticeViewsLike = {
 
 export type ProblemStarterWorkspaceRestoreLike = {
   openProblemStarter(problem: { problemId: string; starterCode?: string }): Promise<string>;
+  reopenProblemStarter(filePath: string): Promise<void>;
 };
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -136,6 +137,14 @@ export async function restorePracticeStateOnStartup(options: {
       options.output.appendLine(`Restored selected problem: ${selectedProblemId}`);
 
       const persistedProblemState = options.localStateStore?.getProblemState(selectedProblemId);
+      const restoredFilePath = persistedProblemState?.lastOpenedFilePath?.trim();
+      if (restoredFilePath && (await fileExists(restoredFilePath))) {
+        await options.problemStarterWorkspace?.reopenProblemStarter(restoredFilePath);
+        options.output.appendLine(
+          `Reopened starter workspace file for ${selectedProblemId}: ${restoredFilePath}`
+        );
+      }
+
       const restoredSubmissionId = persistedProblemState?.lastSubmissionId?.trim();
       if (restoredSubmissionId) {
         options.output.appendLine(
