@@ -1608,10 +1608,11 @@ test('submit current file polls until failed and stops on terminal state', async
   ]);
 });
 
-test('judged runtime failures and API transport failures surface distinct user-visible messages', async () => {
+test('judged compile/runtime/timeout failures and API transport failures surface distinct user-visible messages', async () => {
   const judgedHandlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const judgedOutputLines: string[] = [];
   const judgedErrors: string[] = [];
+  let pollAttempt = 0;
 
   class RuntimeErrorPracticeCommands extends PracticeCommands {
     override async submitCode(): Promise<{ submissionId: string }> {
@@ -1619,12 +1620,37 @@ test('judged runtime failures and API transport failures surface distinct user-v
     }
 
     override async pollSubmissionResult(submissionId: string) {
+      pollAttempt += 1;
+
+      if (pollAttempt === 1) {
+        return {
+          submissionId,
+          status: 'finished' as const,
+          verdict: 'CE' as const,
+          timeMs: 11,
+          memoryKb: 22,
+          failureReason: 'SyntaxError: invalid syntax on line 3'
+        };
+      }
+
+      if (pollAttempt === 2) {
+        return {
+          submissionId,
+          status: 'finished' as const,
+          verdict: 'RE' as const,
+          timeMs: 77,
+          memoryKb: 88,
+          failureReason: 'ZeroDivisionError: division by zero'
+        };
+      }
+
       return {
         submissionId,
         status: 'finished' as const,
-        verdict: 'RE' as const,
-        timeMs: 77,
-        memoryKb: 88
+        verdict: 'TLE' as const,
+        timeMs: 2000,
+        memoryKb: 99,
+        failureReason: 'Execution exceeded the 2s time limit'
       };
     }
   }
@@ -1673,6 +1699,8 @@ test('judged runtime failures and API transport failures surface distinct user-v
   });
 
   await judgedHandlers.get('oj.practice.submitCurrentFile')?.();
+  await judgedHandlers.get('oj.practice.submitCurrentFile')?.();
+  await judgedHandlers.get('oj.practice.submitCurrentFile')?.();
 
   assert.ok(
     judgedOutputLines.some((line) =>
@@ -1681,7 +1709,23 @@ test('judged runtime failures and API transport failures surface distinct user-v
   );
   assert.ok(
     judgedOutputLines.some((line) =>
-      line.includes('Submission submission-runtime-1: finished with runtime error (RE), time=77ms, memory=88KB')
+      line.includes(
+        'Submission submission-runtime-1: finished with compile error (CE), time=11ms, memory=22KB | SyntaxError: invalid syntax on line 3'
+      )
+    )
+  );
+  assert.ok(
+    judgedOutputLines.some((line) =>
+      line.includes(
+        'Submission submission-runtime-1: finished with runtime error (RE), time=77ms, memory=88KB | ZeroDivisionError: division by zero'
+      )
+    )
+  );
+  assert.ok(
+    judgedOutputLines.some((line) =>
+      line.includes(
+        'Submission submission-runtime-1: finished with time limit exceeded (TLE), time=2000ms, memory=99KB | Execution exceeded the 2s time limit'
+      )
     )
   );
   assert.equal(judgedErrors.length, 0);

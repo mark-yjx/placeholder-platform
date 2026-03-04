@@ -112,6 +112,11 @@ test('user can complete fetch -> submit -> see AC/WA/TLE/RE/CE + time/memory', a
       continue;
     }
 
+    if (expectedVerdict === 'TLE') {
+      assert.match(rendered, /^TIME LIMIT EXCEEDED \(TLE\) \| time: \d+ms \| memory: \d+KB$/);
+      continue;
+    }
+
     assert.match(rendered, new RegExp(`^${expectedVerdict} \\| time: \\d+ms \\| memory: \\d+KB$`));
   }
 });

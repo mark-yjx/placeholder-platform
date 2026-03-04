@@ -79,6 +79,10 @@ export function formatSubmissionResult(result: SubmissionResult): string {
     return `${result.status.toUpperCase()} | waiting for judge result`;
   }
 
+  const failureSnippet = result.failureReason?.trim()
+    ? ` | ${result.failureReason.trim()}`
+    : '';
+
   if (result.status === 'failed' && result.failureReason?.trim()) {
     return `FAILED | ${result.failureReason.trim()}`;
   }
@@ -89,26 +93,34 @@ export function formatSubmissionResult(result: SubmissionResult): string {
 
   if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
     if (result.verdict === 'CE') {
-      return `COMPILE ERROR (CE) | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB`;
+      return `COMPILE ERROR (CE) | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB${failureSnippet}`;
     }
 
     if (result.verdict === 'RE') {
-      return `RUNTIME ERROR (RE) | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB`;
+      return `RUNTIME ERROR (RE) | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB${failureSnippet}`;
     }
 
-    return `${result.verdict} | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB`;
+    if (result.verdict === 'TLE') {
+      return `TIME LIMIT EXCEEDED (TLE) | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB${failureSnippet}`;
+    }
+
+    return `${result.verdict} | time: ${result.timeMs}ms | memory: ${result.memoryKb}KB${failureSnippet}`;
   }
 
   if (result.verdict === 'CE') {
-    return 'COMPILE ERROR (CE)';
+    return `COMPILE ERROR (CE)${failureSnippet}`;
   }
 
   if (result.verdict === 'RE') {
-    return 'RUNTIME ERROR (RE)';
+    return `RUNTIME ERROR (RE)${failureSnippet}`;
+  }
+
+  if (result.verdict === 'TLE') {
+    return `TIME LIMIT EXCEEDED (TLE)${failureSnippet}`;
   }
 
   if (result.verdict !== undefined) {
-    return `${result.verdict} | no performance metrics reported`;
+    return `${result.verdict} | no performance metrics reported${failureSnippet}`;
   }
 
   return `${result.status.toUpperCase()} | no result details available`;

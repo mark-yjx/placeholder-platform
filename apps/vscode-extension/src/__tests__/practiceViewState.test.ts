@@ -214,6 +214,58 @@ test('compile and runtime verdicts render as judged outcomes instead of generic 
   );
 });
 
+test('compile, runtime, and timeout verdicts include best-effort failure snippets when available', () => {
+  const compileError = {
+    submissionId: 'submission-ce-snippet-1',
+    status: 'finished' as const,
+    verdict: 'CE' as const,
+    timeMs: 10,
+    memoryKb: 20,
+    failureReason: 'SyntaxError: invalid syntax on line 3'
+  };
+  const runtimeError = {
+    submissionId: 'submission-re-snippet-1',
+    status: 'finished' as const,
+    verdict: 'RE' as const,
+    timeMs: 30,
+    memoryKb: 40,
+    failureReason: 'ZeroDivisionError: division by zero'
+  };
+  const timeoutError = {
+    submissionId: 'submission-tle-snippet-1',
+    status: 'finished' as const,
+    verdict: 'TLE' as const,
+    timeMs: 2000,
+    memoryKb: 128,
+    failureReason: 'Execution exceeded the 2s time limit'
+  };
+
+  assert.equal(
+    formatSubmissionSummary(compileError),
+    'Compile Error (CE) | 10ms | 20KB | SyntaxError: invalid syntax on line 3'
+  );
+  assert.equal(
+    formatSubmissionDetail(compileError),
+    'Submission submission-ce-snippet-1: finished with compile error (CE), time=10ms, memory=20KB | SyntaxError: invalid syntax on line 3'
+  );
+  assert.equal(
+    formatSubmissionSummary(runtimeError),
+    'Runtime Error (RE) | 30ms | 40KB | ZeroDivisionError: division by zero'
+  );
+  assert.equal(
+    formatSubmissionDetail(runtimeError),
+    'Submission submission-re-snippet-1: finished with runtime error (RE), time=30ms, memory=40KB | ZeroDivisionError: division by zero'
+  );
+  assert.equal(
+    formatSubmissionSummary(timeoutError),
+    'Time Limit Exceeded (TLE) | 2000ms | 128KB | Execution exceeded the 2s time limit'
+  );
+  assert.equal(
+    formatSubmissionDetail(timeoutError),
+    'Submission submission-tle-snippet-1: finished with time limit exceeded (TLE), time=2000ms, memory=128KB | Execution exceeded the 2s time limit'
+  );
+});
+
 test('terminal submission results are not overwritten by later updates', () => {
   const state = new PracticeViewState();
 

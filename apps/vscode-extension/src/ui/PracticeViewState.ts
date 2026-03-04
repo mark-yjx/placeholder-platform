@@ -31,6 +31,10 @@ function formatVerdictSummary(verdict: NonNullable<SubmissionResult['verdict']>)
     return 'Runtime Error (RE)';
   }
 
+  if (verdict === 'TLE') {
+    return 'Time Limit Exceeded (TLE)';
+  }
+
   return verdict;
 }
 
@@ -43,7 +47,16 @@ function formatVerdictDetail(verdict: NonNullable<SubmissionResult['verdict']>):
     return 'finished with runtime error (RE)';
   }
 
+  if (verdict === 'TLE') {
+    return 'finished with time limit exceeded (TLE)';
+  }
+
   return `verdict=${verdict}`;
+}
+
+function formatFailureSnippet(result: SubmissionResult): string {
+  const snippet = result.failureReason?.trim();
+  return snippet ? ` | ${snippet}` : '';
 }
 
 export function formatSubmissionSummary(result: SubmissionResult): string {
@@ -52,7 +65,7 @@ export function formatSubmissionSummary(result: SubmissionResult): string {
   }
 
   if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
-    return `${formatVerdictSummary(result.verdict)} | ${result.timeMs}ms | ${result.memoryKb}KB`;
+    return `${formatVerdictSummary(result.verdict)} | ${result.timeMs}ms | ${result.memoryKb}KB${formatFailureSnippet(result)}`;
   }
 
   if (result.status === 'failed' && result.failureReason?.trim()) {
@@ -75,11 +88,11 @@ export function formatSubmissionDetail(result: SubmissionResult): string {
   }
 
   if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
-    return `Submission ${result.submissionId}: ${formatVerdictDetail(result.verdict)}, time=${result.timeMs}ms, memory=${result.memoryKb}KB`;
+    return `Submission ${result.submissionId}: ${formatVerdictDetail(result.verdict)}, time=${result.timeMs}ms, memory=${result.memoryKb}KB${formatFailureSnippet(result)}`;
   }
 
   if (result.verdict !== undefined) {
-    return `Submission ${result.submissionId}: ${formatVerdictDetail(result.verdict)}`;
+    return `Submission ${result.submissionId}: ${formatVerdictDetail(result.verdict)}${formatFailureSnippet(result)}`;
   }
 
   return `Submission ${result.submissionId}: status=${result.status}`;
