@@ -1108,6 +1108,73 @@ test('submit current file prompts for a problem when none is selected', async ()
   assert.equal(submittedProblemId, 'problem-2');
 });
 
+test('submit current file infers problem id from .oj/problems/<id>.py without prompting', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  let submittedProblemId = '';
+  let quickPickShown = false;
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async submitCode(request: {
+      problemId: string;
+      language: string;
+      sourceCode: string;
+    }): Promise<{ submissionId: string }> {
+      submittedProblemId = request.problemId;
+      return { submissionId: 'submission-inferred-1' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    practiceViews: {
+      showProblems: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: () => undefined,
+      getSelectedProblemId: () => null
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async () => undefined
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: () => undefined },
+    window: {
+      activeTextEditor: {
+        document: {
+          languageId: 'python',
+          fileName: '/workspace/.oj/problems/problem-inferred.py',
+          getText: () => 'def solve():\n    return 42\n'
+        }
+      },
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => {
+        quickPickShown = true;
+        return items[0];
+      }
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.submitCurrentFile')?.();
+
+  assert.equal(quickPickShown, false);
+  assert.equal(submittedProblemId, 'problem-inferred');
+});
+
 test('submit current file rejects non-.py editors', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const outputLines: string[] = [];

@@ -184,7 +184,13 @@ export function registerExtensionCommands(
     }
   };
 
-  const resolveSelectedProblemId = async (): Promise<string> => {
+  const resolveSelectedProblemId = async (preferredProblemId?: string): Promise<string> => {
+    if (preferredProblemId?.trim()) {
+      dependencies.practiceViews?.setSelectedProblem?.(preferredProblemId);
+      await dependencies.localStateStore?.setSelectedProblemId(preferredProblemId);
+      return preferredProblemId;
+    }
+
     const selectedProblemId = dependencies.practiceViews?.getSelectedProblemId?.();
     if (selectedProblemId) {
       await dependencies.localStateStore?.setSelectedProblemId(selectedProblemId);
@@ -235,6 +241,22 @@ export function registerExtensionCommands(
     }
 
     return extractSubmitPayload(sourceCode);
+  };
+
+  const inferProblemIdFromCurrentWorkspaceFile = (): string | null => {
+    const activeDocument = dependencies.window.activeTextEditor?.document;
+    const fileName = activeDocument?.fileName?.trim();
+    if (!fileName) {
+      return null;
+    }
+
+    const normalizedPath = fileName.replaceAll('\\', '/');
+    const match = normalizedPath.match(/(?:^|\/)\.oj\/problems\/([^/]+)\.py$/i);
+    if (!match?.[1]) {
+      return null;
+    }
+
+    return match[1];
   };
 
   const resolveSubmissionSource = async (): Promise<string> => {
@@ -343,7 +365,8 @@ export function registerExtensionCommands(
     dependencies.registerCommand(
       'oj.practice.submitCurrentFile',
       runWithHandling('oj.practice.submitCurrentFile', async () => {
-        const problemId = await resolveSelectedProblemId();
+        const inferredProblemId = inferProblemIdFromCurrentWorkspaceFile();
+        const problemId = await resolveSelectedProblemId(inferredProblemId ?? undefined);
         const sourceCode = resolveCurrentPythonFileSubmission();
         const submission = await dependencies.practiceCommands.submitCode({
           problemId,
