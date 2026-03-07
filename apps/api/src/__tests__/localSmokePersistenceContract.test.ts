@@ -48,6 +48,12 @@ test('local smoke verifies compose worker processing and persistence after API r
   const script = readSmokeScript();
   assert.match(script, /import sample problems/);
   assert.match(script, /npm run import:problems -- --dir data\/problems/);
+  assert.match(script, /assertImportedCollapseProblemVisible/);
+  assert.match(script, /fetchProblemDetail\('collapse'\)/);
+  assert.match(script, /assertImportedCollapseDetail/);
+  assert.match(script, /statement\.md/);
+  assert.match(script, /starter\.py/);
+  assert.match(script, /student-visible problem detail must not expose hidden or raw test definitions/);
   assert.match(script, /login through extension http client/);
   assert.match(script, /fetch problems through extension practice client/);
   assert.match(script, /verify single compose worker service/);

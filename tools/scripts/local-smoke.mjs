@@ -304,6 +304,35 @@ function assertReviewPresent(reviewsResponse, problemId, label) {
   }
 }
 
+function assertImportedCollapseProblemVisible(problemList) {
+  const collapse = problemList.find((problem) => problem && problem.problemId === 'collapse');
+  if (!collapse) {
+    throw new Error('imported collapse problem is missing from student-visible problem list');
+  }
+}
+
+function assertImportedCollapseDetail(detail) {
+  if (!detail || detail.problemId !== 'collapse') {
+    throw new Error('imported collapse detail is missing');
+  }
+
+  const statementPath = path.join(root, 'data', 'problems', 'collapse', 'statement.md');
+  const starterPath = path.join(root, 'data', 'problems', 'collapse', 'starter.py');
+  const expectedStatement = fs.readFileSync(statementPath, 'utf8');
+  const expectedStarter = fs.readFileSync(starterPath, 'utf8');
+
+  if (detail.statement !== expectedStatement) {
+    throw new Error('imported collapse statement does not match statement.md');
+  }
+  if (detail.starterCode !== expectedStarter) {
+    throw new Error('imported collapse starter does not match starter.py');
+  }
+
+  if ('hiddenTests' in detail || 'publicTests' in detail || 'tests' in detail) {
+    throw new Error('student-visible problem detail must not expose hidden or raw test definitions');
+  }
+}
+
 function assertSubmissionResult(view, expectedStatus, expectedVerdict) {
   if (!view || view.status !== expectedStatus) {
     throw new Error(`submission status mismatch: expected ${expectedStatus}`);
@@ -698,6 +727,9 @@ async function runFlow() {
 
   process.stdout.write('[smoke] fetch problems through extension practice client... ');
   const problemsBefore = await extensionStudentLoop.practiceCommands.fetchPublishedProblems();
+  assertImportedCollapseProblemVisible(problemsBefore);
+  const collapseDetail = await extensionStudentLoop.practiceCommands.fetchProblemDetail('collapse');
+  assertImportedCollapseDetail(collapseDetail);
   const beforeProblemIds = problemsBefore.map((item) => item.problemId);
   assertIncludes(beforeProblemIds, problemId, 'problem list');
   console.log('ok');
