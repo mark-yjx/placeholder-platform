@@ -42,6 +42,12 @@ type LocalApiRuntime = {
         title: string;
         statement: string;
       }) => Promise<unknown>;
+      update: (input: {
+        problemId: string;
+        versionId: string;
+        title: string;
+        statement: string;
+      }) => Promise<unknown>;
     };
     problemPublication: {
       publish: (problemId: string) => Promise<unknown>;
@@ -388,6 +394,105 @@ export function createApiRequestHandler(
       return;
     }
 
+    if (path === '/admin/problems' && method === 'POST') {
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined,
+            sessionSecret
+          )
+        );
+        ensureRole(actor, 'admin');
+        const body = await readJsonBody(request);
+        const problemId = String(body.problemId ?? '');
+        const versionId = String(body.versionId ?? '');
+        const title = String(body.title ?? '');
+        const statement = String(body.statement ?? '');
+        const missingFields = [
+          !problemId ? missingFieldDetail('problemId') : null,
+          !versionId ? missingFieldDetail('versionId') : null,
+          !title ? missingFieldDetail('title') : null,
+          !statement ? missingFieldDetail('statement') : null
+        ].filter((detail): detail is NonNullable<typeof detail> => detail !== null);
+        if (missingFields.length > 0) {
+          sendError(
+            response,
+            createValidationError('invalid problem payload', missingFields)
+          );
+          return;
+        }
+
+        await persistence.problemAdmin.create({
+          problemId,
+          versionId,
+          title,
+          statement
+        });
+        sendJson(response, 201, { problemId });
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
+
+    const adminProblemUpdateMatch = path.match(/^\/admin\/problems\/([^/]+)$/);
+    if (adminProblemUpdateMatch && method === 'PUT') {
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined,
+            sessionSecret
+          )
+        );
+        ensureRole(actor, 'admin');
+        const body = await readJsonBody(request);
+        const versionId = String(body.versionId ?? '');
+        const title = String(body.title ?? '');
+        const statement = String(body.statement ?? '');
+        const missingFields = [
+          !versionId ? missingFieldDetail('versionId') : null,
+          !title ? missingFieldDetail('title') : null,
+          !statement ? missingFieldDetail('statement') : null
+        ].filter((detail): detail is NonNullable<typeof detail> => detail !== null);
+        if (missingFields.length > 0) {
+          sendError(
+            response,
+            createValidationError('invalid problem update payload', missingFields)
+          );
+          return;
+        }
+
+        await persistence.problemAdmin.update({
+          problemId: adminProblemUpdateMatch[1],
+          versionId,
+          title,
+          statement
+        });
+        sendJson(response, 200, { problemId: adminProblemUpdateMatch[1] });
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
+
+    const adminProblemPublishMatch = path.match(/^\/admin\/problems\/([^/]+)\/publish$/);
+    if (adminProblemPublishMatch && method === 'POST') {
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined,
+            sessionSecret
+          )
+        );
+        ensureRole(actor, 'admin');
+        await persistence.problemPublication.publish(adminProblemPublishMatch[1]);
+        sendJson(response, 200, { problemId: adminProblemPublishMatch[1] });
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
+
     if (path === '/problems' && method === 'GET') {
       try {
         requireAuthenticatedActor(
@@ -511,6 +616,24 @@ export function createApiRequestHandler(
           return;
         }
 
+        sendJson(response, 200, view);
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
+
+    const adminSubmissionMatch = path.match(/^\/admin\/submissions\/([^/]+)$/);
+    if (adminSubmissionMatch && method === 'GET') {
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined,
+            sessionSecret
+          )
+        );
+        ensureRole(actor, 'admin');
+        const view = await persistence.submissionResults.getBySubmissionId(adminSubmissionMatch[1]);
         sendJson(response, 200, view);
       } catch (error) {
         sendError(response, mapUnknownError(error));

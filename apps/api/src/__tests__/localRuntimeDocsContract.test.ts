@@ -55,4 +55,10 @@ test('admin import doc defines the supported local content workflow without manu
   assert.match(adminDoc, /queued -> running -> finished\|failed/);
   assert.match(adminDoc, /manual database edits/i);
   assert.match(adminDoc, /does not require manual database edits/i);
+  assert.match(adminDoc, /Minimal Admin API Operability/i);
+  assert.match(adminDoc, /POST http:\/\/localhost:3100\/admin\/problems/);
+  assert.match(adminDoc, /PUT http:\/\/localhost:3100\/admin\/problems\/admin-demo-1/);
+  assert.match(adminDoc, /POST http:\/\/localhost:3100\/admin\/problems\/admin-demo-1\/publish/);
+  assert.match(adminDoc, /http:\/\/localhost:3100\/admin\/submissions\/<submissionId>/);
+  assert.match(adminDoc, /student token receives `403 FORBIDDEN`/i);
 });

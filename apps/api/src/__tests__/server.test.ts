@@ -827,3 +827,175 @@ test('student submission detail returns failureReason for failed submissions', a
     failureReason: 'sandbox could not start'
   });
 });
+
+test('admin API workflow supports create, update, publish, and submission lookup while rejecting student access', async () => {
+  const calls: string[] = [];
+  const runtime = {
+    auth: createRuntime().auth,
+    persistence: {
+      problemAdmin: {
+        async create(input: {
+          problemId: string;
+          versionId: string;
+          title: string;
+          statement: string;
+        }) {
+          calls.push(`problemAdmin.create:${input.problemId}:${input.versionId}`);
+        },
+        async update(input: {
+          problemId: string;
+          versionId: string;
+          title: string;
+          statement: string;
+        }) {
+          calls.push(`problemAdmin.update:${input.problemId}:${input.versionId}`);
+        }
+      },
+      problemPublication: {
+        async publish(problemId: string) {
+          calls.push(`problemPublication.publish:${problemId}`);
+        }
+      },
+      studentProblemQuery: {
+        async listPublishedProblems() {
+          return [];
+        },
+        async getPublishedProblemDetail() {
+          throw new Error('Problem not found');
+        }
+      },
+      favorites: {
+        async favorite() { return []; },
+        async list() { return []; }
+      },
+      reviews: {
+        async submitReview() {},
+        async listReviews() { return []; }
+      },
+      submissionStudent: {
+        async create() {
+          throw new Error('not used');
+        }
+      },
+      submissionResults: {
+        async listByActorUserId() {
+          return [];
+        },
+        async getBySubmissionId(submissionId: string) {
+          calls.push(`submissionResults.getBySubmissionId:${submissionId}`);
+          return {
+            submissionId,
+            ownerUserId: 'student-1',
+            status: 'finished',
+            verdict: 'AC',
+            timeMs: 120,
+            memoryKb: 2048
+          };
+        }
+      }
+    }
+  };
+
+  const adminToken = await loginAs(runtime, {
+    email: 'admin@example.com',
+    password: 'ignored'
+  });
+  const studentToken = await loginAs(runtime, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
+
+  const adminCreate = await invoke({
+    path: '/admin/problems',
+    method: 'POST',
+    headers: { authorization: `Bearer ${adminToken}` },
+    body: {
+      problemId: 'problem-1',
+      versionId: 'problem-1-v1',
+      title: 'Two Sum',
+      statement: 'Solve it'
+    },
+    runtime
+  });
+  assert.equal(adminCreate.statusCode, 201);
+  assert.deepEqual(adminCreate.body, { problemId: 'problem-1' });
+
+  const adminUpdate = await invoke({
+    path: '/admin/problems/problem-1',
+    method: 'PUT',
+    headers: { authorization: `Bearer ${adminToken}` },
+    body: {
+      versionId: 'problem-1-v2',
+      title: 'Two Sum Updated',
+      statement: 'Solve it better'
+    },
+    runtime
+  });
+  assert.equal(adminUpdate.statusCode, 200);
+  assert.deepEqual(adminUpdate.body, { problemId: 'problem-1' });
+
+  const adminPublish = await invoke({
+    path: '/admin/problems/problem-1/publish',
+    method: 'POST',
+    headers: { authorization: `Bearer ${adminToken}` },
+    runtime
+  });
+  assert.equal(adminPublish.statusCode, 200);
+  assert.deepEqual(adminPublish.body, { problemId: 'problem-1' });
+
+  const adminSubmissionLookup = await invoke({
+    path: '/admin/submissions/submission-1',
+    method: 'GET',
+    headers: { authorization: `Bearer ${adminToken}` },
+    runtime
+  });
+  assert.equal(adminSubmissionLookup.statusCode, 200);
+  assert.deepEqual(adminSubmissionLookup.body, {
+    submissionId: 'submission-1',
+    ownerUserId: 'student-1',
+    status: 'finished',
+    verdict: 'AC',
+    timeMs: 120,
+    memoryKb: 2048
+  });
+
+  const studentUpdateDenied = await invoke({
+    path: '/admin/problems/problem-1',
+    method: 'PUT',
+    headers: { authorization: `Bearer ${studentToken}` },
+    body: {
+      versionId: 'problem-1-v3',
+      title: 'Nope',
+      statement: 'Nope'
+    },
+    runtime
+  });
+  assert.equal(studentUpdateDenied.statusCode, 403);
+  assert.deepEqual(studentUpdateDenied.body, {
+    error: {
+      code: 'FORBIDDEN',
+      message: 'Forbidden'
+    }
+  });
+
+  const studentSubmissionLookupDenied = await invoke({
+    path: '/admin/submissions/submission-1',
+    method: 'GET',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(studentSubmissionLookupDenied.statusCode, 403);
+  assert.deepEqual(studentSubmissionLookupDenied.body, {
+    error: {
+      code: 'FORBIDDEN',
+      message: 'Forbidden'
+    }
+  });
+
+  assert.deepEqual(calls, [
+    'problemAdmin.create:problem-1:problem-1-v1',
+    'problemAdmin.update:problem-1:problem-1-v2',
+    'problemPublication.publish:problem-1',
+    'submissionResults.getBySubmissionId:submission-1'
+  ]);
+});
