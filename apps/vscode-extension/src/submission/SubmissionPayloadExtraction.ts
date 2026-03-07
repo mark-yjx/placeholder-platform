@@ -20,6 +20,13 @@ type ExtractedBlock =
       references: readonly string[];
     }
   | {
+      kind: 'constant';
+      start: number;
+      code: string;
+      introducedNames: readonly string[];
+      references: readonly string[];
+    }
+  | {
       kind: 'ignored';
       start: number;
       code: string;
@@ -73,6 +80,25 @@ def collect_references(node):
     collector = ReferenceCollector()
     collector.visit(node)
     return sorted(collector.references)
+
+def collect_assigned_names(node):
+    names = []
+    targets = []
+    if isinstance(node, ast.Assign):
+        targets = node.targets
+    elif isinstance(node, ast.AnnAssign):
+        targets = [node.target]
+    else:
+        return names
+
+    for target in targets:
+        if isinstance(target, ast.Name):
+            names.append(target.id)
+        elif isinstance(target, ast.Tuple):
+            for element in target.elts:
+                if isinstance(element, ast.Name):
+                    names.append(element.id)
+    return sorted(set(names))
 
 def strip_leading_docstring(node, source_text):
     body = getattr(node, "body", [])
@@ -149,6 +175,20 @@ for node in module.body:
             "references": [name for name in collect_references(node) if name != node.name],
         })
         continue
+
+    if isinstance(node, (ast.Assign, ast.AnnAssign)):
+        introduced_names = collect_assigned_names(node)
+        if introduced_names:
+            references = collect_references(node)
+            references = [name for name in references if name not in introduced_names]
+            blocks.append({
+                "kind": "constant",
+                "start": start,
+                "code": code,
+                "introducedNames": introduced_names,
+                "references": references,
+            })
+            continue
 
     if isinstance(node, ast.If) and is_main_guard(node.test):
         blocks.append({
@@ -229,6 +269,9 @@ export function extractSubmitPayload(sourceCode: string): string {
   const importBlocks = blocks.filter(
     (block): block is Extract<ExtractedBlock, { kind: 'import' }> => block.kind === 'import'
   );
+  const constantBlocks = blocks.filter(
+    (block): block is Extract<ExtractedBlock, { kind: 'constant' }> => block.kind === 'constant'
+  );
 
   const solveBlock = functionBlocks.find((block) => block.name === 'solve');
   if (!solveBlock) {
@@ -236,27 +279,64 @@ export function extractSubmitPayload(sourceCode: string): string {
   }
 
   const includedFunctions = new Set<string>();
+  const includedConstantStarts = new Set<number>();
   const referencedImports = new Set<string>();
   const functionByName = new Map(functionBlocks.map((block) => [block.name, block]));
+  const constantByName = new Map<string, Extract<ExtractedBlock, { kind: 'constant' }>>();
+  for (const block of constantBlocks) {
+    for (const name of block.introducedNames) {
+      constantByName.set(name, block);
+    }
+  }
   const functionQueue = ['solve'];
+  const constantQueue: string[] = [];
 
-  while (functionQueue.length > 0) {
-    const name = functionQueue.pop() ?? '';
-    if (includedFunctions.has(name)) {
-      continue;
-    }
-
-    includedFunctions.add(name);
-    const block = functionByName.get(name);
-    if (!block) {
-      continue;
-    }
-
-    for (const reference of block.references) {
-      if (functionByName.has(reference) && !includedFunctions.has(reference)) {
+  const processReference = (reference: string): void => {
+    if (functionByName.has(reference)) {
+      if (!includedFunctions.has(reference)) {
         functionQueue.push(reference);
-      } else {
-        referencedImports.add(reference);
+      }
+      return;
+    }
+    const constantBlock = constantByName.get(reference);
+    if (constantBlock) {
+      if (!includedConstantStarts.has(constantBlock.start)) {
+        constantQueue.push(reference);
+      }
+      return;
+    }
+    referencedImports.add(reference);
+  };
+
+  while (functionQueue.length > 0 || constantQueue.length > 0) {
+    if (functionQueue.length > 0) {
+      const name = functionQueue.pop() ?? '';
+      if (includedFunctions.has(name)) {
+        continue;
+      }
+
+      includedFunctions.add(name);
+      const block = functionByName.get(name);
+      if (!block) {
+        continue;
+      }
+
+      for (const reference of block.references) {
+        processReference(reference);
+      }
+      continue;
+    }
+
+    const constantName = constantQueue.pop() ?? '';
+    const constantBlock = constantByName.get(constantName);
+    if (!constantBlock || includedConstantStarts.has(constantBlock.start)) {
+      continue;
+    }
+
+    includedConstantStarts.add(constantBlock.start);
+    for (const reference of constantBlock.references) {
+      if (!constantBlock.introducedNames.includes(reference)) {
+        processReference(reference);
       }
     }
   }
@@ -271,6 +351,10 @@ export function extractSubmitPayload(sourceCode: string): string {
         return true;
       }
       return block.introducedNames.some((name) => referencedImports.has(name));
+    }
+
+    if (block.kind === 'constant') {
+      return includedConstantStarts.has(block.start);
     }
 
     return false;

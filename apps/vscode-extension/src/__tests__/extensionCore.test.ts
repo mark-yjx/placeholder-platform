@@ -1403,6 +1403,26 @@ def solve():
   assert.match(extracted, /^def solve\(\):$/m);
 });
 
+test('submit payload extraction includes constants required by solve() helper closure', () => {
+  const extracted = extractSubmitPayload(`
+import math
+DEBUG = 999
+OFFSET = 2
+
+def helper(value):
+    return math.floor(value) + OFFSET
+
+def solve():
+    return helper(40.8)
+`.trim());
+
+  assert.match(extracted, /^import math$/m);
+  assert.match(extracted, /^OFFSET = 2$/m);
+  assert.match(extracted, /^def helper\(value\):$/m);
+  assert.match(extracted, /^def solve\(\):$/m);
+  assert.doesNotMatch(extracted, /^DEBUG = 999$/m);
+});
+
 test('submit payload extraction excludes __main__ blocks', () => {
   const extracted = extractSubmitPayload(`
 def solve():

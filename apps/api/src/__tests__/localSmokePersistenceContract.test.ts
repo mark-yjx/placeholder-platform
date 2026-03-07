@@ -79,22 +79,34 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /assertNoDuplicateWorkerProcessing\(submissionId\)/);
 });
 
-test('local smoke submission helper rejects missing solve() and keeps solve()-only payloads', async () => {
+test('local smoke submission helper rejects missing solve() and keeps solve() dependency closure', async () => {
   const { assertMissingSolveRejected, extractSolveOnlyPayload } = await importSmokeModule();
 
   assert.doesNotThrow(() => assertMissingSolveRejected());
-  assert.equal(
-    extractSolveOnlyPayload(`
+  const extracted = extractSolveOnlyPayload(`
+import math
+DEBUG = 999
+OFFSET = 2
+
+def helper(value):
+    return math.floor(value) + OFFSET
+
+def unused():
+    return DEBUG
+
 def solve():
-    return 42
+    return helper(40.8)
 
 print("debug")
-`).trimEnd(),
-    [
-      'def solve():',
-      '    return 42'
-    ].join('\n')
-  );
+`);
+
+  assert.match(extracted, /^import math$/m);
+  assert.match(extracted, /^OFFSET = 2$/m);
+  assert.match(extracted, /^def helper\(value\):$/m);
+  assert.match(extracted, /^def solve\(\):$/m);
+  assert.doesNotMatch(extracted, /^DEBUG = 999$/m);
+  assert.doesNotMatch(extracted, /^def unused\(\):$/m);
+  assert.doesNotMatch(extracted, /print\("debug"\)/);
 });
 
 test('README and demo checklist document smoke:local as the one-command local demo path', () => {

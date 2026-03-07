@@ -16,6 +16,7 @@ import { LocalPracticeStateStore, MementoLike } from '../runtime/LocalPracticeSt
 import { PracticeViewState } from '../ui/PracticeViewState';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { extractSubmitPayload } from '../submission/SubmissionPayloadExtraction';
 
 class FakeSecretStorage implements SecretStorageLike {
   private readonly storeMap = new Map<string, string>();
@@ -93,6 +94,7 @@ function resolveRepoRoot(): string {
 
 test('smoke validates login -> fetch -> submit -> poll -> reload restoration over HTTP clients', async () => {
   const originalFetch = globalThis.fetch;
+  let submittedSourceCode = '';
   const submissionHistory = new Map<string, { status: 'queued' | 'finished'; verdict?: 'AC'; timeMs?: number; memoryKb?: number }>();
   let submissionCounter = 0;
 
@@ -122,6 +124,11 @@ test('smoke validates login -> fetch -> submit -> poll -> reload restoration ove
     }
 
     if (url.endsWith('/submissions') && method === 'POST') {
+      const payload =
+        typeof init?.body === 'string'
+          ? (JSON.parse(init.body) as { sourceCode?: string })
+          : { sourceCode: '' };
+      submittedSourceCode = payload.sourceCode ?? '';
       submissionCounter += 1;
       const submissionId = `submission-${submissionCounter}`;
       submissionHistory.set(submissionId, { status: 'queued' });
@@ -184,11 +191,34 @@ test('smoke validates login -> fetch -> submit -> poll -> reload restoration ove
     const problems = await practiceCommands.fetchPublishedProblems();
     assert.deepEqual(problems, [{ problemId: 'problem-1', title: 'Two Sum' }]);
 
+    const rawSource = `
+import math
+DEBUG = 999
+OFFSET = 2
+
+def helper(value):
+    return math.floor(value) + OFFSET
+
+def unused():
+    return DEBUG
+
+def solve():
+    return helper(40.8)
+`;
+    const extractedSource = extractSubmitPayload(rawSource);
+
     const submission = await practiceCommands.submitCode({
       problemId: 'problem-1',
       language: 'python',
-      sourceCode: 'print(42)'
+      sourceCode: extractedSource
     });
+    assert.equal(submittedSourceCode, extractedSource);
+    assert.match(submittedSourceCode, /^import math$/m);
+    assert.match(submittedSourceCode, /^OFFSET = 2$/m);
+    assert.match(submittedSourceCode, /^def helper\(value\):$/m);
+    assert.match(submittedSourceCode, /^def solve\(\):$/m);
+    assert.doesNotMatch(submittedSourceCode, /^DEBUG = 999$/m);
+    assert.doesNotMatch(submittedSourceCode, /^def unused\(\):$/m);
     const running = await practiceCommands.pollSubmissionResult(submission.submissionId);
     assert.deepEqual(running, {
       submissionId: submission.submissionId,
