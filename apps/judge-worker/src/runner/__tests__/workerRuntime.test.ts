@@ -268,6 +268,116 @@ test('worker tick uses problem tests and records AC for a correct submission', a
   ]);
 });
 
+test('worker tick logs lifecycle events with both jobId and submissionId identifiers', async () => {
+  const { createWorkerTick } = loadWorkerRuntime();
+  const workerLogs: Array<Record<string, unknown>> = [];
+  let currentStatus = 'queued';
+  let acknowledgedSubmissionId = '';
+
+  const tick = createWorkerTick({
+    queue: {
+      async claimNext() {
+        return {
+          submissionId: 'submission-log-contract',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v-log',
+          language: 'python',
+          sourceCode: 'def solve(*args):\n    return 42\n'
+        };
+      },
+      async acknowledge(submissionId: string) {
+        acknowledgedSubmissionId = submissionId;
+      }
+    },
+    submissions: {
+      async findById() {
+        return {
+          id: 'submission-log-contract',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v-log',
+          language: 'python',
+          sourceCode: 'def solve(*args):\n    return 42\n',
+          status: currentStatus as import('@packages/domain/src/submission').SubmissionStatus
+        };
+      },
+      async save(submission) {
+        currentStatus = submission.status;
+      }
+    },
+    results: {
+      async findBySubmissionId() {
+        return null;
+      },
+      async save() {
+        return;
+      }
+    },
+    judgeConfigs: {
+      async findByProblemVersionId() {
+        return {
+          entryFunction: 'solve',
+          tests: [{ testType: 'public', position: 1, inputJson: 'null', expectedJson: '42' }]
+        };
+      }
+    },
+    sandbox: new DockerSandboxAdapter(async () => {
+      return {
+        stdout: '42\n',
+        stderr: '',
+        exitCode: 0,
+        timeMs: 10,
+        memoryKb: 256
+      };
+    }),
+    runners: new RunnerRegistry([
+      {
+        language: 'python',
+        resolve() {
+          return { language: 'python', runArgs: ['python', '/sandbox/main.py'] };
+        }
+      }
+    ]),
+    image: 'python:3.12-alpine'
+  });
+
+  const originalConsoleLog = console.log;
+  console.log = (entry: unknown) => {
+    if (entry && typeof entry === 'object') {
+      workerLogs.push(entry as Record<string, unknown>);
+    }
+  };
+
+  try {
+    await tick();
+  } finally {
+    console.log = originalConsoleLog;
+  }
+
+  assert.equal(acknowledgedSubmissionId, 'submission-log-contract');
+
+  const lifecycleEvents = [
+    'worker.job.claimed',
+    'worker.submission.running',
+    'worker.submission.completed'
+  ] as const;
+
+  for (const message of lifecycleEvents) {
+    assert.equal(
+      workerLogs.some((entry) => {
+        const fields = (entry.fields as { submissionId?: string } | undefined) ?? {};
+        return (
+          entry.message === message &&
+          entry.jobId === 'submission-log-contract' &&
+          fields.submissionId === 'submission-log-contract'
+        );
+      }),
+      true
+    );
+  }
+});
+
 test('worker tick returns WA when hidden tests fail and result does not leak hidden input/output', async () => {
   const { createWorkerTick } = loadWorkerRuntime();
   const savedResults: Array<Record<string, unknown>> = [];
