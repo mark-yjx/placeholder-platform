@@ -35,6 +35,7 @@ Local runtime assumptions:
 - real API base URL: `http://localhost:3100`
 - compose `api` service is the real API runtime
 - compose `worker` service is running
+- do not start a second host-side `npm run worker:start` for the same local queue
 - fixture student login is available through `OJ: Login`
 
 Health check before opening VS Code:

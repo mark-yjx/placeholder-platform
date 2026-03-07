@@ -560,6 +560,24 @@ function assertNoDuplicateWorkerProcessing(submissionId) {
   }
 }
 
+function assertSingleComposeWorkerService() {
+  const runningServices = execFileSync(
+    'docker',
+    ['compose', '-f', composeFile, 'ps', '--services', '--status', 'running'],
+    { cwd: root, encoding: 'utf8' }
+  )
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const runningWorkerServices = runningServices.filter((service) => service === 'worker');
+
+  if (runningWorkerServices.length !== 1) {
+    throw new Error(
+      `expected exactly one running compose worker service, found ${runningWorkerServices.length}`
+    );
+  }
+}
+
 function postgresScalar(sql) {
   return execFileSync(
     'docker',
@@ -682,6 +700,10 @@ async function runFlow() {
   const problemsBefore = await extensionStudentLoop.practiceCommands.fetchPublishedProblems();
   const beforeProblemIds = problemsBefore.map((item) => item.problemId);
   assertIncludes(beforeProblemIds, problemId, 'problem list');
+  console.log('ok');
+
+  process.stdout.write('[smoke] verify single compose worker service... ');
+  assertSingleComposeWorkerService();
   console.log('ok');
 
   process.stdout.write('[smoke] favorite + review (student)... ');

@@ -50,6 +50,10 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /npm run import:problems -- --dir data\/problems/);
   assert.match(script, /login through extension http client/);
   assert.match(script, /fetch problems through extension practice client/);
+  assert.match(script, /verify single compose worker service/);
+  assert.match(script, /assertSingleComposeWorkerService/);
+  assert.match(script, /compose', '-f', composeFile, 'ps', '--services', '--status', 'running'/);
+  assert.match(script, /expected exactly one running compose worker service/);
   assert.match(script, /submit through extension practice client and wait for compose worker result/);
   assert.match(script, /waitForExtensionSubmissionTerminal/);
   assert.match(script, /assertWorkerLifecycleLogged/);
@@ -128,4 +132,5 @@ test('README and demo checklist document smoke:local as the one-command local de
   assert.match(checklist, /rejects submissions without a top-level `solve\(\)`/i);
   assert.match(checklist, /waits for API readiness instead of relying on fixed startup sleeps/);
   assert.match(checklist, /no duplicate worker processing/);
+  assert.match(checklist, /do not start a second host-side `npm run worker:start`/i);
 });
