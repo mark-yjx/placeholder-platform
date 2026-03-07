@@ -104,6 +104,7 @@ For the supported one-command local demo:
 - [OJ VSCode Demo Checklist](./docs/extension-demo-checklist.md)
 - [Environment And Local Setup](./docs/environment-and-local-setup.md)
 - [Release Runbook](./docs/release-runbook.md)
+- Release troubleshooting checks for login/API/worker issues are included in the release runbook.
 
 ## Notes
 

@@ -108,7 +108,7 @@ Packaging behavior:
 Recommended:
 1. Install the generated VSIX into VS Code.
 2. Set `oj.apiBaseUrl`.
-3. Run the manual checklist in [OJ VSCode Demo Checklist](/home/mark/src/oj-vscode/docs/extension-demo-checklist.md).
+3. Run the manual checklist in [OJ VSCode Demo Checklist](./extension-demo-checklist.md).
 4. Confirm the installed extension activates and loads the `OJ Problems` and `OJ Submissions` views.
 5. Remove the installed VSIX if the rehearsal build should not remain installed.
 
@@ -117,6 +117,9 @@ Minimum expected flow:
 - fetch problems
 - submit code
 - view result
+
+Fresh-install validation reference:
+- run the [OJ VSCode Demo Checklist](./extension-demo-checklist.md) end-to-end on a clean profile or clean VS Code instance
 
 ### 6. Create Release Notes
 
@@ -185,6 +188,77 @@ Current known issues for release planning:
 - local development still fails if `oj.apiBaseUrl` does not point to the real compose API runtime at `http://localhost:3100`
 - in Remote SSH setups, `localhost` resolves on the remote host where the extension runs
 - release packaging assumes the extension remains `UNLICENSED`; update metadata if licensing changes
+
+## Troubleshooting Checks (Release Rehearsal)
+
+Use these checks before publishing a VSIX.
+
+### 1) Login failures
+
+Symptoms:
+- `OJ: Login` fails with invalid credentials or authentication errors.
+
+Checks:
+
+```bash
+curl -sS -X POST http://localhost:3100/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email":"student1@example.com","password":"secret"}'
+```
+
+Expected:
+- HTTP 200 with `accessToken`.
+
+### 2) API unavailable
+
+Symptoms:
+- extension reports API unreachable or timeouts.
+
+Checks:
+
+```bash
+npm run local:ps
+curl http://localhost:3100/healthz
+curl http://localhost:3100/readyz
+```
+
+Expected:
+- compose services are running
+- `/healthz` returns `{"status":"ok"}`
+- `/readyz` returns `{"status":"ready"}`
+
+### 3) Missing worker progress
+
+Symptoms:
+- submission remains `queued` with no transition to `running|finished|failed`.
+
+Checks:
+
+```bash
+docker compose -f deploy/local/docker-compose.yml logs worker --tail 200
+```
+
+Expected:
+- logs show worker lifecycle events including:
+  - `worker.job.claimed`
+  - `worker.submission.running`
+  - `worker.submission.completed`
+
+### 4) Duplicate worker symptoms
+
+Symptoms:
+- repeated processing log lines for the same submission
+- unstable or conflicting queue-consumer behavior.
+
+Checks:
+
+```bash
+docker compose -f deploy/local/docker-compose.yml ps --services --status running
+```
+
+Expected:
+- exactly one compose `worker` service is running for the supported local flow
+- no second host-side `npm run worker:start` process is used
 
 ## Quick Checklist
 
