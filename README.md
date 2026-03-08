@@ -1,34 +1,51 @@
 # OJ VSCode Monorepo
 
-Online judge platform with:
-- a Node API
-- a judge worker
-- a VS Code extension
-- shared domain, application, contract, config, and infrastructure packages
+This project is a local-first Online Judge system integrated with VS Code.
 
-## Workspace Layout
+Students solve programming problems directly in VS Code and submit solutions to a real judge pipeline backed by Postgres and a worker. The repository contains the extension, the HTTP API, the judge worker, the shared domain and application layers, the Postgres-backed infrastructure adapters, and the local tooling needed to run everything on a developer machine.
 
-- `apps/api`: HTTP API runtime
-- `apps/judge-worker`: background judge worker
-- `apps/vscode-extension`: VS Code extension package
-- `packages/domain`: core domain models
-- `packages/application`: application services and use cases
-- `packages/contracts`: cross-process contracts
-- `packages/infrastructure`: Postgres and queue adapters
-- `packages/config`: shared config artifacts
-- `deploy/local`: local Docker topology, SQL migrations, and seeds
-- `docs`: user QA, environment setup, and release runbooks
+## Key Features
 
-## What Works
+- VS Code extension UI
+- Sidebar problem browser
+- Starter file workflow
+- Submit current file
+- Real judge execution
+- Hidden test cases
+- Postgres-backed persistence
+- Docker-based local environment
 
-- Real extension-to-API HTTP integration
-- Login, fetch problems, submit code, and view results from the extension
-- Problems and submissions Explorer views in VS Code
-- Local Postgres migration and seed pipeline
-- Local smoke flow for API-backed practice scenarios
-- CI workflows for checks and release packaging
+## System Architecture
 
-## Quick Start
+The system is organized as a TypeScript monorepo:
+
+- `apps/vscode-extension`: student-facing VS Code extension
+- `apps/api`: HTTP API for authentication, problems, submissions, and result polling
+- `apps/judge-worker`: background worker that claims queued judge jobs and runs tests
+- `packages/domain`: core problem, submission, verdict, identity, and policy models
+- `packages/application`: use cases and orchestration services
+- `packages/infrastructure`: Postgres repositories and queue adapters
+- `packages/contracts`: cross-process data contracts
+- `tools/scripts`: local stack orchestration, migrations, seed, import, and smoke automation
+- `problems`: manifest-based problem source files used by the importer
+
+ASCII view:
+
+```text
+VS Code Extension
+        ↓ HTTP
+API Server
+        ↓
+Postgres
+        ↓
+Judge Worker
+        ↓
+Test Execution
+```
+
+In practice, the API and worker both talk to Postgres. The API creates submissions and enqueues judge jobs; the worker claims those jobs, executes the problem tests inside Docker, and writes the terminal result back to the database.
+
+## Local Setup
 
 Install dependencies:
 
@@ -36,78 +53,94 @@ Install dependencies:
 npm install
 ```
 
-Run the main quality gate:
-
-```bash
-npm run typecheck
-npm run -ws --if-present test
-npm run -ws --if-present build
-```
-
-## Local Development
-
-Start the supported local stack:
+Start the local stack:
 
 ```bash
 npm run local:up
 npm run local:db:setup
 ```
 
-Verify the compose-managed runtime:
+Import the sample problems:
 
 ```bash
-docker compose -f deploy/local/docker-compose.yml ps
+npm run import:problems -- --dir problems
+```
+
+Verify the runtime:
+
+```bash
+npm run local:ps
 curl http://localhost:3100/healthz
 curl http://localhost:3100/readyz
 ```
 
-Package the extension:
+Package the VS Code extension:
 
 ```bash
 npm run extension:package
 ```
 
-## Important Local Ports
+Install the extension locally:
 
-- `5432`: Postgres
-- `3100`: real compose-managed API runtime expected by the extension
+```bash
+code --install-extension dist/oj-vscode.vsix
+```
 
-For normal local use:
-- the compose `api` service is the real API runtime
-- the compose `worker` service is the only supported judge worker path
-- do not start an extra host-side `npm run api:start` or `npm run worker:start` for the same local verification flow
-
-For the extension, set:
+Configure the extension in VS Code settings:
 
 ```json
 {
-  "oj.apiBaseUrl": "http://localhost:3100"
+  "oj.apiBaseUrl": "http://localhost:3100",
+  "oj.requestTimeoutMs": 10000
 }
 ```
 
-## Useful Commands
+Use the extension:
+
+1. Open the OJ sidebar.
+2. Login from the `Account` panel.
+3. Click `Fetch Problems`.
+4. Select a problem in `Problems`.
+5. Open or edit the generated starter file in `.oj/problems/<problemId>.py`.
+6. Run `OJ: Submit Current File` or use the sidebar action.
+7. Poll or view the terminal result from `Submissions`.
+
+## Repository Layout
+
+```text
+apps/
+  api/
+  judge-worker/
+  vscode-extension/
+packages/
+  application/
+  config/
+  contracts/
+  domain/
+  infrastructure/
+deploy/
+  local/
+tools/
+  scripts/
+.specify/
+  specs/
+problems/
+  collapse/
+```
+
+## Common Commands
 
 ```bash
-npm run check:boundaries
-npm run check:openapi
-npm run check:env
+npm run typecheck
+npm run -ws --if-present test
+npm run -ws --if-present build
 npm run local:reset
 npm run smoke:local
 ```
 
-For the supported one-command local demo:
-- run `npm run smoke:local`
-- this builds and exercises the extension HTTP client path, boots the compose stack, imports sample problems from `problems`, verifies the extension `entryFunction` submit contract, waits for readiness, and verifies a real submission through `queued -> running -> finished|failed`
+## Additional Documentation
 
-## Documentation
-
-- [OJ VSCode Demo Checklist](./docs/extension-demo-checklist.md)
-- [Environment And Local Setup](./docs/environment-and-local-setup.md)
-- [Release Runbook](./docs/release-runbook.md)
-- Release troubleshooting checks for login/API/worker issues are included in the release runbook.
-
-## Notes
-
-- The local compose service on port `3000` is not the real API runtime.
-- In Remote SSH setups, `localhost` resolves on the remote host where the extension runs.
-- The current extension package version is `0.1.0`.
+- [Architecture](./docs/architecture.md)
+- [Local Development](./docs/local-development.md)
+- [Problem Format](./docs/problem-format.md)
+- [Judge Pipeline](./docs/judge-pipeline.md)

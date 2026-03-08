@@ -1,6 +1,8 @@
 node_modules/
+dist/
 *.tsbuildinfo
 .tmp-test/
 apps/vscode-extension/dist/
 *.vsix
 dist/*.vsix
+apps/vscode-extension/*.vsix
