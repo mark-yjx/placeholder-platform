@@ -14,44 +14,36 @@ function readFromRepoRoot(...segments: string[]): string {
   throw new Error(`Unable to resolve file: ${segments.join('/')}`);
 }
 
-test('sidebar account panel exposes login and logout actions with toolkit buttons', () => {
+test('sidebar no longer registers account login as primary UI', () => {
   const extensionSource = readFromRepoRoot('apps', 'vscode-extension', 'src', 'extension.ts');
-  const providerSource = readFromRepoRoot(
-    'apps',
-    'vscode-extension',
-    'src',
-    'ui',
-    'AccountWebviewProvider.ts'
-  );
-  const viewModelSource = readFromRepoRoot(
-    'apps',
-    'vscode-extension',
-    'src',
-    'ui',
-    'AccountViewModel.ts'
-  );
+  const manifestSource = readFromRepoRoot('apps', 'vscode-extension', 'package.json');
 
-  assert.match(extensionSource, /registerWebviewViewProvider\(\s*'ojAccount'/);
-  assert.match(providerSource, /message\.command === 'login'/);
-  assert.match(providerSource, /message\.command === 'logout'/);
-  assert.match(viewModelSource, /<vscode-text-field id="oj-account-email" type="email">/);
-  assert.match(viewModelSource, /<vscode-text-field id="oj-account-password" type="password">/);
-  assert.match(viewModelSource, /<vscode-button appearance="primary" data-command="login">Login<\/vscode-button>/);
-  assert.match(viewModelSource, /<vscode-button data-command="logout">Logout<\/vscode-button>/);
-  assert.match(viewModelSource, /data-command="login"/);
-  assert.match(viewModelSource, /data-command="logout"/);
-  assert.doesNotMatch(viewModelSource, /data-command="fetchProblems"/);
+  assert.doesNotMatch(extensionSource, /registerWebviewViewProvider\(\s*'ojAccount'/);
+  assert.doesNotMatch(manifestSource, /"id": "ojAccount"/);
 });
 
-test('sidebar-first workflow checklist documents the full no-command-palette flow', () => {
-  const checklist = readFromRepoRoot('docs', 'sidebar-workflow-checklist.md');
+test('status bar account entry and fallback login command both remain available', () => {
+  const extensionSource = readFromRepoRoot('apps', 'vscode-extension', 'src', 'extension.ts');
+  const statusBarSource = readFromRepoRoot(
+    'apps',
+    'vscode-extension',
+    'src',
+    'ui',
+    'AccountStatusBarController.ts'
+  );
+  const panelSource = readFromRepoRoot(
+    'apps',
+    'vscode-extension',
+    'src',
+    'ui',
+    'AccountWebviewPanel.ts'
+  );
+  const manifestSource = readFromRepoRoot('apps', 'vscode-extension', 'package.json');
 
-  assert.match(checklist, /without using the command palette/i);
-  assert.match(checklist, /click `Login`/i);
-  assert.match(checklist, /click `Fetch Problems`/i);
-  assert.match(checklist, /click `Open`/i);
-  assert.match(checklist, /click `Submit Current File`/i);
-  assert.match(checklist, /`queued` -> `running` -> `finished\|failed`/);
-  assert.match(checklist, /entryFunction/i);
-  assert.match(checklist, /defines the configured entry function/i);
+  assert.match(statusBarSource, /this\.item\.text = '\$\(account\)'/);
+  assert.match(statusBarSource, /commandId = 'oj\.account\.show'/);
+  assert.match(extensionSource, /new AccountWebviewPanel/);
+  assert.match(panelSource, /message\.command === 'login'/);
+  assert.match(panelSource, /message\.command === 'logout'/);
+  assert.match(manifestSource, /"command": "oj\.login"/);
 });

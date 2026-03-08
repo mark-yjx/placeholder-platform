@@ -67,7 +67,7 @@ test('account panel renders unauthenticated login form', () => {
     })
   );
 
-  assert.match(html, /Sign in to OJ from the sidebar\./);
+  assert.match(html, /Sign in to OJ\./);
   assert.match(html, /<vscode-text-field id="oj-account-email" type="email">/);
   assert.match(html, /<vscode-text-field id="oj-account-password" type="password">/);
   assert.match(html, /<vscode-button appearance="primary" data-command="login">Login<\/vscode-button>/);
@@ -84,7 +84,7 @@ test('account panel renders unauthenticated state when identity is incomplete', 
     })
   );
 
-  assert.match(html, /Sign in to OJ from the sidebar\./);
+  assert.match(html, /Sign in to OJ\./);
   assert.match(html, /data-command="login"/);
 });
 
@@ -224,7 +224,7 @@ test('account panel clears incomplete session after login', async () => {
     email: null,
     role: null
   });
-  assert.match(webview.html, /Sign in to OJ from the sidebar\./);
+  assert.match(webview.html, /Sign in to OJ\./);
   assert.deepEqual(errorMessages, [
     'Login failed because the account profile is incomplete. Try again or contact your instructor.'
   ]);

@@ -97,7 +97,7 @@ test('extension package keeps production packaging whitelist and activation even
   }
   assert.deepEqual(manifest.activationEvents, [
     'onStartupFinished',
-    'onCommand:oj.account.showActions',
+    'onCommand:oj.account.show',
     'onCommand:oj.logout',
     'onCommand:oj.login',
     'onCommand:oj.practice.fetchProblems',
@@ -108,7 +108,6 @@ test('extension package keeps production packaging whitelist and activation even
     'onCommand:oj.practice.selectSubmission',
     'onView:ojProblems',
     'onView:ojSubmissions',
-    'onView:ojAccount',
     'onView:ojProblemDetail',
     'onView:ojSubmissionDetail',
     'onCommand:oj.engagement.favoriteProblem',
@@ -125,7 +124,7 @@ test('extension package keeps production packaging whitelist and activation even
   assert.deepEqual(
     (manifest.contributes.commands ?? []).slice(0, 3),
     [
-      { command: 'oj.account.showActions', title: 'OJ: Account Actions' },
+      { command: 'oj.account.show', title: 'OJ: Open Account' },
       { command: 'oj.logout', title: 'OJ: Logout' },
       { command: 'oj.login', title: 'OJ: Login' }
     ]
@@ -137,7 +136,6 @@ test('extension package keeps production packaging whitelist and activation even
     })),
     [
       { id: 'ojProblems', name: 'Problems' },
-      { id: 'ojAccount', name: 'Account' },
       { id: 'ojProblemDetail', name: 'Problem Detail' }
     ]
   );
@@ -150,10 +148,6 @@ test('extension package keeps production packaging whitelist and activation even
       { id: 'ojSubmissions', name: 'Submissions' },
       { id: 'ojSubmissionDetail', name: 'Submission Detail' }
     ]
-  );
-  assert.equal(
-    manifest.contributes.views.ojSidebar.find((view) => view.id === 'ojAccount')?.type,
-    'webview'
   );
   assert.equal(
     manifest.contributes.views.ojSidebar.find((view) => view.id === 'ojProblemDetail')?.type,

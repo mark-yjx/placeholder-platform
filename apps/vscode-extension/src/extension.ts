@@ -23,8 +23,8 @@ import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { PracticeTreeViews } from './ui/PracticeTreeViews';
 import { ProblemDetailWebviewProvider } from './ui/ProblemDetailWebviewProvider';
 import { SubmissionDetailWebviewProvider } from './ui/SubmissionDetailWebviewProvider';
-import { AccountWebviewProvider } from './ui/AccountWebviewProvider';
 import { AccountStatusBarController } from './ui/AccountStatusBarController';
+import { AccountWebviewPanel } from './ui/AccountWebviewPanel';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('OJ VSCode');
@@ -64,12 +64,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
   const submissionDetailProvider = new SubmissionDetailWebviewProvider();
-  const accountProvider = new AccountWebviewProvider(authCommands, tokenStore, vscode.window);
+  const accountPanel = new AccountWebviewPanel(authCommands, tokenStore, vscode.window, () =>
+    vscode.window.createWebviewPanel('ojAccountPanel', 'OJ Account', vscode.ViewColumn.Beside, {
+      enableScripts: true
+    })
+  );
   const accountStatusBar = new AccountStatusBarController(
-    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100),
-    tokenStore,
-    vscode.window,
-    vscode.commands
+    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
   );
   const practiceViews = new PracticeTreeViews(
     vscode.window,
@@ -88,7 +89,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     problemStarterWorkspace,
     localStateStore,
     onAuthSessionChanged: () => {
-      accountProvider.refresh();
+      accountPanel.refresh();
       accountStatusBar.refresh();
     },
     output,
@@ -106,19 +107,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     'ojSubmissionDetail',
     submissionDetailProvider
   );
-  const accountPanelDisposable = vscode.window.registerWebviewViewProvider(
-    'ojAccount',
-    accountProvider
-  );
-  const accountStatusBarActionsDisposable = vscode.commands.registerCommand(
+  const accountPanelDisposable = vscode.commands.registerCommand(
     AccountStatusBarController.commandId,
     async () => {
-      await accountStatusBar.showActions();
+      accountPanel.show();
     }
   );
   const logoutDisposable = vscode.commands.registerCommand('oj.logout', async () => {
     await authCommands.logout();
-    accountProvider.refresh();
+    accountPanel.refresh();
     accountStatusBar.refresh();
     vscode.window.showInformationMessage('Logged out of OJ.');
   });
@@ -145,7 +142,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(problemDetailPanelDisposable);
   context.subscriptions.push(submissionDetailPanelDisposable);
   context.subscriptions.push(accountPanelDisposable);
-  context.subscriptions.push(accountStatusBarActionsDisposable);
   context.subscriptions.push(logoutDisposable);
 
   output.appendLine('OJ VSCode extension activated');

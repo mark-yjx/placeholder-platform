@@ -5,6 +5,10 @@ declare module 'vscode' {
     Left: 1;
     Right: 2;
   };
+  export const ViewColumn: {
+    Active: 1;
+    Beside: 2;
+  };
   export class EventEmitter<T> {
     readonly event: Event<T>;
     fire(data: T): void;
@@ -32,6 +36,12 @@ declare module 'vscode' {
   };
   export type WebviewViewProvider = {
     resolveWebviewView(webviewView: WebviewView): void;
+  };
+  export type WebviewPanel = {
+    webview: Webview;
+    reveal(): void;
+    onDidDispose(listener: () => unknown): Disposable;
+    dispose(): void;
   };
   export class Uri {
     readonly fsPath: string;
@@ -86,6 +96,15 @@ declare module 'vscode' {
   export const window: {
     registerTreeDataProvider(viewId: string, provider: TreeDataProvider<TreeItem>): Disposable;
     registerWebviewViewProvider(viewId: string, provider: WebviewViewProvider): Disposable;
+    createWebviewPanel(
+      viewType: string,
+      title: string,
+      showOptions: number,
+      options?: {
+        enableScripts?: boolean;
+        preserveFocus?: boolean;
+      }
+    ): WebviewPanel;
     createStatusBarItem(alignment?: number, priority?: number): {
       text: string;
       tooltip?: string;

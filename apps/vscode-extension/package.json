@@ -31,7 +31,7 @@
   },
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:oj.account.showActions",
+    "onCommand:oj.account.show",
     "onCommand:oj.logout",
     "onCommand:oj.login",
     "onCommand:oj.practice.fetchProblems",
@@ -42,7 +42,6 @@
     "onCommand:oj.practice.selectSubmission",
     "onView:ojProblems",
     "onView:ojSubmissions",
-    "onView:ojAccount",
     "onView:ojProblemDetail",
     "onView:ojSubmissionDetail",
     "onCommand:oj.engagement.favoriteProblem",
@@ -86,8 +85,8 @@
     },
     "commands": [
       {
-        "command": "oj.account.showActions",
-        "title": "OJ: Account Actions"
+        "command": "oj.account.show",
+        "title": "OJ: Open Account"
       },
       {
         "command": "oj.logout",
@@ -143,11 +142,6 @@
         {
           "id": "ojProblems",
           "name": "Problems"
-        },
-        {
-          "id": "ojAccount",
-          "name": "Account",
-          "type": "webview"
         },
         {
           "id": "ojProblemDetail",

@@ -24,7 +24,7 @@ export function createAccountViewModel(input: {
   if (!input.isAuthenticated || !email || !role) {
     return {
       title: 'Account',
-      status: 'Sign in to OJ from the sidebar.',
+      status: 'Sign in to OJ.',
       email: '',
       role: '',
       errorMessage: input.errorMessage ?? '',
