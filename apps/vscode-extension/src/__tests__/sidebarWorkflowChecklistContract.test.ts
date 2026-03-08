@@ -14,7 +14,7 @@ function readFromRepoRoot(...segments: string[]): string {
   throw new Error(`Unable to resolve file: ${segments.join('/')}`);
 }
 
-test('sidebar account panel exposes login, fetch problems, and logout actions', () => {
+test('sidebar account panel exposes login and logout actions with toolkit buttons', () => {
   const extensionSource = readFromRepoRoot('apps', 'vscode-extension', 'src', 'extension.ts');
   const providerSource = readFromRepoRoot(
     'apps',
@@ -34,11 +34,13 @@ test('sidebar account panel exposes login, fetch problems, and logout actions', 
   assert.match(extensionSource, /registerWebviewViewProvider\(\s*'ojAccount'/);
   assert.match(providerSource, /message\.command === 'login'/);
   assert.match(providerSource, /message\.command === 'logout'/);
-  assert.match(viewModelSource, /type="email"/);
-  assert.match(viewModelSource, /type="password"/);
+  assert.match(viewModelSource, /<vscode-text-field id="oj-account-email" type="email">/);
+  assert.match(viewModelSource, /<vscode-text-field id="oj-account-password" type="password">/);
+  assert.match(viewModelSource, /<vscode-button appearance="primary" data-command="login">Login<\/vscode-button>/);
+  assert.match(viewModelSource, /<vscode-button data-command="logout">Logout<\/vscode-button>/);
   assert.match(viewModelSource, /data-command="login"/);
-  assert.match(viewModelSource, /data-command="fetchProblems"/);
   assert.match(viewModelSource, /data-command="logout"/);
+  assert.doesNotMatch(viewModelSource, /data-command="fetchProblems"/);
 });
 
 test('sidebar-first workflow checklist documents the full no-command-palette flow', () => {

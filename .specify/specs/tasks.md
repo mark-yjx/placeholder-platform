@@ -970,3 +970,92 @@ IN:
 OUT:
 - publishing automation to marketplaces
 - backend deployment automation
+
+# Phase 12 – Sidebar UI Refinement
+
+Goal:
+Align the VS Code sidebar with a clean practice workflow where list views drive detail panels and account state is unambiguous.
+
+## 95. Extension UI: account panel state fix
+
+Acceptance checks:
+- The Account sidebar shows exactly two valid states: unauthenticated or authenticated.
+- Unauthenticated state renders email input, password input, and Login button only.
+- Authenticated state renders logged-in email, role, and Logout button only.
+- Missing email or role is treated as unauthenticated and never renders a logged-in placeholder state.
+
+Scope:
+IN:
+- extension Account webview state handling
+- sidebar account tests
+OUT:
+- problem fetching UI relocation beyond removing misplaced account actions
+- backend auth changes
+
+## 96. Extension UI: problem selection vs open separation
+
+Acceptance checks:
+- Selecting a problem updates only the Problem Detail view.
+- Problem selection does not automatically open a Markdown or starter file.
+- Problems view owns the refresh action for fetching the latest problem list.
+- Tests cover selection without file open side effects.
+
+Scope:
+IN:
+- problems TreeView selection behavior
+- problems view refresh action
+- extension tests
+OUT:
+- backend API changes
+- submit flow redesign
+
+## 97. Extension UI: problem detail buttons wiring
+
+Acceptance checks:
+- Problem Detail renders title, problemId, entryFunction, language if available, and statement markdown.
+- Problem Detail exposes working Open Coding File, Submit, and Refresh buttons.
+- Open Coding File opens or creates `.oj/problems/<problemId>.py`.
+- Submit uses the existing real submission flow for the current problem file.
+
+Scope:
+IN:
+- problem detail webview
+- starter-file open wiring
+- submit action wiring
+- extension tests
+OUT:
+- backend changes
+- judge pipeline changes
+
+## 98. Extension UI: submissions duplicate text fix
+
+Acceptance checks:
+- Submissions list shows concise items without duplicating the same text in label and description.
+- Submission rows prefer short status/result strings such as `WA    790ms | 0KB`.
+- Clicking a submission updates Submission Detail.
+- Tests cover the concise rendering contract.
+
+Scope:
+IN:
+- submissions TreeView rendering
+- submission selection wiring
+- extension tests
+OUT:
+- backend API changes
+- submission persistence changes
+
+## 99. Extension UI: submission detail rendering fix
+
+Acceptance checks:
+- Selecting a submission always populates Submission Detail.
+- Submission Detail shows submissionId, status, verdict, time, memory, and failure or compile-error info when available.
+- Terminal and non-terminal states render clearly without blank panels.
+- Tests cover detail rendering for running, finished, and failed submissions.
+
+Scope:
+IN:
+- submission detail webview
+- extension tests
+OUT:
+- backend API changes
+- judge worker changes

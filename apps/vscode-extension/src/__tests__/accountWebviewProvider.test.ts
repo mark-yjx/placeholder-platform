@@ -68,8 +68,23 @@ test('account panel renders unauthenticated login form', () => {
   );
 
   assert.match(html, /Sign in to OJ from the sidebar\./);
-  assert.match(html, /type="email"/);
-  assert.match(html, /type="password"/);
+  assert.match(html, /<vscode-text-field id="oj-account-email" type="email">/);
+  assert.match(html, /<vscode-text-field id="oj-account-password" type="password">/);
+  assert.match(html, /<vscode-button appearance="primary" data-command="login">Login<\/vscode-button>/);
+  assert.doesNotMatch(html, /data-command="fetchProblems"/);
+  assert.match(html, /data-command="login"/);
+});
+
+test('account panel renders unauthenticated state when identity is incomplete', () => {
+  const html = createAccountHtml(
+    createAccountViewModel({
+      isAuthenticated: true,
+      email: 'student@example.com',
+      role: null
+    })
+  );
+
+  assert.match(html, /Sign in to OJ from the sidebar\./);
   assert.match(html, /data-command="login"/);
 });
 
@@ -82,7 +97,6 @@ test('account panel handles successful login flow', async () => {
   );
   const infoMessages: string[] = [];
   const errorMessages: string[] = [];
-  let fetchProblemCalls = 0;
   const webview = new FakeWebview();
   const provider = new AccountWebviewProvider(
     authCommands,
@@ -90,11 +104,6 @@ test('account panel handles successful login flow', async () => {
     {
       showInformationMessage: (message) => infoMessages.push(message),
       showErrorMessage: (message) => errorMessages.push(message)
-    },
-    {
-      fetchProblems: async () => {
-        fetchProblemCalls += 1;
-      }
     }
   );
 
@@ -110,15 +119,12 @@ test('account panel handles successful login flow', async () => {
     email: 'student@example.com',
     role: 'student'
   });
-  assert.match(webview.html, /Logged in/);
-  assert.match(webview.html, /<strong>Email:<\/strong> <code>student@example\.com<\/code>/);
-  assert.match(webview.html, /<strong>Role:<\/strong> <code>student<\/code>/);
+  assert.match(webview.html, /Logged in as <strong>student@example\.com<\/strong>/);
+  assert.match(webview.html, /Role: <code>student<\/code>/);
   assert.match(webview.html, /data-command="logout"/);
+  assert.doesNotMatch(webview.html, /data-command="fetchProblems"/);
   assert.deepEqual(errorMessages, []);
   assert.ok(infoMessages.some((message) => message.includes('Logged in as student@example.com')));
-
-  await webview.dispatch({ command: 'fetchProblems' });
-  assert.equal(fetchProblemCalls, 1);
 });
 
 test('account panel shows friendly message for failed login flow', async () => {
@@ -142,9 +148,6 @@ test('account panel shows friendly message for failed login flow', async () => {
     {
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errorMessages.push(message)
-    },
-    {
-      fetchProblems: async () => undefined
     }
   );
 
@@ -176,9 +179,6 @@ test('account panel logout clears session and returns to login form', async () =
     {
       showInformationMessage: (message) => infoMessages.push(message),
       showErrorMessage: () => undefined
-    },
-    {
-      fetchProblems: async () => undefined
     }
   );
 
@@ -190,7 +190,42 @@ test('account panel logout clears session and returns to login form', async () =
     email: null,
     role: null
   });
-  assert.match(webview.html, /type="email"/);
+  assert.match(webview.html, /<vscode-text-field id="oj-account-email" type="email">/);
   assert.match(webview.html, /data-command="login"/);
   assert.ok(infoMessages.includes('Logged out of OJ.'));
+});
+
+test('account panel clears incomplete session after login', async () => {
+  const tokenStore = new SessionTokenStore(new FakeSecretStorage());
+  const authCommands = new AuthCommands(
+    new FakeAuthClient({ accessToken: 'student-token' }),
+    tokenStore
+  );
+  const errorMessages: string[] = [];
+  const webview = new FakeWebview();
+  const provider = new AccountWebviewProvider(
+    authCommands,
+    tokenStore,
+    {
+      showInformationMessage: () => undefined,
+      showErrorMessage: (message) => errorMessages.push(message)
+    }
+  );
+
+  provider.resolveWebviewView({ webview } as never);
+  await webview.dispatch({
+    command: 'login',
+    email: 'student@example.com',
+    password: 'secret'
+  });
+
+  assert.equal(tokenStore.getAccessToken(), null);
+  assert.deepEqual(tokenStore.getSessionIdentity(), {
+    email: null,
+    role: null
+  });
+  assert.match(webview.html, /Sign in to OJ from the sidebar\./);
+  assert.deepEqual(errorMessages, [
+    'Login failed because the account profile is incomplete. Try again or contact your instructor.'
+  ]);
 });

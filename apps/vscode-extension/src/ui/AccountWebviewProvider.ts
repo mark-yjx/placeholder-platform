@@ -6,8 +6,7 @@ import { createAccountHtml, createAccountViewModel } from './AccountViewModel';
 
 type AccountWebviewMessage =
   | { command: 'login'; email?: unknown; password?: unknown }
-  | { command: 'logout' }
-  | { command: 'fetchProblems' };
+  | { command: 'logout' };
 
 type AccountWindowLike = Pick<typeof vscode.window, 'showErrorMessage' | 'showInformationMessage'>;
 
@@ -18,10 +17,7 @@ export class AccountWebviewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly authCommands: AuthCommands,
     private readonly tokenStore: SessionTokenStore,
-    private readonly window: AccountWindowLike,
-    private readonly actions: {
-      fetchProblems(): Promise<void>;
-    }
+    private readonly window: AccountWindowLike
   ) {}
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -53,19 +49,19 @@ export class AccountWebviewProvider implements vscode.WebviewViewProvider {
 
     if (message.command === 'logout') {
       await this.logout();
-      return;
     }
-
-    await this.fetchProblems();
   }
 
   private async login(email: string, password: string): Promise<void> {
     try {
       const session = await this.authCommands.login({ email, password });
+      if (!isCompleteAccountIdentity(session)) {
+        await this.authCommands.logout();
+        throw new Error('Login succeeded but account details are incomplete.');
+      }
       this.errorMessage = null;
       this.render();
-      const roleSuffix = session.role ? ` (${session.role})` : '';
-      this.window.showInformationMessage(`Logged in as ${session.email ?? 'current user'}${roleSuffix}.`);
+      this.window.showInformationMessage(`Logged in as ${session.email} (${session.role}).`);
     } catch (error) {
       const message = this.resolvePanelErrorMessage(error);
       this.errorMessage = message;
@@ -81,23 +77,13 @@ export class AccountWebviewProvider implements vscode.WebviewViewProvider {
     this.window.showInformationMessage('Logged out of OJ.');
   }
 
-  private async fetchProblems(): Promise<void> {
-    try {
-      this.errorMessage = null;
-      await this.actions.fetchProblems();
-      this.render();
-    } catch (error) {
-      const mapped = mapExtensionError(error);
-      this.errorMessage = mapped.userMessage;
-      this.render();
-      this.window.showErrorMessage(mapped.userMessage);
-    }
-  }
-
   private resolvePanelErrorMessage(error: unknown): string {
     const rawMessage = error instanceof Error ? error.message : String(error);
     if (rawMessage === 'Invalid email' || rawMessage === 'Password is required') {
       return rawMessage;
+    }
+    if (rawMessage === 'Login succeeded but account details are incomplete.') {
+      return 'Login failed because the account profile is incomplete. Try again or contact your instructor.';
     }
 
     return mapExtensionError(error).userMessage.replace(
@@ -113,7 +99,7 @@ export class AccountWebviewProvider implements vscode.WebviewViewProvider {
 
     const session = this.tokenStore.getSessionIdentity();
     this.currentView.webview.html = createDetailHtml({
-      isAuthenticated: this.tokenStore.isAuthenticated(),
+      isAuthenticated: this.tokenStore.isAuthenticated() && isCompleteAccountIdentity(session),
       email: session.email,
       role: session.role,
       errorMessage: this.errorMessage
@@ -136,5 +122,14 @@ function isAccountWebviewMessage(message: unknown): message is AccountWebviewMes
   }
 
   const command = (message as { command?: unknown }).command;
-  return command === 'login' || command === 'logout' || command === 'fetchProblems';
+  return command === 'login' || command === 'logout';
+}
+
+function isCompleteAccountIdentity(input: { email?: string | null; role?: string | null }): input is {
+  email: string;
+  role: string;
+} {
+  const email = input.email?.trim() ?? '';
+  const role = input.role?.trim() ?? '';
+  return Boolean(email && role);
 }

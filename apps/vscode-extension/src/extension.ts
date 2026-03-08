@@ -63,11 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
   const submissionDetailProvider = new SubmissionDetailWebviewProvider();
-  const accountProvider = new AccountWebviewProvider(authCommands, tokenStore, vscode.window, {
-    fetchProblems: async () => {
-      await vscode.commands.executeCommand('oj.practice.fetchProblems');
-    }
-  });
+  const accountProvider = new AccountWebviewProvider(authCommands, tokenStore, vscode.window);
   const practiceViews = new PracticeTreeViews(
     vscode.window,
     vscode.workspace,

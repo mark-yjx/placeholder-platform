@@ -7,13 +7,21 @@ export type AccountViewModel = {
   isAuthenticated: boolean;
 };
 
+function normalizeIdentityField(value?: string | null): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed ? trimmed : null;
+}
+
 export function createAccountViewModel(input: {
   isAuthenticated: boolean;
   email?: string | null;
   role?: string | null;
   errorMessage?: string | null;
 }): AccountViewModel {
-  if (!input.isAuthenticated) {
+  const email = normalizeIdentityField(input.email);
+  const role = normalizeIdentityField(input.role);
+
+  if (!input.isAuthenticated || !email || !role) {
     return {
       title: 'Account',
       status: 'Sign in to OJ from the sidebar.',
@@ -26,9 +34,9 @@ export function createAccountViewModel(input: {
 
   return {
     title: 'Account',
-    status: 'Logged in',
-    email: input.email?.trim() || 'Not available',
-    role: input.role?.trim() || 'Not available',
+    status: 'You are signed in to OJ.',
+    email,
+    role,
     errorMessage: input.errorMessage ?? '',
     isAuthenticated: true
   };
@@ -47,26 +55,61 @@ export function createAccountHtml(input: AccountViewModel): string {
   const email = escapeHtml(input.email);
   const role = escapeHtml(input.role);
   const errorMessage = input.errorMessage ? `<p role="alert">${escapeHtml(input.errorMessage)}</p>` : '';
+  const toolkitScript = 'https://unpkg.com/@vscode/webview-ui-toolkit@1.4.0/dist/toolkit.min.js';
+  const sharedHead = `    <meta charset="UTF-8" />
+    <script type="module" src="${toolkitScript}"></script>
+    <style>
+      body {
+        font-family: var(--vscode-font-family);
+        padding: 0 8px 12px;
+      }
+
+      form,
+      .account-panel {
+        display: grid;
+        gap: 12px;
+      }
+
+      .account-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      code {
+        font-family: var(--vscode-editor-font-family, monospace);
+      }
+    </style>`;
 
   if (!input.isAuthenticated) {
     return `<!doctype html>
 <html lang="en">
+  <head>
+${sharedHead}
+  </head>
   <body>
-    <h2>${title}</h2>
-    <p>${status}</p>
-    ${errorMessage}
-    <label for="oj-account-email">Email</label>
-    <input id="oj-account-email" type="email" />
-    <label for="oj-account-password">Password</label>
-    <input id="oj-account-password" type="password" />
-    <div>
-      <button data-command="login">Login</button>
-    </div>
+    <section class="account-panel">
+      <h2>${title}</h2>
+      <p>${status}</p>
+      ${errorMessage}
+      <form>
+        <label for="oj-account-email">Email</label>
+        <vscode-text-field id="oj-account-email" type="email"></vscode-text-field>
+        <label for="oj-account-password">Password</label>
+        <vscode-text-field id="oj-account-password" type="password"></vscode-text-field>
+        <div class="account-actions">
+          <vscode-button appearance="primary" data-command="login">Login</vscode-button>
+        </div>
+      </form>
+    </section>
     <script>
       const vscodeApi = acquireVsCodeApi();
       const emailInput = document.getElementById('oj-account-email');
       const passwordInput = document.getElementById('oj-account-password');
-      const loginButton = document.querySelector('button[data-command="login"]');
+      const loginButton = document.querySelector('vscode-button[data-command="login"]');
       loginButton?.addEventListener('click', () => {
         vscodeApi.postMessage({
           command: 'login',
@@ -81,19 +124,23 @@ export function createAccountHtml(input: AccountViewModel): string {
 
   return `<!doctype html>
 <html lang="en">
+  <head>
+${sharedHead}
+  </head>
   <body>
-    <h2>${title}</h2>
-    <p>${status}</p>
-    ${errorMessage}
-    <p><strong>Email:</strong> <code>${email}</code></p>
-    <p><strong>Role:</strong> <code>${role}</code></p>
-    <div>
-      <button data-command="fetchProblems">Fetch Problems</button>
-      <button data-command="logout">Logout</button>
-    </div>
+    <section class="account-panel">
+      <h2>${title}</h2>
+      <p>${status}</p>
+      ${errorMessage}
+      <p>Logged in as <strong>${email}</strong></p>
+      <p>Role: <code>${role}</code></p>
+      <div class="account-actions">
+        <vscode-button data-command="logout">Logout</vscode-button>
+      </div>
+    </section>
     <script>
       const vscodeApi = acquireVsCodeApi();
-      for (const button of document.querySelectorAll('button[data-command]')) {
+      for (const button of document.querySelectorAll('vscode-button[data-command]')) {
         button.addEventListener('click', () => {
           vscodeApi.postMessage({ command: button.dataset.command });
         });
