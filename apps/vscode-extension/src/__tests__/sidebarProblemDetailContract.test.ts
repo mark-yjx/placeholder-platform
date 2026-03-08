@@ -31,6 +31,7 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(providerSource, /Select a problem from the Problems list to view details\./);
   assert.match(providerSource, /Starter:/);
   assert.match(providerSource, /Open Starter/);
+  assert.match(providerSource, /data-command="submitCurrentFile"/);
   assert.match(providerSource, /Submit Current File/);
   assert.match(providerSource, /Refresh/);
   assert.match(providerSource, /postMessage\(\{ command: button\.dataset\.command \}\)/);
