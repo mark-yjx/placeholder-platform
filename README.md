@@ -97,7 +97,7 @@ npm run smoke:local
 
 For the supported one-command local demo:
 - run `npm run smoke:local`
-- this builds and exercises the extension HTTP client path, boots the compose stack, imports sample problems from `data/problems`, verifies the extension `entryFunction` submit contract, waits for readiness, and verifies a real submission through `queued -> running -> finished|failed`
+- this builds and exercises the extension HTTP client path, boots the compose stack, imports sample problems from `problems`, verifies the extension `entryFunction` submit contract, waits for readiness, and verifies a real submission through `queued -> running -> finished|failed`
 
 ## Documentation
 

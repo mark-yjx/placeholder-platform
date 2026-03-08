@@ -47,12 +47,13 @@ test('local smoke talks to live API endpoints for login, problem, submissions, f
 test('local smoke verifies compose worker processing and persistence after API restart', () => {
   const script = readSmokeScript();
   assert.match(script, /import sample problems/);
-  assert.match(script, /npm run import:problems -- --dir data\/problems/);
+  assert.match(script, /npm run import:problems -- --dir problems/);
   assert.match(script, /assertImportedCollapseProblemVisible/);
   assert.match(script, /fetchProblemDetail\('collapse'\)/);
   assert.match(script, /assertImportedCollapseDetail/);
   assert.match(script, /statement\.md/);
   assert.match(script, /starter\.py/);
+  assert.match(script, /manifest\.json/);
   assert.match(script, /student-visible problem detail must not expose hidden or raw test definitions/);
   assert.match(script, /login through extension http client/);
   assert.match(script, /fetch problems through extension practice client/);
@@ -71,7 +72,6 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /assertMissingEntrypointRejected/);
   assert.match(script, /extractEntrypointPayload/);
   assert.match(script, /Submission must define a top-level .*?\(\) function/);
-  assert.match(script, /configureSmokeJudge/);
   assert.match(script, /practiceCommands\.listSubmissions/);
   assert.match(script, /assertNonCompileErrorVerdict/);
   assert.match(script, /expected non-CE terminal verdict/);
@@ -79,8 +79,13 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /COUNT\(\*\) FROM judge_results/);
   assert.match(script, /COUNT\(\*\) FROM judge_jobs/);
   assert.match(script, /sourceCode/);
-  assert.match(script, /def collapse\(\):\s+return 42/);
+  assert.match(script, /const problemId = 'collapse'/);
+  assert.match(script, /def collapse\(number\):/);
+  assert.match(script, /for digit in digits:/);
   assert.doesNotMatch(script, /sourceCode:\s*'print\(42\)'/);
+  assert.doesNotMatch(script, /smoke-problem-/);
+  assert.doesNotMatch(script, /createPublishedSmokeProblem/);
+  assert.doesNotMatch(script, /configureSmokeJudge/);
   assert.match(script, /restart compose api service/);
   assert.match(script, /docker', \['compose', '-f', composeFile, 'restart', 'api']/);
   assert.match(script, /await restartLocalApiProcess\(\)/);
@@ -127,14 +132,14 @@ test('README and demo checklist document smoke:local as the one-command local de
   assert.match(readme, /supported one-command local demo/i);
   assert.match(readme, /npm run smoke:local/);
   assert.match(readme, /builds and exercises the extension HTTP client path/i);
-  assert.match(readme, /imports sample problems from `data\/problems`/);
+  assert.match(readme, /imports sample problems from `problems`/);
   assert.match(readme, /verifies the extension `entryFunction` submit contract/i);
   assert.match(readme, /queued -> running -> finished\|failed/);
 
   assert.match(checklist, /One-Command Demo/);
   assert.match(checklist, /npm run smoke:local/);
   assert.match(checklist, /exercises the extension login\/fetch\/submit flow against the live API/i);
-  assert.match(checklist, /imports sample problems from `data\/problems`/);
+  assert.match(checklist, /imports sample problems from `problems`/);
   assert.match(checklist, /rejects submissions without the configured top-level entry function/i);
   assert.match(checklist, /waits for API readiness instead of relying on fixed startup sleeps/);
   assert.match(checklist, /no duplicate worker processing/);

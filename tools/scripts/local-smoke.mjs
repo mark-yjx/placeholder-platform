@@ -318,16 +318,19 @@ function assertImportedCollapseDetail(detail) {
     throw new Error('imported collapse detail is missing');
   }
 
-  const statementPath = path.join(root, 'data', 'problems', 'collapse', 'statement.md');
-  const starterPath = path.join(root, 'data', 'problems', 'collapse', 'starter.py');
+  const statementPath = path.join(root, 'problems', 'collapse', 'statement.md');
+  const starterPath = path.join(root, 'problems', 'collapse', 'starter.py');
   const expectedStatement = fs.readFileSync(statementPath, 'utf8');
   const expectedStarter = fs.readFileSync(starterPath, 'utf8');
 
-  if (detail.statement !== expectedStatement) {
+  if (detail.statementMarkdown !== expectedStatement) {
     throw new Error('imported collapse statement does not match statement.md');
   }
   if (detail.starterCode !== expectedStarter) {
     throw new Error('imported collapse starter does not match starter.py');
+  }
+  if (detail.entryFunction !== 'collapse') {
+    throw new Error('imported collapse entryFunction does not match manifest.json');
   }
 
   if ('hiddenTests' in detail || 'publicTests' in detail || 'tests' in detail) {
@@ -621,73 +624,6 @@ function postgresScalar(sql) {
   ).trim();
 }
 
-function configureSmokeJudge(problemVersionId) {
-  postgresScalar(`
-INSERT INTO problem_version_assets (
-  problem_version_id,
-  entry_function,
-  language,
-  visibility,
-  time_limit_ms,
-  memory_limit_kb,
-  starter_code,
-  content_digest
-)
-VALUES (
-  '${problemVersionId}',
-  'collapse',
-  'python',
-  'public',
-  2000,
-  131072,
-  E'def collapse():\\n    return 42\\n',
-  'local-smoke-${problemVersionId}'
-)
-ON CONFLICT (problem_version_id) DO UPDATE SET
-  entry_function = EXCLUDED.entry_function,
-  language = EXCLUDED.language,
-  visibility = EXCLUDED.visibility,
-  time_limit_ms = EXCLUDED.time_limit_ms,
-  memory_limit_kb = EXCLUDED.memory_limit_kb,
-  starter_code = EXCLUDED.starter_code,
-  content_digest = EXCLUDED.content_digest;
-
-INSERT INTO problem_version_tests (problem_version_id, test_type, position, input, expected)
-VALUES ('${problemVersionId}', 'public', 1, 'null'::jsonb, '42'::jsonb)
-ON CONFLICT (problem_version_id, test_type, position) DO UPDATE SET
-  input = EXCLUDED.input,
-  expected = EXCLUDED.expected;
-`);
-}
-
-function createPublishedSmokeProblem(problemId) {
-  postgresScalar(`
-INSERT INTO problems (id, title, publication_state)
-VALUES ('${problemId}', 'Smoke Problem', 'published')
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  publication_state = EXCLUDED.publication_state;
-
-INSERT INTO problem_versions (
-  id,
-  problem_id,
-  version_number,
-  title,
-  statement,
-  publication_state
-)
-VALUES (
-  '${problemId}-v1',
-  '${problemId}',
-  1,
-  'Smoke Problem',
-  'Smoke statement',
-  'published'
-)
-ON CONFLICT (id) DO NOTHING;
-`);
-}
-
 function assertSingleTerminalResult(submissionId) {
   const resultCount = Number(
     postgresScalar(`SELECT COUNT(*) FROM judge_results WHERE submission_id = '${submissionId}'`)
@@ -724,20 +660,13 @@ async function runFlow() {
   }
   console.log('ok');
 
-  const problemId = `smoke-problem-${Date.now()}`;
-
-  process.stdout.write('[smoke] prepare published smoke problem... ');
-  createPublishedSmokeProblem(problemId);
-  configureSmokeJudge(`${problemId}-v1`);
-  console.log('ok');
+  const problemId = 'collapse';
 
   process.stdout.write('[smoke] fetch problems through extension practice client... ');
   const problemsBefore = await extensionStudentLoop.practiceCommands.fetchPublishedProblems();
   assertImportedCollapseProblemVisible(problemsBefore);
   const collapseDetail = await extensionStudentLoop.practiceCommands.fetchProblemDetail('collapse');
   assertImportedCollapseDetail(collapseDetail);
-  const beforeProblemIds = problemsBefore.map((item) => item.problemId);
-  assertIncludes(beforeProblemIds, problemId, 'problem list');
   console.log('ok');
 
   process.stdout.write('[smoke] verify single compose worker service... ');
@@ -766,8 +695,18 @@ async function runFlow() {
   console.log('ok');
 
   const sourceCode = extractEntrypointPayload(`
-def collapse():
-    return 42
+def collapse(number):
+    sign = -1 if number < 0 else 1
+    digits = str(abs(number))
+    collapsed = []
+    previous = None
+
+    for digit in digits:
+        if digit != previous:
+            collapsed.append(digit)
+            previous = digit
+
+    return sign * int(''.join(collapsed))
 `, 'collapse');
 
   process.stdout.write('[smoke] submit through extension practice client and wait for compose worker result... ');
@@ -846,7 +785,7 @@ async function main() {
     runStep('build extension runtime', 'npm -w oj-vscode-extension run build');
     runStep('boot local stack', 'npm run local:up');
     runStep('seed user+problem', 'npm run local:db:setup');
-    runStep('import sample problems', 'npm run import:problems -- --dir data/problems');
+    runStep('import sample problems', 'npm run import:problems -- --dir problems');
     await runFlow();
     console.log('SMOKE PASS');
   } catch (error) {

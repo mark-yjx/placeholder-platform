@@ -48,10 +48,12 @@ test('admin import doc defines the supported local content workflow without manu
   assert.match(docsIndex, /Admin Problem Import And Local Content Workflow/);
   assert.match(adminDoc, /npm run local:up/);
   assert.match(adminDoc, /npm run local:db:setup/);
-  assert.match(adminDoc, /npm run import:problems -- --dir data\/problems/);
-  assert.match(adminDoc, /data\/problems\/collapse\/problem\.json/);
-  assert.match(adminDoc, /data\/problems\/collapse\/statement\.md/);
-  assert.match(adminDoc, /data\/problems\/collapse\/starter\.py/);
+  assert.match(adminDoc, /npm run import:problems -- --dir problems/);
+  assert.match(adminDoc, /problems\/collapse\/manifest\.json/);
+  assert.match(adminDoc, /problems\/collapse\/statement\.md/);
+  assert.match(adminDoc, /problems\/collapse\/starter\.py/);
+  assert.match(adminDoc, /problems\/collapse\/public\.json/);
+  assert.match(adminDoc, /problems\/collapse\/hidden\.json/);
   assert.match(adminDoc, /queued -> running -> finished\|failed/);
   assert.match(adminDoc, /manual database edits/i);
   assert.match(adminDoc, /does not require manual database edits/i);

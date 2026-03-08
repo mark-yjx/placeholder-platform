@@ -4,19 +4,19 @@ This is the supported local admin path for importing problem content and verifyi
 
 ## Supported Inputs
 
-Use the filesystem import source under `data/problems`.
+Use the filesystem import source under `problems`.
 
 Sample problem source in this repository:
-- `data/problems/collapse/problem.json`
-- `data/problems/collapse/statement.md`
-- `data/problems/collapse/starter.py`
-- `data/problems/collapse/tests/public.json`
-- `data/problems/collapse/tests/hidden.json`
+- `problems/collapse/manifest.json`
+- `problems/collapse/statement.md`
+- `problems/collapse/starter.py`
+- `problems/collapse/public.json`
+- `problems/collapse/hidden.json`
 
 Supported import command:
 
 ```bash
-npm run import:problems -- --dir data/problems
+npm run import:problems -- --dir problems
 ```
 
 This normal workflow does not require manual database edits.
@@ -47,12 +47,12 @@ curl http://localhost:3100/readyz
 4. Import problem content from the repository source:
 
 ```bash
-npm run import:problems -- --dir data/problems
+npm run import:problems -- --dir problems
 ```
 
 Expected:
 - the command reports imported or skipped problem versions
-- `collapse` is available from the imported content source in `data/problems/collapse`
+- `collapse` is available from the imported content source in `problems/collapse`
 - no SQL console step is required for the normal path
 
 ## Publish And Student Verification
@@ -76,9 +76,9 @@ Verify it from the real student-facing stack:
 5. Select `collapse` in `OJ Problems`.
 
 Expected:
-- the statement shown in VS Code matches `data/problems/collapse/statement.md`
+- the statement shown in VS Code matches `problems/collapse/statement.md`
 - the opened starter file is `.oj/problems/collapse.py`
-- the starter file content matches `data/problems/collapse/starter.py`
+- the starter file content matches `problems/collapse/starter.py`
 
 ## Judge Verification
 
@@ -104,10 +104,10 @@ Expected:
 Use this checklist when verifying the admin import path:
 - local stack booted with `npm run local:up`
 - schema + seed applied with `npm run local:db:setup`
-- import completed with `npm run import:problems -- --dir data/problems`
+- import completed with `npm run import:problems -- --dir problems`
 - `collapse` appears in the student problem list
-- the student statement matches `data/problems/collapse/statement.md`
-- the student starter file matches `data/problems/collapse/starter.py`
+- the student statement matches `problems/collapse/statement.md`
+- the student starter file matches `problems/collapse/starter.py`
 - a student submission reaches `finished` or `failed` after `queued -> running`
 
 ## Minimal Admin API Operability (No Admin UI Required)
