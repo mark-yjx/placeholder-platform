@@ -10,6 +10,7 @@ test('fetched problem detail renders expected fields', () => {
       title: 'Collapse Identical Digits',
       statementMarkdown: '# Collapse Identical Digits\n\nCollapse duplicate digits.',
       entryFunction: 'collapse',
+      language: 'python',
       starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
     }, '.oj/problems/collapse.py')
   );
@@ -17,12 +18,13 @@ test('fetched problem detail renders expected fields', () => {
   assert.match(html, /<h2>Collapse Identical Digits<\/h2>/);
   assert.match(html, /Problem ID:<\/strong> <code>collapse<\/code>/);
   assert.match(html, /Entry Function:<\/strong> <code>collapse<\/code>/);
+  assert.match(html, /Language:<\/strong> <code>python<\/code>/);
   assert.match(html, /# Collapse Identical Digits/);
   assert.match(html, /Collapse duplicate digits\./);
   assert.match(html, /Problem File:<\/strong> <code>\.oj\/problems\/collapse\.py<\/code>/);
-  assert.match(html, />Open</);
-  assert.match(html, />Submit</);
-  assert.match(html, />Refresh</);
+  assert.match(html, /<vscode-button data-command="openStarter">Open Coding File<\/vscode-button>/);
+  assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile">Submit<\/vscode-button>/);
+  assert.match(html, /<vscode-button data-command="refreshProblem">Refresh<\/vscode-button>/);
 });
 
 test('empty state shows friendly placeholder instead of blank panel', () => {
@@ -32,8 +34,8 @@ test('empty state shows friendly placeholder instead of blank panel', () => {
   assert.match(html, /Select a problem from the Problems list to view details\./);
   assert.match(html, /<strong>Problem ID:<\/strong> <code>No problem selected yet\.<\/code>/);
   assert.match(html, /No problem selected yet\./);
-  assert.match(html, /<button data-command="openStarter" disabled>Open<\/button>/);
-  assert.match(html, /<button data-command="submitCurrentFile" disabled>Submit<\/button>/);
+  assert.match(html, /<vscode-button data-command="openStarter" disabled>Open Coding File<\/vscode-button>/);
+  assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile" disabled>Submit<\/vscode-button>/);
 });
 
 test('problem detail falls back safely when optional fields are missing', () => {
