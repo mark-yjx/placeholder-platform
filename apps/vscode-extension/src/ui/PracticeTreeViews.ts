@@ -83,7 +83,15 @@ class AccountTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem
       title: 'OJ: Login'
     };
 
-    return [loginItem];
+    const fetchProblemsItem = new vscode.TreeItem('Fetch Problems', vscode.TreeItemCollapsibleState.None);
+    fetchProblemsItem.id = 'account-fetch-problems';
+    fetchProblemsItem.description = 'Load problems from API';
+    fetchProblemsItem.command = {
+      command: 'oj.practice.fetchProblems',
+      title: 'OJ: Fetch Problems'
+    };
+
+    return [loginItem, fetchProblemsItem];
   }
 }
 
