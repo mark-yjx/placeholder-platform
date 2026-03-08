@@ -59,6 +59,13 @@
           "title": "OJ",
           "icon": "media/icon.png"
         }
+      ],
+      "panel": [
+        {
+          "id": "ojPanel",
+          "title": "OJ Results",
+          "icon": "media/icon.png"
+        }
       ]
     },
     "configuration": {
@@ -138,10 +145,6 @@
           "name": "Problems"
         },
         {
-          "id": "ojSubmissions",
-          "name": "Submissions"
-        },
-        {
           "id": "ojAccount",
           "name": "Account",
           "type": "webview"
@@ -150,6 +153,12 @@
           "id": "ojProblemDetail",
           "name": "Problem Detail",
           "type": "webview"
+        }
+      ],
+      "ojPanel": [
+        {
+          "id": "ojSubmissions",
+          "name": "Submissions"
         },
         {
           "id": "ojSubmissionDetail",

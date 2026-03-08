@@ -35,6 +35,7 @@ function readExtensionPackageJson(): {
     };
     viewsContainers?: {
       activitybar?: readonly { id: string; title: string; icon: string }[];
+      panel?: readonly { id: string; title: string; icon: string }[];
     };
     views: Record<string, readonly { id: string; name: string; type?: string }[]>;
   };
@@ -118,6 +119,9 @@ test('extension package keeps production packaging whitelist and activation even
   assert.deepEqual(manifest.contributes.viewsContainers?.activitybar, [
     { id: 'ojSidebar', title: 'OJ', icon: 'media/icon.png' }
   ]);
+  assert.deepEqual(manifest.contributes.viewsContainers?.panel, [
+    { id: 'ojPanel', title: 'OJ Results', icon: 'media/icon.png' }
+  ]);
   assert.deepEqual(
     (manifest.contributes.commands ?? []).slice(0, 3),
     [
@@ -133,9 +137,17 @@ test('extension package keeps production packaging whitelist and activation even
     })),
     [
       { id: 'ojProblems', name: 'Problems' },
-      { id: 'ojSubmissions', name: 'Submissions' },
       { id: 'ojAccount', name: 'Account' },
-      { id: 'ojProblemDetail', name: 'Problem Detail' },
+      { id: 'ojProblemDetail', name: 'Problem Detail' }
+    ]
+  );
+  assert.deepEqual(
+    manifest.contributes.views.ojPanel.map((view) => ({
+      id: view.id,
+      name: view.name
+    })),
+    [
+      { id: 'ojSubmissions', name: 'Submissions' },
       { id: 'ojSubmissionDetail', name: 'Submission Detail' }
     ]
   );
@@ -148,7 +160,7 @@ test('extension package keeps production packaging whitelist and activation even
     'webview'
   );
   assert.equal(
-    manifest.contributes.views.ojSidebar.find((view) => view.id === 'ojSubmissionDetail')?.type,
+    manifest.contributes.views.ojPanel.find((view) => view.id === 'ojSubmissionDetail')?.type,
     'webview'
   );
   assert.deepEqual(manifest.contributes.menus?.['view/title'], [
