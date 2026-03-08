@@ -26,6 +26,9 @@ function readExtensionPackageJson(): {
   activationEvents: readonly string[];
   contributes: {
     commands?: readonly { command: string; title: string }[];
+    viewsContainers?: {
+      activitybar?: readonly { id: string; title: string; icon: string }[];
+    };
     views: Record<string, readonly { id: string; name: string }[]>;
   };
 } {
@@ -94,13 +97,18 @@ test('extension package keeps production packaging whitelist and activation even
     'onCommand:oj.practice.selectSubmission',
     'onView:ojProblems',
     'onView:ojSubmissions',
+    'onView:ojAccount',
     'onCommand:oj.engagement.favoriteProblem',
     'onCommand:oj.engagement.submitReview',
     'onCommand:oj.stats.show',
     'onCommand:oj.ranking.show'
   ]);
-  assert.deepEqual(manifest.contributes.views.explorer, [
-    { id: 'ojProblems', name: 'OJ Problems' },
-    { id: 'ojSubmissions', name: 'OJ Submissions' }
+  assert.deepEqual(manifest.contributes.viewsContainers?.activitybar, [
+    { id: 'ojSidebar', title: 'OJ', icon: 'media/icon.png' }
+  ]);
+  assert.deepEqual(manifest.contributes.views.ojSidebar, [
+    { id: 'ojProblems', name: 'Problems' },
+    { id: 'ojSubmissions', name: 'Submissions' },
+    { id: 'ojAccount', name: 'Account' }
   ]);
 });

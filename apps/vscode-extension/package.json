@@ -39,6 +39,7 @@
     "onCommand:oj.practice.selectSubmission",
     "onView:ojProblems",
     "onView:ojSubmissions",
+    "onView:ojAccount",
     "onCommand:oj.engagement.favoriteProblem",
     "onCommand:oj.engagement.submitReview",
     "onCommand:oj.stats.show",
@@ -46,6 +47,15 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ojSidebar",
+          "title": "OJ",
+          "icon": "media/icon.png"
+        }
+      ]
+    },
     "configuration": {
       "title": "OJ VSCode",
       "properties": {
@@ -109,14 +119,18 @@
       }
     ],
     "views": {
-      "explorer": [
+      "ojSidebar": [
         {
           "id": "ojProblems",
-          "name": "OJ Problems"
+          "name": "Problems"
         },
         {
           "id": "ojSubmissions",
-          "name": "OJ Submissions"
+          "name": "Submissions"
+        },
+        {
+          "id": "ojAccount",
+          "name": "Account"
         }
       ]
     }
