@@ -25,13 +25,15 @@ export function createProblemDetailViewModel(
     };
   }
 
+  const title = problem.title?.trim() || 'Untitled problem';
+  const statement = resolveProblemStatementMarkdown(problem) ?? '';
+  const entryFunction = problem.entryFunction?.trim() ?? 'Not available';
+
   return {
-    title: problem.title,
+    title,
     problemId: problem.problemId,
-    statement:
-      resolveProblemStatementMarkdown(problem) ??
-      'No statementMarkdown content is available for this problem yet.',
-    entryFunction: problem.entryFunction.trim() || 'Problem manifest entryFunction is missing.',
+    statement,
+    entryFunction,
     starterFilePath,
     isEmpty: false
   };

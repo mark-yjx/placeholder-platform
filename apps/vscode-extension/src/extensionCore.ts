@@ -132,6 +132,13 @@ export function registerExtensionCommands(
     dependencies.output.appendLine(formatSubmissionDetail(result));
   };
 
+  const normalizeProblemDetail = (problem: ProblemDetail): ProblemDetail => ({
+    ...problem,
+    title: problem.title?.trim() || 'Untitled problem',
+    statementMarkdown: resolveProblemStatementMarkdown(problem) ?? '',
+    entryFunction: problem.entryFunction?.trim() ?? 'Not available'
+  });
+
   const openProblemStarterForProblem = async (problemId: string): Promise<void> => {
     const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
     dependencies.practiceViews?.showProblemDetail?.(problemDetail);
@@ -448,7 +455,9 @@ export function registerExtensionCommands(
         }
         dependencies.practiceViews?.setSelectedProblem?.(problemId);
         await dependencies.localStateStore?.setSelectedProblemId(problemId);
-        const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
+        const problemDetail = normalizeProblemDetail(
+          await dependencies.practiceCommands.fetchProblemDetail(problemId)
+        );
         dependencies.practiceViews?.showProblemDetail?.(problemDetail);
       })
     ),

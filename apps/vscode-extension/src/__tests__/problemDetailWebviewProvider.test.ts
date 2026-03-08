@@ -39,3 +39,21 @@ test('empty state shows friendly placeholder instead of blank panel', () => {
   assert.match(html, /<button data-command="openStarter" disabled>Open<\/button>/);
   assert.match(html, /<button data-command="submitCurrentFile" disabled>Submit<\/button>/);
 });
+
+test('problem detail falls back safely when optional fields are missing', () => {
+  const html = createProblemDetailHtml(
+    createProblemDetailViewModel({
+      problemId: 'legacy-problem',
+      versionId: 'legacy-problem-v1',
+      title: undefined as unknown as string,
+      statementMarkdown: undefined as unknown as string,
+      entryFunction: undefined as unknown as string,
+      starterCode: 'print(42)\n'
+    }, '.oj/problems/legacy-problem.py')
+  );
+
+  assert.match(html, /<h2>Untitled problem<\/h2>/);
+  assert.match(html, /Entry Function:<\/strong> <code>Not available<\/code>/);
+  assert.match(html, /Problem File:<\/strong> <code>\.oj\/problems\/legacy-problem\.py<\/code>/);
+  assert.match(html, /<pre style="white-space: pre-wrap;"><\/pre>/);
+});
