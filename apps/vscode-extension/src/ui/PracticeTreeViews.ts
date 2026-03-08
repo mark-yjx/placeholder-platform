@@ -92,11 +92,17 @@ export class PracticeTreeViews {
   private readonly problemsProvider = new ProblemsTreeDataProvider(this.state);
   private readonly submissionsProvider = new SubmissionsTreeDataProvider(this.state);
   private readonly accountProvider = new AccountTreeDataProvider();
+  private selectedSubmissionId: string | null = null;
 
   constructor(
     private readonly window: Pick<typeof vscode.window, 'showInformationMessage' | 'showTextDocument'>,
     private readonly workspace: Pick<typeof vscode.workspace, 'openTextDocument'>,
-    private readonly onProblemDetailChanged?: (problem: ProblemDetail) => void
+    private readonly onProblemDetailChanged?: (problem: ProblemDetail) => void,
+    private readonly onSubmissionDetailChanged?: (submission: {
+      submissionId: string;
+      statusSummary: string;
+      detail: string;
+    }) => void
   ) {}
 
   register(registerTreeDataProvider: (viewId: string, provider: vscode.TreeDataProvider<vscode.TreeItem>) => vscode.Disposable): readonly vscode.Disposable[] {
@@ -129,18 +135,39 @@ export class PracticeTreeViews {
   showSubmissionCreated(submissionId: string): void {
     this.state.recordSubmissionCreated(submissionId);
     this.submissionsProvider.refresh();
+    if (this.selectedSubmissionId === submissionId) {
+      this.emitSubmissionDetail(submissionId);
+    }
   }
 
   showSubmissionResult(result: SubmissionResult): void {
     this.state.recordSubmissionResult(result);
     this.submissionsProvider.refresh();
+    if (this.selectedSubmissionId === result.submissionId) {
+      this.emitSubmissionDetail(result.submissionId);
+    }
   }
 
   revealSubmission(submissionId: string): void {
+    this.selectedSubmissionId = submissionId;
+    this.emitSubmissionDetail(submissionId);
     const detail = this.state.getSubmissionDetail(submissionId);
     if (detail) {
       this.window.showInformationMessage(detail);
     }
+  }
+
+  private emitSubmissionDetail(submissionId: string): void {
+    const node = this.state.getSubmissionNodes().find((candidate) => candidate.id === submissionId);
+    if (!node) {
+      return;
+    }
+
+    this.onSubmissionDetailChanged?.({
+      submissionId,
+      statusSummary: node.description,
+      detail: node.detail
+    });
   }
 
   async revealProblem(problemId: string): Promise<void> {

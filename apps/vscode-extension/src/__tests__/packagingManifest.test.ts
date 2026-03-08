@@ -99,6 +99,7 @@ test('extension package keeps production packaging whitelist and activation even
     'onView:ojSubmissions',
     'onView:ojAccount',
     'onView:ojProblemDetail',
+    'onView:ojSubmissionDetail',
     'onCommand:oj.engagement.favoriteProblem',
     'onCommand:oj.engagement.submitReview',
     'onCommand:oj.stats.show',
@@ -111,6 +112,7 @@ test('extension package keeps production packaging whitelist and activation even
     { id: 'ojProblems', name: 'Problems' },
     { id: 'ojSubmissions', name: 'Submissions' },
     { id: 'ojAccount', name: 'Account' },
-    { id: 'ojProblemDetail', name: 'Problem Detail' }
+    { id: 'ojProblemDetail', name: 'Problem Detail' },
+    { id: 'ojSubmissionDetail', name: 'Submission Detail' }
   ]);
 });

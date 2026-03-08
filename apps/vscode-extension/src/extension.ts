@@ -22,6 +22,7 @@ import { LocalPracticeStateStore } from './runtime/LocalPracticeStateStore';
 import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { PracticeTreeViews } from './ui/PracticeTreeViews';
 import { ProblemDetailWebviewProvider } from './ui/ProblemDetailWebviewProvider';
+import { SubmissionDetailWebviewProvider } from './ui/SubmissionDetailWebviewProvider';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('OJ VSCode');
@@ -60,10 +61,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await vscode.commands.executeCommand('oj.practice.selectProblem', problemId);
     }
   });
+  const submissionDetailProvider = new SubmissionDetailWebviewProvider();
   const practiceViews = new PracticeTreeViews(
     vscode.window,
     vscode.workspace,
-    (problemDetail) => problemDetailProvider.showProblemDetail(problemDetail)
+    (problemDetail) => problemDetailProvider.showProblemDetail(problemDetail),
+    (submission) => submissionDetailProvider.showSubmissionDetail(submission)
   );
   const problemStarterWorkspace = new ProblemStarterWorkspace(vscode.window, vscode.workspace);
   const localStateStore = new LocalPracticeStateStore(context.workspaceState);
@@ -86,6 +89,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     'ojProblemDetail',
     problemDetailProvider
   );
+  const submissionDetailPanelDisposable = vscode.window.registerWebviewViewProvider(
+    'ojSubmissionDetail',
+    submissionDetailProvider
+  );
   const revealSubmissionDisposable = vscode.commands.registerCommand(
     'oj.practice.selectSubmission',
     (...args: unknown[]) => {
@@ -106,6 +113,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
   context.subscriptions.push(revealSubmissionDisposable);
   context.subscriptions.push(problemDetailPanelDisposable);
+  context.subscriptions.push(submissionDetailPanelDisposable);
 
   output.appendLine('OJ VSCode extension activated');
   output.appendLine(`API base URL: ${apiBaseUrl}`);
