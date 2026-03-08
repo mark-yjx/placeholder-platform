@@ -173,6 +173,7 @@ test('registered command writes to output channel on success', async () => {
       versionId: 'problem-1-v1',
       title: 'Two Sum',
       statementMarkdown: 'Solve Two Sum.',
+      entryFunction: 'solve',
       starterCode: 'def problem_1():\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
     }
   ]);
@@ -1530,6 +1531,17 @@ test('submit current file polls until finished and stops on terminal state', asy
   let pollIndex = 0;
 
   class PollingPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: 'Solve it',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+
     override async submitCode(): Promise<{ submissionId: string }> {
       return { submissionId: 'submission-finished-1' };
     }
@@ -1625,6 +1637,17 @@ test('submit current file polls until failed and stops on terminal state', async
   let pollIndex = 0;
 
   class FailingPollingPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: 'Solve it',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+
     override async submitCode(): Promise<{ submissionId: string }> {
       return { submissionId: 'submission-failed-1' };
     }
@@ -1703,6 +1726,17 @@ test('judged compile/runtime/timeout failures and API transport failures surface
   let pollAttempt = 0;
 
   class RuntimeErrorPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: 'Solve it',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+
     override async submitCode(): Promise<{ submissionId: string }> {
       return { submissionId: 'submission-runtime-1' };
     }
@@ -1888,6 +1922,17 @@ test('submit current file retries one transient poll error before succeeding', a
   let pollAttempts = 0;
 
   class RetryPollingPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: 'Solve it',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+
     override async submitCode(): Promise<{ submissionId: string }> {
       return { submissionId: 'submission-retry-1' };
     }
@@ -1982,6 +2027,17 @@ test('submit current file backs off repeatedly after transient poll errors', asy
   let pollAttempts = 0;
 
   class BackoffPollingPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: 'Solve it',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+
     override async submitCode(): Promise<{ submissionId: string }> {
       return { submissionId: 'submission-backoff-1' };
     }
@@ -2062,6 +2118,17 @@ test('cancel polling stops further status requests without mutating the last kno
   let pollAttempts = 0;
 
   class CancellablePollingPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: 'Solve it',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+
     override async submitCode(): Promise<{ submissionId: string }> {
       return { submissionId: 'submission-cancel-1' };
     }

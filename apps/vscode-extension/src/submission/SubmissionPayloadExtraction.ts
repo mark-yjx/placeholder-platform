@@ -256,10 +256,14 @@ function parseTopLevelBlocks(sourceCode: string): readonly ExtractedBlock[] {
   }
 }
 
-export function extractSubmitPayload(sourceCode: string): string {
+export function extractSubmitPayload(sourceCode: string, entryFunction = 'solve'): string {
   const trimmed = sourceCode.trim();
   if (!trimmed) {
     throw new Error('Source code is required');
+  }
+  const selectedEntrypoint = entryFunction.trim();
+  if (!selectedEntrypoint) {
+    throw new Error('Problem entryFunction is required for submission extraction');
   }
 
   const blocks = parseTopLevelBlocks(trimmed);
@@ -273,9 +277,8 @@ export function extractSubmitPayload(sourceCode: string): string {
     (block): block is Extract<ExtractedBlock, { kind: 'constant' }> => block.kind === 'constant'
   );
 
-  const solveBlock = functionBlocks.find((block) => block.name === 'solve');
-  if (!solveBlock) {
-    throw new Error('Submission must define a top-level solve() function');
+  if (!functionBlocks.some((block) => block.name === selectedEntrypoint)) {
+    throw new Error(`Submission must define a top-level ${selectedEntrypoint}() function`);
   }
 
   const includedFunctions = new Set<string>();
@@ -288,7 +291,7 @@ export function extractSubmitPayload(sourceCode: string): string {
       constantByName.set(name, block);
     }
   }
-  const functionQueue = ['solve'];
+  const functionQueue = [selectedEntrypoint];
   const constantQueue: string[] = [];
 
   const processReference = (reference: string): void => {
@@ -367,7 +370,7 @@ export function extractSubmitPayload(sourceCode: string): string {
     .trim();
 
   if (!extractedSourceCode) {
-    throw new Error('Submission extraction produced no runnable solve() payload');
+    throw new Error(`Submission extraction produced no runnable ${selectedEntrypoint}() payload`);
   }
 
   return `${extractedSourceCode}\n`;

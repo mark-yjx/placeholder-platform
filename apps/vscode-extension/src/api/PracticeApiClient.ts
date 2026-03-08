@@ -6,6 +6,7 @@ export type PublishedProblem = {
   title: string;
   statementMarkdown?: string;
   statement?: string;
+  entryFunction?: string;
 };
 
 export type ProblemDetail = PublishedProblem & {

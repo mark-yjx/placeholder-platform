@@ -225,7 +225,7 @@ export function registerExtensionCommands(
     return pickedProblem.problemId;
   };
 
-  const resolveCurrentPythonFileSubmission = (): string => {
+  const resolveCurrentPythonFileSource = (): string => {
     const activeDocument = dependencies.window.activeTextEditor?.document;
     if (!activeDocument) {
       throw new Error('Open a Python file before submitting');
@@ -241,7 +241,27 @@ export function registerExtensionCommands(
       throw new Error('Active editor is empty');
     }
 
-    return extractSubmitPayload(sourceCode);
+    return sourceCode;
+  };
+
+  const resolveProblemEntryFunction = async (problemId: string): Promise<string> => {
+    try {
+      const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
+      const metadataEntrypoint = problemDetail.entryFunction?.trim();
+      if (metadataEntrypoint) {
+        return metadataEntrypoint;
+      }
+
+      const starterCodeEntrypoint = problemDetail.starterCode
+        ?.match(/^\s*def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/m)?.[1]
+        ?.trim();
+      if (starterCodeEntrypoint) {
+        return starterCodeEntrypoint;
+      }
+    } catch {
+      return 'solve';
+    }
+    return 'solve';
   };
 
   const inferProblemIdFromCurrentWorkspaceFile = (): string | null => {
@@ -368,11 +388,13 @@ export function registerExtensionCommands(
       runWithHandling('oj.practice.submitCurrentFile', async () => {
         const inferredProblemId = inferProblemIdFromCurrentWorkspaceFile();
         const problemId = await resolveSelectedProblemId(inferredProblemId ?? undefined);
-        const sourceCode = resolveCurrentPythonFileSubmission();
+        const sourceCode = resolveCurrentPythonFileSource();
+        const entryFunction = await resolveProblemEntryFunction(problemId);
+        const extractedPayload = extractSubmitPayload(sourceCode, entryFunction);
         const submission = await dependencies.practiceCommands.submitCode({
           problemId,
           language: 'python',
-          sourceCode
+          sourceCode: extractedPayload
         });
         latestSubmissionId = submission.submissionId;
         await dependencies.localStateStore?.recordLastSubmission(problemId, submission.submissionId);

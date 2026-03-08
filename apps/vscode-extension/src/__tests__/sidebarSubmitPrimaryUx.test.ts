@@ -18,6 +18,17 @@ test('sidebar submit command path reports queued -> running -> finished', async 
   let pollCount = 0;
 
   class SidebarSubmitPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Two Sum',
+        statement: 'Solve it',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n'
+      };
+    }
+
     override async submitCode(): Promise<{ submissionId: string }> {
       return { submissionId: 'submission-sidebar-1' };
     }

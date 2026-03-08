@@ -336,7 +336,7 @@ export function extractPythonSubmission(request: ExtractPythonSubmissionRequest)
   );
 
   const functionNames = new Set(functionBlocks.map((block) => block.name));
-  const selectedEntrypoint = functionNames.has('solve') ? 'solve' : configuredEntrypoint;
+  const selectedEntrypoint = configuredEntrypoint;
   if (!functionNames.has(selectedEntrypoint)) {
     throw new Error(
       `Python submission must define a top-level ${selectedEntrypoint}() function`

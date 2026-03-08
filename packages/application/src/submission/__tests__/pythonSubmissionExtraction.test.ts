@@ -2,21 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extractPythonSubmission } from '../PythonSubmissionExtraction';
 
-test('solve takes precedence over configured entryFunction', () => {
+test('configured entryFunction is selected even when solve exists', () => {
   const extracted = extractPythonSubmission({
     entryFunction: 'collapse',
     sourceCode: `
 def collapse(value):
-    return value - 1
+    return value + 1
 
 def solve():
-    return collapse(3)
+    return collapse(999)
 `.trim()
   });
 
-  assert.equal(extracted.selectedEntrypoint, 'solve');
+  assert.equal(extracted.selectedEntrypoint, 'collapse');
   assert.match(extracted.extractedSourceCode, /^def collapse\(value\):$/m);
-  assert.match(extracted.extractedSourceCode, /^def solve\(\):$/m);
+  assert.doesNotMatch(extracted.extractedSourceCode, /^def solve\(\):$/m);
 });
 
 test('configured entryFunction is used when solve is absent', () => {

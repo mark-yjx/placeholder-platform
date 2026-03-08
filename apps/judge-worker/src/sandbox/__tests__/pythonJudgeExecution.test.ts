@@ -66,7 +66,7 @@ def collapse(value):
   });
 });
 
-test('solve-based submission takes precedence over configured entryFunction and wrong output returns WA, not CE', async () => {
+test('configured entryFunction takes precedence over solve and wrong output returns WA, not CE', async () => {
   const sandbox = new DockerSandboxAdapter(async () => ({
     stdout: '0\n',
     stderr: '',
@@ -104,7 +104,7 @@ def solve(value):
   });
 });
 
-test('solve-based submission takes precedence over configured entryFunction and correct output returns AC', async () => {
+test('configured entryFunction takes precedence over solve and correct output returns AC', async () => {
   let callCount = 0;
   const sandbox = new DockerSandboxAdapter(async () => {
     callCount += 1;
@@ -126,10 +126,10 @@ def helper(value):
     return value
 
 def collapse(value):
-    return value - 1
+    return helper(value)
 
 def solve(value):
-    return helper(value)
+    return -1
 `.trim(),
     entryFunction: 'collapse',
     tests: [
