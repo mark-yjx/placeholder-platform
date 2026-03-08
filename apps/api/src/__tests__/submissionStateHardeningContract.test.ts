@@ -41,8 +41,9 @@ test('submission seed populates problem version ids for persisted records', () =
   const sql = readFromRoot('deploy', 'local', 'sql', 'seeds', '001_mvp_seed.sql');
 
   assert.match(sql, /INSERT INTO submissions \(id, user_id, problem_id, problem_version_id, language, status, source_code\)/i);
-  assert.match(sql, /'problem-1-v1'/i);
-  assert.match(sql, /'problem-2-v1'/i);
+  assert.match(sql, /'collapse-v1'/i);
+  assert.doesNotMatch(sql, /'problem-1-v1'/i);
+  assert.doesNotMatch(sql, /'problem-2-v1'/i);
 });
 
 test('submission failure reason migration adds persisted failure_reason column', () => {

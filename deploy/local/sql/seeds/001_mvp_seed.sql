@@ -12,17 +12,104 @@ SET email = EXCLUDED.email,
 
 INSERT INTO problems (id, title, publication_state)
 VALUES
-  ('problem-1', 'Two Sum', 'published'),
-  ('problem-2', 'FizzBuzz', 'published')
+  ('collapse', 'Collapse Identical Digits', 'published')
 ON CONFLICT (id) DO UPDATE
 SET title = EXCLUDED.title,
     publication_state = EXCLUDED.publication_state;
 
+INSERT INTO problem_versions (id, problem_id, version_number, title, statement, publication_state)
+VALUES
+  (
+    'collapse-v1',
+    'collapse',
+    1,
+    'Collapse Identical Digits',
+    $$# Collapse Identical Digits
+
+A sequence of identical digits is collapsed to one digit
+in the returned integer.
+
+You can assume that the function is called with an integer as argument.
+$$,
+    'published'
+  )
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO problem_version_assets (
+  problem_version_id,
+  entry_function,
+  language,
+  visibility,
+  time_limit_ms,
+  memory_limit_kb,
+  starter_code,
+  content_digest
+)
+VALUES
+  (
+    'collapse-v1',
+    'collapse',
+    'python',
+    'public',
+    2000,
+    65536,
+    $$def collapse(number):
+    """
+    >>> collapse(0)
+    0
+    >>> collapse(-0)
+    0
+    >>> collapse(9)
+    9
+    >>> collapse(-9)
+    -9
+    >>> collapse(12321)
+    12321
+    >>> collapse(-12321)
+    -12321
+    >>> collapse(-1111222232222111)
+    -12321
+    >>> collapse(1155523335551116111666)
+    152351616
+    >>> collapse(-900111212777394440300)
+    -9012127394030
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
+$$,
+    '15b2fb79497422f1b3ca4993577bdaf7e6d4cd45f442dbe7966503999ccb1873'
+  )
+ON CONFLICT (problem_version_id) DO NOTHING;
+
+INSERT INTO problem_version_tests (problem_version_id, test_type, position, input, expected)
+VALUES
+  ('collapse-v1', 'public', 1, '0'::jsonb, '0'::jsonb),
+  ('collapse-v1', 'public', 2, '12321'::jsonb, '12321'::jsonb),
+  ('collapse-v1', 'public', 3, '-1111222232222111'::jsonb, '-12321'::jsonb),
+  ('collapse-v1', 'hidden', 1, '1111111111111'::jsonb, '1'::jsonb),
+  ('collapse-v1', 'hidden', 2, '-2222222222'::jsonb, '-2'::jsonb),
+  ('collapse-v1', 'hidden', 3, '1000000000000000000001'::jsonb, '101'::jsonb),
+  ('collapse-v1', 'hidden', 4, '-900111212777394440300'::jsonb, '-9012127394030'::jsonb)
+ON CONFLICT (problem_version_id, test_type, position) DO NOTHING;
+
 INSERT INTO submissions (id, user_id, problem_id, problem_version_id, language, status, source_code)
 VALUES
-  ('sub-1', 'student-1', 'problem-1', 'problem-1-v1', 'python', 'finished', 'print(42)'),
-  ('sub-2', 'student-1', 'problem-2', 'problem-2-v1', 'python', 'finished', 'print(1)'),
-  ('sub-3', 'student-2', 'problem-1', 'problem-1-v1', 'python', 'finished', 'print(2)')
+  (
+    'sub-1',
+    'student-1',
+    'collapse',
+    'collapse-v1',
+    'python',
+    'finished',
+    $$def collapse(number):
+    return 0 if number == 0 else int(str(number)[0])
+$$
+  )
 ON CONFLICT (id) DO UPDATE
 SET user_id = EXCLUDED.user_id,
     problem_id = EXCLUDED.problem_id,
@@ -33,9 +120,7 @@ SET user_id = EXCLUDED.user_id,
 
 INSERT INTO judge_results (submission_id, verdict, time_ms, memory_kb)
 VALUES
-  ('sub-1', 'AC', 120, 2048),
-  ('sub-2', 'WA', 140, 2052),
-  ('sub-3', 'AC', 100, 2000)
+  ('sub-1', 'AC', 120, 2048)
 ON CONFLICT (submission_id) DO UPDATE
 SET verdict = EXCLUDED.verdict,
     time_ms = EXCLUDED.time_ms,

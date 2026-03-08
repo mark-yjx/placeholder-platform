@@ -24,6 +24,8 @@
     "local:db:migrate": "node tools/scripts/local-db-migrate.mjs",
     "local:db:seed": "node tools/scripts/local-db-seed.mjs",
     "local:db:setup": "npm run local:db:migrate && npm run local:db:seed",
+    "local:problems:cleanup": "node tools/scripts/local-problems-cleanup.mjs",
+    "local:problems:verify": "node tools/scripts/local-problems-verify.mjs",
     "import:problems": "node tools/scripts/import-problems.mjs",
     "smoke:local": "node tools/scripts/local-smoke.mjs",
     "api:start": "PORT=${PORT:-3100} DATABASE_URL=${DATABASE_URL:-postgresql://oj:oj@127.0.0.1:5432/oj} npm -w @apps/api run start",
