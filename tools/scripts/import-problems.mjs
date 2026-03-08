@@ -287,6 +287,10 @@ function parseManifestJson(problemDir) {
   }
 }
 
+function isValidPythonIdentifier(value) {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(value);
+}
+
 export function readProblemDefinition(problemDir) {
   const metadata = parseManifestJson(problemDir);
   const statement = readRequiredTextFile(path.join(problemDir, 'statement.md'), 'statement file');
@@ -302,6 +306,9 @@ export function readProblemDefinition(problemDir) {
   }
   if (typeof metadata.entryFunction !== 'string' || metadata.entryFunction.trim().length === 0) {
     throw new Error(`Problem ${metadata.problemId} must define a non-empty entryFunction`);
+  }
+  if (!isValidPythonIdentifier(metadata.entryFunction.trim())) {
+    throw new Error(`Problem ${metadata.problemId} must define a valid Python entryFunction identifier`);
   }
   if (metadata.language !== 'python') {
     throw new Error(`Problem ${metadata.problemId} must use language "python"`);

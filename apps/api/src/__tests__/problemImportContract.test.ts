@@ -21,6 +21,48 @@ async function loadImporterModule() {
   return import(pathToFileURL(path.join(repoRoot, 'tools', 'scripts', 'import-problems.mjs')).href);
 }
 
+async function writeManifestProblem(
+  rootDir: string,
+  {
+    problemId = 'manifest-problem',
+    title = 'Manifest Problem',
+    entryFunction = 'run',
+    language = 'python',
+    timeLimitMs = 1000,
+    memoryLimitKb = 1024,
+    visibility = 'public'
+  }: {
+    problemId?: string;
+    title?: string;
+    entryFunction?: string;
+    language?: string;
+    timeLimitMs?: number;
+    memoryLimitKb?: number;
+    visibility?: string;
+  } = {}
+) {
+  const problemDir = path.join(rootDir, problemId);
+  await mkdir(problemDir, { recursive: true });
+  await writeFile(
+    path.join(problemDir, 'manifest.json'),
+    JSON.stringify({
+      problemId,
+      title,
+      entryFunction,
+      language,
+      timeLimitMs,
+      memoryLimitKb,
+      visibility
+    }),
+    'utf8'
+  );
+  await writeFile(path.join(problemDir, 'statement.md'), `# ${title}\n`, 'utf8');
+  await writeFile(path.join(problemDir, 'starter.py'), `def ${entryFunction.replace(/[^A-Za-z0-9_]/g, '_')}():\n    return 1\n`, 'utf8');
+  await writeFile(path.join(problemDir, 'public.json'), '[]\n', 'utf8');
+  await writeFile(path.join(problemDir, 'hidden.json'), '[]\n', 'utf8');
+  return problemDir;
+}
+
 test('problem import creates collapse on first import and skips an identical re-run', async () => {
   const repoRoot = resolveRepoRoot();
   const importer = await loadImporterModule();
@@ -186,6 +228,48 @@ test('problem import rejects missing sibling test files in the manifest layout',
   );
 });
 
+test('problem import rejects invalid manifest field values for entryFunction, language, visibility, and limits', async () => {
+  const importer = await loadImporterModule();
+  const cases = [
+    {
+      name: 'invalid entryFunction',
+      manifest: { problemId: 'bad-entry', entryFunction: '123 bad' },
+      error: /valid Python entryFunction identifier/
+    },
+    {
+      name: 'invalid language',
+      manifest: { problemId: 'bad-language', language: 'javascript' },
+      error: /must use language "python"/
+    },
+    {
+      name: 'invalid visibility',
+      manifest: { problemId: 'bad-visibility', visibility: 'internal' },
+      error: /must use visibility "public" or "private"/
+    },
+    {
+      name: 'non-positive time limit',
+      manifest: { problemId: 'bad-time', timeLimitMs: 0 },
+      error: /must define a positive timeLimitMs/
+    },
+    {
+      name: 'non-positive memory limit',
+      manifest: { problemId: 'bad-memory', memoryLimitKb: -1 },
+      error: /must define a positive memoryLimitKb/
+    }
+  ] as const;
+
+  for (const testCase of cases) {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), `oj-${testCase.manifest.problemId}-`));
+    const problemDir = await writeManifestProblem(tempRoot, testCase.manifest);
+
+    assert.throws(
+      () => importer.readProblemDefinition(problemDir),
+      testCase.error,
+      testCase.name
+    );
+  }
+});
+
 test('problem import rejects malformed public.json and hidden.json payloads', async () => {
   const importer = await loadImporterModule();
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'oj-manifest-bad-tests-'));
@@ -222,4 +306,21 @@ test('problem import rejects malformed public.json and hidden.json payloads', as
     () => importer.readProblemDefinition(problemDir),
     /Expected JSON array|Unexpected token/
   );
+});
+
+test('runProblemImport rejects malformed manifests before any import succeeds', async () => {
+  const importer = await loadImporterModule();
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'oj-manifest-run-import-'));
+  const store = importer.createInMemoryProblemImportStore();
+
+  await writeManifestProblem(tempRoot, {
+    problemId: 'broken-manifest',
+    entryFunction: 'bad entry'
+  });
+
+  await assert.rejects(
+    importer.runProblemImport({ dir: tempRoot, store }),
+    /valid Python entryFunction identifier/
+  );
+  assert.deepEqual(store.snapshot(), []);
 });
