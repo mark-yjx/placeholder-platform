@@ -16,6 +16,19 @@ declare module 'vscode' {
     languageId: string;
     fileName?: string;
   };
+  export type Webview = {
+    html: string;
+    options?: {
+      enableScripts?: boolean;
+    };
+    onDidReceiveMessage(listener: (message: unknown) => unknown): Disposable;
+  };
+  export type WebviewView = {
+    webview: Webview;
+  };
+  export type WebviewViewProvider = {
+    resolveWebviewView(webviewView: WebviewView): void;
+  };
   export class Uri {
     readonly fsPath: string;
     static file(path: string): Uri;
@@ -53,6 +66,7 @@ declare module 'vscode' {
 
   export const commands: {
     registerCommand(commandId: string, callback: (...args: unknown[]) => unknown): Disposable;
+    executeCommand(commandId: string, ...args: unknown[]): Thenable<unknown>;
   };
 
   export const workspace: {
@@ -67,6 +81,7 @@ declare module 'vscode' {
 
   export const window: {
     registerTreeDataProvider(viewId: string, provider: TreeDataProvider<TreeItem>): Disposable;
+    registerWebviewViewProvider(viewId: string, provider: WebviewViewProvider): Disposable;
     createOutputChannel(name: string): {
       appendLine(value: string): void;
       show(preserveFocus?: boolean): void;

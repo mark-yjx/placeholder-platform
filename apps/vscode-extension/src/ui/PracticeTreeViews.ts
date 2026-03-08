@@ -95,7 +95,8 @@ export class PracticeTreeViews {
 
   constructor(
     private readonly window: Pick<typeof vscode.window, 'showInformationMessage' | 'showTextDocument'>,
-    private readonly workspace: Pick<typeof vscode.workspace, 'openTextDocument'>
+    private readonly workspace: Pick<typeof vscode.workspace, 'openTextDocument'>,
+    private readonly onProblemDetailChanged?: (problem: ProblemDetail) => void
   ) {}
 
   register(registerTreeDataProvider: (viewId: string, provider: vscode.TreeDataProvider<vscode.TreeItem>) => vscode.Disposable): readonly vscode.Disposable[] {
@@ -113,6 +114,7 @@ export class PracticeTreeViews {
 
   showProblemDetail(problem: ProblemDetail): void {
     this.state.showProblemDetail(problem);
+    this.onProblemDetailChanged?.(problem);
     this.problemsProvider.refresh();
   }
 

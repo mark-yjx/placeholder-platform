@@ -21,6 +21,7 @@ import { restorePracticeStateOnStartup } from './runtime/ExtensionRuntimeBootstr
 import { LocalPracticeStateStore } from './runtime/LocalPracticeStateStore';
 import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { PracticeTreeViews } from './ui/PracticeTreeViews';
+import { ProblemDetailWebviewProvider } from './ui/ProblemDetailWebviewProvider';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('OJ VSCode');
@@ -47,7 +48,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const authCommands = new AuthCommands(new HttpAuthClient(clientConfig), tokenStore);
   const practiceCommands = new PracticeCommands(new HttpPracticeApiClient(clientConfig), tokenStore);
   const engagementCommands = new EngagementCommands(new HttpEngagementApiClient(clientConfig), tokenStore);
-  const practiceViews = new PracticeTreeViews(vscode.window, vscode.workspace);
+  const problemDetailProvider = new ProblemDetailWebviewProvider({
+    openStarterFile: async (problemId) => {
+      await vscode.commands.executeCommand('oj.practice.selectProblem', problemId);
+    },
+    submitCurrentFile: async () => {
+      await vscode.commands.executeCommand('oj.practice.submitCurrentFile');
+    },
+    refreshProblem: async (problemId) => {
+      await vscode.commands.executeCommand('oj.practice.fetchProblems');
+      await vscode.commands.executeCommand('oj.practice.selectProblem', problemId);
+    }
+  });
+  const practiceViews = new PracticeTreeViews(
+    vscode.window,
+    vscode.workspace,
+    (problemDetail) => problemDetailProvider.showProblemDetail(problemDetail)
+  );
   const problemStarterWorkspace = new ProblemStarterWorkspace(vscode.window, vscode.workspace);
   const localStateStore = new LocalPracticeStateStore(context.workspaceState);
 
@@ -64,6 +81,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   const treeViewDisposables = practiceViews.register((viewId, provider) =>
     vscode.window.registerTreeDataProvider(viewId, provider)
+  );
+  const problemDetailPanelDisposable = vscode.window.registerWebviewViewProvider(
+    'ojProblemDetail',
+    problemDetailProvider
   );
   const revealSubmissionDisposable = vscode.commands.registerCommand(
     'oj.practice.selectSubmission',
@@ -84,6 +105,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(disposable);
   }
   context.subscriptions.push(revealSubmissionDisposable);
+  context.subscriptions.push(problemDetailPanelDisposable);
 
   output.appendLine('OJ VSCode extension activated');
   output.appendLine(`API base URL: ${apiBaseUrl}`);

@@ -40,6 +40,7 @@
     "onView:ojProblems",
     "onView:ojSubmissions",
     "onView:ojAccount",
+    "onView:ojProblemDetail",
     "onCommand:oj.engagement.favoriteProblem",
     "onCommand:oj.engagement.submitReview",
     "onCommand:oj.stats.show",
@@ -131,6 +132,10 @@
         {
           "id": "ojAccount",
           "name": "Account"
+        },
+        {
+          "id": "ojProblemDetail",
+          "name": "Problem Detail"
         }
       ]
     }
