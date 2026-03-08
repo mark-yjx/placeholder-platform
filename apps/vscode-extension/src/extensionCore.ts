@@ -133,15 +133,19 @@ export function registerExtensionCommands(
     dependencies.output.appendLine(formatSubmissionDetail(result));
   };
 
-  const normalizeProblemDetail = (problem: ProblemDetail): ProblemDetail => ({
+  const normalizeProblemDetail = (requestedProblemId: string, problem: ProblemDetail): ProblemDetail => ({
     ...problem,
+    problemId: problem.problemId?.trim() || requestedProblemId,
     title: problem.title?.trim() || 'Untitled problem',
     statementMarkdown: resolveProblemStatementMarkdown(problem) ?? '',
     entryFunction: problem.entryFunction?.trim() ?? 'Not available'
   });
 
+  const loadProblemDetail = async (problemId: string): Promise<ProblemDetail> =>
+    normalizeProblemDetail(problemId, await dependencies.practiceCommands.fetchProblemDetail(problemId));
+
   const openProblemStarterForProblem = async (problemId: string): Promise<void> => {
-    const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
+    const problemDetail = await loadProblemDetail(problemId);
     dependencies.practiceViews?.showProblemDetail?.(problemDetail);
     const openedFilePath = await dependencies.problemStarterWorkspace?.openProblemStarter(problemDetail);
     if (openedFilePath) {
@@ -455,11 +459,10 @@ export function registerExtensionCommands(
           dependencies.window.showInformationMessage('No problem selected yet. Run OJ: Fetch Problems first.');
           return;
         }
+        console.log('problem selected', problemId);
         dependencies.practiceViews?.setSelectedProblem?.(problemId);
         await dependencies.localStateStore?.setSelectedProblemId(problemId);
-        const problemDetail = normalizeProblemDetail(
-          await dependencies.practiceCommands.fetchProblemDetail(problemId)
-        );
+        const problemDetail = await loadProblemDetail(problemId);
         dependencies.practiceViews?.showProblemDetail?.(problemDetail);
       })
     ),

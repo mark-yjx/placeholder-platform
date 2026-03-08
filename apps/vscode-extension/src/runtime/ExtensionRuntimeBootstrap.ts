@@ -1,9 +1,10 @@
 import { SessionTokenStore } from '../auth/SessionTokenStore';
 import { PracticeCommands } from '../practice/PracticeCommands';
-import { PublishedProblem, SubmissionResult } from '../api/PracticeApiClient';
+import { ProblemDetail, PublishedProblem, SubmissionResult } from '../api/PracticeApiClient';
 import { LocalPracticeStateStore } from './LocalPracticeStateStore';
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
+import { resolveProblemStatementMarkdown } from '../ui/PracticeViewState';
 
 export type OutputChannelLike = {
   appendLine(value: string): void;
@@ -12,6 +13,7 @@ export type OutputChannelLike = {
 export type PracticeViewsLike = {
   showProblems(problems: readonly PublishedProblem[]): void;
   showSubmissionResult(result: SubmissionResult): void;
+  showProblemDetail?(problem: ProblemDetail): void;
   setSelectedProblem?(problemId: string): void;
 };
 
@@ -27,6 +29,16 @@ async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function normalizeProblemDetail(requestedProblemId: string, problem: ProblemDetail): ProblemDetail {
+  return {
+    ...problem,
+    problemId: problem.problemId?.trim() || requestedProblemId,
+    title: problem.title?.trim() || 'Untitled problem',
+    statementMarkdown: resolveProblemStatementMarkdown(problem) ?? '',
+    entryFunction: problem.entryFunction?.trim() ?? 'Not available'
+  };
 }
 
 export async function probeApiHealth(apiBaseUrl: string): Promise<{
@@ -135,6 +147,19 @@ export async function restorePracticeStateOnStartup(options: {
     if (selectedProblemId) {
       options.practiceViews.setSelectedProblem?.(selectedProblemId);
       options.output.appendLine(`Restored selected problem: ${selectedProblemId}`);
+      console.log('problem selected', selectedProblemId);
+
+      try {
+        const problemDetail = normalizeProblemDetail(
+          selectedProblemId,
+          await options.practiceCommands.fetchProblemDetail(selectedProblemId)
+        );
+        options.practiceViews.showProblemDetail?.(problemDetail);
+        options.output.appendLine(`Restored problem detail for ${problemDetail.problemId}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        options.output.appendLine(`Failed to restore problem detail for ${selectedProblemId}: ${message}`);
+      }
 
       const persistedProblemState = options.localStateStore?.getProblemState(selectedProblemId);
       const restoredFilePath = persistedProblemState?.lastOpenedFilePath?.trim();

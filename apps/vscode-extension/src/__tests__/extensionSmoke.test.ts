@@ -5,6 +5,7 @@ import path from 'node:path';
 import { AuthCommands } from '../auth/AuthCommands';
 import { SessionTokenStore, SecretStorageLike } from '../auth/SessionTokenStore';
 import { PracticeCommands } from '../practice/PracticeCommands';
+import { ProblemDetail } from '../api/PracticeApiClient';
 import { HttpAuthClient, HttpPracticeApiClient } from '../runtime/HttpExtensionClients';
 import {
   PracticeViewsLike,
@@ -67,6 +68,10 @@ class RecordingPracticeViews implements PracticeViewsLike {
     memoryKb?: number;
   }): void {
     this.state.recordSubmissionResult(result);
+  }
+
+  showProblemDetail(problem: ProblemDetail): void {
+    this.state.showProblemDetail(problem);
   }
 
   setSelectedProblem(problemId: string): void {
@@ -404,6 +409,17 @@ test('startup restores per-problem local state and drops missing file paths', as
       });
     }
 
+    if (url.endsWith('/problems/problem-1') && method === 'GET') {
+      return createJsonResponse({
+        problemId: 'problem-1',
+        versionId: 'problem-1-v1',
+        title: 'Two Sum',
+        statementMarkdown: 'Solve it',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n'
+      });
+    }
+
     throw new Error(`Unhandled request: ${method} ${url}`);
   };
 
@@ -450,9 +466,13 @@ test('startup restores per-problem local state and drops missing file paths', as
           id: 'problem-1',
           label: 'Two Sum',
           description: 'problem-1',
-          detail: '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nNo statement available.\n'
+          detail: '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nSolve it\n'
         }
       ]
+    );
+    assert.equal(
+      practiceViews.state.getProblemDetail('problem-1'),
+      '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nSolve it\n'
     );
     assert.deepEqual(
       practiceViews.state.getSubmissionNodes(),
@@ -472,6 +492,7 @@ test('startup restores per-problem local state and drops missing file paths', as
     assert.ok(
       outputLines.includes(`Reopened starter workspace file for problem-1: ${existingFile}`)
     );
+    assert.ok(outputLines.includes('Restored problem detail for problem-1'));
     assert.ok(
       outputLines.includes('Restored last submission for problem-1: submission-1')
     );

@@ -5,6 +5,7 @@ export type ProblemDetailViewModel = {
   title: string;
   problemId: string;
   statement: string;
+  statementWarning: string;
   entryFunction: string;
   starterFilePath: string | null;
   isEmpty: boolean;
@@ -18,7 +19,8 @@ export function createProblemDetailViewModel(
     return {
       title: 'Problem Detail',
       problemId: 'No problem selected yet.',
-      statement: 'Fetch problems, then select one from the Problems list to view details here.',
+      statement: '',
+      statementWarning: 'Select a problem from the Problems list to view details.',
       entryFunction: 'No problem selected yet.',
       starterFilePath: null,
       isEmpty: true
@@ -28,11 +30,15 @@ export function createProblemDetailViewModel(
   const title = problem.title?.trim() || 'Untitled problem';
   const statement = resolveProblemStatementMarkdown(problem) ?? '';
   const entryFunction = problem.entryFunction?.trim() ?? 'Not available';
+  const statementWarning = statement
+    ? ''
+    : 'Warning: Statement content is unavailable for this problem.';
 
   return {
     title,
     problemId: problem.problemId,
     statement,
+    statementWarning,
     entryFunction,
     starterFilePath,
     isEmpty: false
@@ -50,6 +56,7 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   const title = escapeHtml(input.title);
   const problemId = escapeHtml(input.problemId);
   const statement = escapeHtml(input.statement);
+  const statementWarning = escapeHtml(input.statementWarning);
   const entryFunction = escapeHtml(input.entryFunction);
   const starterFilePath = escapeHtml(input.starterFilePath ?? 'No file path available yet.');
   const openStarterAttributes = input.isEmpty ? ' data-command="openStarter" disabled' : ' data-command="openStarter"';
@@ -57,15 +64,14 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     ? ' data-command="submitCurrentFile" disabled'
     : ' data-command="submitCurrentFile"';
   const refreshAttributes = input.isEmpty ? ' data-command="refreshProblem" disabled' : ' data-command="refreshProblem"';
-  const emptyState = input.isEmpty
-    ? '<p>Selecting a problem will load its title, statement, entry function, and actions here.</p>'
-    : '';
+  const statementBody = input.statement
+    ? `<pre style="white-space: pre-wrap;">${statement}</pre>`
+    : `<p role="${input.isEmpty ? 'status' : 'alert'}">${statementWarning}</p>`;
 
   return `<!doctype html>
 <html lang="en">
   <body>
     <h2>${title}</h2>
-    ${emptyState}
     <p><strong>Problem ID:</strong> <code>${problemId}</code></p>
     <p><strong>Entry Function:</strong> <code>${entryFunction}</code></p>
     <p><strong>Problem File:</strong> <code>${starterFilePath}</code></p>
@@ -76,7 +82,7 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     </div>
     <hr />
     <h3>Statement</h3>
-    <pre style="white-space: pre-wrap;">${statement}</pre>
+    ${statementBody}
     <script>
       const vscodeApi = acquireVsCodeApi();
       for (const button of document.querySelectorAll('button[data-command]')) {

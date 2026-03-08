@@ -32,8 +32,7 @@ test('empty state shows friendly placeholder instead of blank panel', () => {
   const html = createProblemDetailHtml(createProblemDetailViewModel(null, null));
 
   assert.match(html, /<h2>Problem Detail<\/h2>/);
-  assert.match(html, /Fetch problems, then select one from the Problems list to view details here\./);
-  assert.match(html, /Selecting a problem will load its title, statement, entry function, and actions here\./);
+  assert.match(html, /Select a problem from the Problems list to view details\./);
   assert.match(html, /<strong>Problem ID:<\/strong> <code>No problem selected yet\.<\/code>/);
   assert.match(html, /No problem selected yet\./);
   assert.match(html, /<button data-command="openStarter" disabled>Open<\/button>/);
@@ -55,5 +54,5 @@ test('problem detail falls back safely when optional fields are missing', () => 
   assert.match(html, /<h2>Untitled problem<\/h2>/);
   assert.match(html, /Entry Function:<\/strong> <code>Not available<\/code>/);
   assert.match(html, /Problem File:<\/strong> <code>\.oj\/problems\/legacy-problem\.py<\/code>/);
-  assert.match(html, /<pre style="white-space: pre-wrap;"><\/pre>/);
+  assert.match(html, /Warning: Statement content is unavailable for this problem\./);
 });

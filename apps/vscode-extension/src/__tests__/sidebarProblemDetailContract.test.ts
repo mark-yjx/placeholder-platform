@@ -29,7 +29,8 @@ test('problem detail panel includes required fields and actions', () => {
 
   assert.match(providerSource, /createProblemDetailViewModel\(/);
   assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
-  assert.match(viewModelSource, /Fetch problems, then select one from the Problems list to view details here\./);
+  assert.match(viewModelSource, /Select a problem from the Problems list to view details\./);
+  assert.match(viewModelSource, /Warning: Statement content is unavailable for this problem\./);
   assert.match(viewModelSource, /Problem ID:/);
   assert.match(viewModelSource, /Entry Function:/);
   assert.match(viewModelSource, /Problem File:/);
