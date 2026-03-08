@@ -42,6 +42,10 @@ INSERT INTO problem_version_assets (
   visibility,
   time_limit_ms,
   memory_limit_kb,
+  difficulty,
+  tags,
+  manifest_version,
+  author,
   starter_code,
   content_digest
 )
@@ -53,6 +57,10 @@ VALUES
     'public',
     2000,
     65536,
+    'easy',
+    '["digits","iteration"]'::jsonb,
+    '1.0.0',
+    'COMP9021 Staff',
     $$def collapse(number):
     """
     >>> collapse(0)

@@ -26,6 +26,10 @@ test('problem import creates collapse on first import and skips an identical re-
   const importer = await loadImporterModule();
   const store = importer.createInMemoryProblemImportStore();
   const definitions = importer.readProblemDefinitions(path.join(repoRoot, 'data', 'problems'));
+  assert.equal(definitions[0].difficulty, 'easy');
+  assert.deepEqual(definitions[0].tags, ['digits', 'iteration']);
+  assert.equal(definitions[0].version, '1.0.0');
+  assert.equal(definitions[0].author, 'COMP9021 Staff');
   assert.deepEqual(definitions[0].publicTests, [
     { inputJson: '0', expectedJson: '0' },
     { inputJson: '12321', expectedJson: '12321' },
@@ -65,6 +69,28 @@ test('problem import creates collapse on first import and skips an identical re-
       latestDigest: definitions[0].contentDigest
     }
   ]);
+});
+
+test('problem import content digest changes when manifest metadata changes', async () => {
+  const repoRoot = resolveRepoRoot();
+  const importer = await loadImporterModule();
+  const store = importer.createInMemoryProblemImportStore();
+  const [collapse] = importer.readProblemDefinitions(path.join(repoRoot, 'data', 'problems'));
+
+  await importer.importProblemDefinitions([collapse], store);
+
+  const updated = {
+    ...collapse,
+    tags: [...(collapse.tags ?? []), 'manifest']
+  };
+  updated.contentDigest = importer.createContentDigest(updated);
+
+  const result = await importer.importProblemDefinitions([updated], store);
+  assert.deepEqual(result, {
+    createdProblems: 0,
+    createdVersions: 1,
+    skipped: 0
+  });
 });
 
 test('problem import appends a new version when collapse content changes', async () => {

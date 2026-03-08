@@ -73,6 +73,23 @@ test('phase hidden test migration defines public and hidden problem test storage
   assert.match(sql, /UNIQUE \(problem_version_id, test_type, position\)/i);
 });
 
+test('phase manifest metadata migration defines optional manifest fields on problem assets', () => {
+  const sql = readFromRoot('deploy', 'local', 'sql', 'migrations', '009_problem_manifest_metadata.sql');
+  const seed = readFromRoot('deploy', 'local', 'sql', 'seeds', '001_mvp_seed.sql');
+
+  assert.match(sql, /ALTER TABLE problem_version_assets/i);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS difficulty TEXT/i);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS tags JSONB/i);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS manifest_version TEXT/i);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS author TEXT/i);
+  assert.match(sql, /CHECK \(tags IS NULL OR jsonb_typeof\(tags\) = 'array'\)/i);
+
+  assert.match(seed, /difficulty,/i);
+  assert.match(seed, /tags,/i);
+  assert.match(seed, /manifest_version,/i);
+  assert.match(seed, /author,/i);
+});
+
 test('auth password migration stores password hashes for local login verification', () => {
   const migration = readFromRoot('deploy', 'local', 'sql', 'migrations', '008_auth_passwords.sql');
   const seed = readFromRoot('deploy', 'local', 'sql', 'seeds', '001_mvp_seed.sql');

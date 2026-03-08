@@ -251,7 +251,11 @@ export function createContentDigest(problem) {
     language: problem.language,
     visibility: problem.visibility,
     timeLimitMs: problem.timeLimitMs,
-    memoryLimitKb: problem.memoryLimitKb
+    memoryLimitKb: problem.memoryLimitKb,
+    difficulty: problem.difficulty ?? null,
+    tags: problem.tags ?? null,
+    version: problem.version ?? null,
+    author: problem.author ?? null
   };
 
   return crypto
@@ -319,7 +323,13 @@ export function readProblemDefinition(problemDir) {
     timeLimitMs: Number.isInteger(metadata.timeLimitMs) ? metadata.timeLimitMs : DEFAULT_TIME_LIMIT_MS,
     memoryLimitKb: Number.isInteger(metadata.memoryLimitKb)
       ? metadata.memoryLimitKb
-      : DEFAULT_MEMORY_LIMIT_KB
+      : DEFAULT_MEMORY_LIMIT_KB,
+    difficulty: typeof metadata.difficulty === 'string' ? metadata.difficulty.trim() || undefined : undefined,
+    tags: Array.isArray(metadata.tags)
+      ? metadata.tags.filter((tag) => typeof tag === 'string' && tag.trim().length > 0).map((tag) => tag.trim())
+      : undefined,
+    version: typeof metadata.version === 'string' ? metadata.version.trim() || undefined : undefined,
+    author: typeof metadata.author === 'string' ? metadata.author.trim() || undefined : undefined
   };
 
   if (definition.timeLimitMs <= 0) {
@@ -440,10 +450,14 @@ INSERT INTO problem_version_assets (
   visibility,
   time_limit_ms,
   memory_limit_kb,
+  difficulty,
+  tags,
+  manifest_version,
+  author,
   starter_code,
   content_digest
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12)
 `;
 
 const INSERT_PROBLEM_TEST_SQL = `
@@ -513,6 +527,10 @@ export function createPostgresProblemImportStore(sqlClient) {
         problem.visibility,
         problem.timeLimitMs,
         problem.memoryLimitKb,
+        problem.difficulty ?? null,
+        JSON.stringify(problem.tags ?? []),
+        problem.version ?? null,
+        problem.author ?? null,
         problem.starterCode,
         problem.contentDigest
       ]);
@@ -539,6 +557,10 @@ export function createPostgresProblemImportStore(sqlClient) {
         problem.visibility,
         problem.timeLimitMs,
         problem.memoryLimitKb,
+        problem.difficulty ?? null,
+        JSON.stringify(problem.tags ?? []),
+        problem.version ?? null,
+        problem.author ?? null,
         problem.starterCode,
         problem.contentDigest
       ]);
