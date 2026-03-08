@@ -25,3 +25,5 @@ Use this checklist to verify the interactive sidebar workflow without using the 
 
 - The full login -> fetch -> open -> submit -> result flow is completed from sidebar UI only.
 - No command palette action is required for the core workflow.
+- Submission extraction follows the problem `entryFunction` contract from problem metadata.
+- The edited Python file defines the configured entry function (for example `collapse(...)` when `entryFunction` is `collapse`).

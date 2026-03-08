@@ -92,7 +92,7 @@ function resolveRepoRoot(): string {
   throw new Error('Unable to resolve repository root for extension smoke tests');
 }
 
-test('smoke validates login -> fetch -> submit -> poll -> reload restoration over HTTP clients', async () => {
+test('smoke validates sidebar-first login -> fetch/open -> submit -> poll -> reload restoration over HTTP clients', async () => {
   const originalFetch = globalThis.fetch;
   let submittedSourceCode = '';
   const submissionHistory = new Map<string, { status: 'queued' | 'finished'; verdict?: 'AC'; timeMs?: number; memoryKb?: number }>();
@@ -120,6 +120,16 @@ test('smoke validates login -> fetch -> submit -> poll -> reload restoration ove
     if (url.endsWith('/problems')) {
       return createJsonResponse({
         problems: [{ problemId: 'problem-1', title: 'Two Sum' }]
+      });
+    }
+    if (url.endsWith('/problems/problem-1')) {
+      return createJsonResponse({
+        problemId: 'problem-1',
+        versionId: 'problem-1-v1',
+        title: 'Two Sum',
+        statementMarkdown: 'Solve Two Sum.',
+        entryFunction: 'collapse',
+        starterCode: 'def collapse(value):\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
       });
     }
 
@@ -191,6 +201,9 @@ test('smoke validates login -> fetch -> submit -> poll -> reload restoration ove
     const problems = await practiceCommands.fetchPublishedProblems();
     assert.deepEqual(problems, [{ problemId: 'problem-1', title: 'Two Sum' }]);
 
+    const problemDetail = await practiceCommands.fetchProblemDetail('problem-1');
+    assert.equal(problemDetail.entryFunction, 'collapse');
+
     const rawSource = `
 import math
 DEBUG = 999
@@ -202,10 +215,10 @@ def helper(value):
 def unused():
     return DEBUG
 
-def solve():
+def collapse():
     return helper(40.8)
 `;
-    const extractedSource = extractSubmitPayload(rawSource);
+    const extractedSource = extractSubmitPayload(rawSource, problemDetail.entryFunction);
 
     const submission = await practiceCommands.submitCode({
       problemId: 'problem-1',
@@ -216,7 +229,8 @@ def solve():
     assert.match(submittedSourceCode, /^import math$/m);
     assert.match(submittedSourceCode, /^OFFSET = 2$/m);
     assert.match(submittedSourceCode, /^def helper\(value\):$/m);
-    assert.match(submittedSourceCode, /^def solve\(\):$/m);
+    assert.match(submittedSourceCode, /^def collapse\(\):$/m);
+    assert.doesNotMatch(submittedSourceCode, /^def solve\(\):$/m);
     assert.doesNotMatch(submittedSourceCode, /^DEBUG = 999$/m);
     assert.doesNotMatch(submittedSourceCode, /^def unused\(\):$/m);
     const running = await practiceCommands.pollSubmissionResult(submission.submissionId);

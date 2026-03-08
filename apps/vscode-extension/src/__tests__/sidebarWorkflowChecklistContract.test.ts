@@ -30,4 +30,6 @@ test('sidebar-first workflow checklist documents the full no-command-palette flo
   assert.match(checklist, /click `Open Starter`/i);
   assert.match(checklist, /click `Submit Current File`/i);
   assert.match(checklist, /`queued` -> `running` -> `finished\|failed`/);
+  assert.match(checklist, /entryFunction/i);
+  assert.match(checklist, /defines the configured entry function/i);
 });
