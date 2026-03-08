@@ -5,13 +5,16 @@ export type PublishedProblem = {
   problemId: string;
   title: string;
   statementMarkdown?: string;
-  statement?: string;
-  entryFunction?: string;
 };
 
 export type ProblemDetail = PublishedProblem & {
   versionId: string;
-  starterCode?: string;
+  statementMarkdown: string;
+  entryFunction: string;
+  starterCode: string;
+  language?: 'python';
+  timeLimitMs?: number;
+  memoryLimitKb?: number;
 };
 
 export type CreateSubmissionRequest = {

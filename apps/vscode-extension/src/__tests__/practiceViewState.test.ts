@@ -61,6 +61,7 @@ test('problem detail fetch updates cached statement for later reveal', () => {
     versionId: 'problem-1-v1',
     title: 'Two Sum',
     statementMarkdown: 'Return the sum of two integers.',
+    entryFunction: 'solve',
     starterCode: 'def solve():\n    pass\n'
   });
 

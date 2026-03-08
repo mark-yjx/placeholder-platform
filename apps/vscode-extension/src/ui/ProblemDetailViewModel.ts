@@ -31,7 +31,7 @@ export function createProblemDetailViewModel(
     statement:
       resolveProblemStatementMarkdown(problem) ??
       'No statementMarkdown content is available for this problem yet.',
-    entryFunction: problem.entryFunction?.trim() || 'Not available',
+    entryFunction: problem.entryFunction.trim() || 'Problem manifest entryFunction is missing.',
     starterFilePath,
     isEmpty: false
   };

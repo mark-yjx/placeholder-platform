@@ -53,7 +53,10 @@ export class InMemoryPracticeApiClient implements PracticeApiClient {
       versionId: `${problemId}-v1`,
       statementMarkdown: `Solve ${problem.title}.`,
       entryFunction: 'solve',
-      starterCode: `def ${problemId.replace(/-/g, '_')}():\n    # YOUR CODE HERE\n    raise NotImplementedError\n`
+      language: 'python',
+      starterCode: `def ${problemId.replace(/-/g, '_')}():\n    # YOUR CODE HERE\n    raise NotImplementedError\n`,
+      timeLimitMs: 2000,
+      memoryLimitKb: 262144
     };
   }
 

@@ -298,14 +298,9 @@ ${statementBody}
 
 export function resolveProblemStatementMarkdown(problem: {
   statementMarkdown?: string;
-  statement?: string;
 }): string | null {
   if (typeof problem.statementMarkdown === 'string' && problem.statementMarkdown.trim().length > 0) {
     return problem.statementMarkdown.trim();
-  }
-
-  if (typeof problem.statement === 'string' && problem.statement.trim().length > 0) {
-    return problem.statement.trim();
   }
 
   return null;

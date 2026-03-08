@@ -174,7 +174,10 @@ test('registered command writes to output channel on success', async () => {
       title: 'Two Sum',
       statementMarkdown: 'Solve Two Sum.',
       entryFunction: 'solve',
-      starterCode: 'def problem_1():\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
+      language: 'python',
+      starterCode: 'def problem_1():\n    # YOUR CODE HERE\n    raise NotImplementedError\n',
+      timeLimitMs: 2000,
+      memoryLimitKb: 262144
     }
   ]);
   assert.deepEqual(practiceViewCalls.openedProblems, []);
@@ -197,7 +200,8 @@ test('select problem and submit current file persist per-problem local workspace
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
+        entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };
     }
@@ -296,6 +300,7 @@ test('select problem updates detail state only and does not auto-open files', as
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
         statementMarkdown: 'Solve it',
+        entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };
     }
@@ -350,6 +355,7 @@ test('select problem updates detail state only and does not auto-open files', as
       versionId: 'problem-1-v1',
       title: 'Two Sum',
       statementMarkdown: 'Solve it',
+      entryFunction: 'solve',
       starterCode: 'def solve():\n    return 42\n'
     }
   ]);
@@ -377,6 +383,7 @@ test('select problem keeps detail flow alive when statement content is missing',
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
         statementMarkdown: '',
+        entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };
     }
@@ -428,6 +435,7 @@ test('select problem keeps detail flow alive when statement content is missing',
       versionId: 'problem-1-v1',
       title: 'Two Sum',
       statementMarkdown: '',
+      entryFunction: 'solve',
       starterCode: 'def solve():\n    return 42\n'
     }
   ]);
@@ -1622,7 +1630,7 @@ test('submit current file polls until finished and stops on terminal state', asy
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
         entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };
@@ -1726,7 +1734,7 @@ test('submit current file polls until failed and stops on terminal state', async
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
         entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };
@@ -1815,7 +1823,7 @@ test('judged compile/runtime/timeout failures and API transport failures surface
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
         entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };
@@ -2009,7 +2017,7 @@ test('submit current file retries one transient poll error before succeeding', a
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
         entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };
@@ -2114,7 +2122,7 @@ test('submit current file backs off repeatedly after transient poll errors', asy
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
         entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };
@@ -2205,7 +2213,7 @@ test('cancel polling stops further status requests without mutating the last kno
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
         entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };

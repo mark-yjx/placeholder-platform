@@ -23,7 +23,7 @@ test('sidebar submit command path reports queued -> running -> finished', async 
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
         entryFunction: 'solve',
         starterCode: 'def solve():\n    return 42\n'
       };

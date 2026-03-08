@@ -33,6 +33,8 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(viewModelSource, /Problem ID:/);
   assert.match(viewModelSource, /Entry Function:/);
   assert.match(viewModelSource, /Problem File:/);
+  assert.doesNotMatch(viewModelSource, /Entry Function:[\s\S]*Not available/);
+  assert.doesNotMatch(viewModelSource, /'Not available'/);
   assert.match(viewModelSource, /Open/);
   assert.match(viewModelSource, /data-command="submitCurrentFile"/);
   assert.match(viewModelSource, />Submit</);

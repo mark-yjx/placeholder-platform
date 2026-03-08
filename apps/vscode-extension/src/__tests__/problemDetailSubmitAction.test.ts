@@ -10,7 +10,10 @@ test('open button dispatches starter file flow for selected problem', async () =
     {
       problemId: 'collapse',
       versionId: 'collapse-v1',
-      title: 'Collapse Identical Digits'
+      title: 'Collapse Identical Digits',
+      statementMarkdown: '# Collapse Identical Digits',
+      entryFunction: 'collapse',
+      starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
     },
     {
       openStarterFile: async () => {
@@ -36,7 +39,10 @@ test('submit button dispatches submitCurrentFile flow for selected problem', asy
     {
       problemId: 'collapse',
       versionId: 'collapse-v1',
-      title: 'Collapse Identical Digits'
+      title: 'Collapse Identical Digits',
+      statementMarkdown: '# Collapse Identical Digits',
+      entryFunction: 'collapse',
+      starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
     },
     {
       openStarterFile: async () => {

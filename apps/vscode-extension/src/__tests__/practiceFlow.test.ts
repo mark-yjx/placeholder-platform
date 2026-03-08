@@ -41,8 +41,12 @@ class FakePracticeApiClient implements PracticeApiClient {
       problemId,
       versionId: `${problemId}-v1`,
       title: this.problems.find((problem) => problem.problemId === problemId)?.title ?? 'Unknown Problem',
-      statement: 'Solve it',
-      starterCode: 'def solve():\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
+      statementMarkdown: 'Solve it',
+      entryFunction: 'solve',
+      language: 'python',
+      starterCode: 'def solve():\n    # YOUR CODE HERE\n    raise NotImplementedError\n',
+      timeLimitMs: 2000,
+      memoryLimitKb: 262144
     };
   }
 
