@@ -1,9 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  createProblemDetailHtml,
-  createProblemDetailViewModel
-} from '../ui/ProblemDetailViewModel';
+import { createProblemDetailHtml, createProblemDetailViewModel } from '../ui/ProblemDetailViewModel';
 
 test('fetched problem detail renders expected fields', () => {
   const html = createProblemDetailHtml(
@@ -54,5 +51,5 @@ test('problem detail falls back safely when optional fields are missing', () => 
   assert.match(html, /<h2>Untitled problem<\/h2>/);
   assert.match(html, /Entry Function:<\/strong> <code>Not available<\/code>/);
   assert.match(html, /Problem File:<\/strong> <code>\.oj\/problems\/legacy-problem\.py<\/code>/);
-  assert.match(html, /Warning: Statement content is unavailable for this problem\./);
+  assert.match(html, /No statement available\./);
 });

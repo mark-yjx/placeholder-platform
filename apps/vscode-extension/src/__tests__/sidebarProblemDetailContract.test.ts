@@ -28,15 +28,18 @@ test('problem detail panel includes required fields and actions', () => {
   const viewModelSource = readFromPackageRoot('src', 'ui', 'ProblemDetailViewModel.ts');
 
   assert.match(providerSource, /createProblemDetailViewModel\(/);
+  assert.match(providerSource, /showProblemDetail\(problem: ProblemDetail\): void/);
+  assert.match(providerSource, /this\.currentProblem = problem;/);
+  assert.match(providerSource, /this\.render\(\);/);
   assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
   assert.match(viewModelSource, /Select a problem from the Problems list to view details\./);
-  assert.match(viewModelSource, /Warning: Statement content is unavailable for this problem\./);
+  assert.match(viewModelSource, /No statement available\./);
   assert.match(viewModelSource, /Problem ID:/);
   assert.match(viewModelSource, /Entry Function:/);
   assert.match(viewModelSource, /Problem File:/);
   assert.match(viewModelSource, /problem\.entryFunction\?\.trim\(\) \?\? 'Not available'/);
   assert.match(viewModelSource, /problem\.title\?\.trim\(\) \|\| 'Untitled problem'/);
-  assert.match(viewModelSource, /resolveProblemStatementMarkdown\(problem\) \?\? ''/);
+  assert.match(viewModelSource, /resolveProblemStatementMarkdown\(problem\) \?\? 'No statement available\.'/);
   assert.match(viewModelSource, /Open/);
   assert.match(viewModelSource, /data-command="submitCurrentFile"/);
   assert.match(viewModelSource, />Submit</);
