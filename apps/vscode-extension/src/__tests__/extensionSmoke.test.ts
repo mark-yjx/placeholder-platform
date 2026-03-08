@@ -281,9 +281,9 @@ def collapse():
     assert.deepEqual(restoredViews.state.getSubmissionNodes(), [
       {
         id: submission.submissionId,
-        label: `${submission.submissionId} | AC | 120ms | 2048KB`,
-        description: 'AC | 120ms | 2048KB',
-        detail: `Submission ${submission.submissionId}: verdict=AC, time=120ms, memory=2048KB`
+        label: 'AC',
+        description: '120ms | 2048KB',
+        detail: 'verdict=AC, time=120ms, memory=2048KB'
       }
     ]);
     assert.ok(
@@ -459,9 +459,9 @@ test('startup restores per-problem local state and drops missing file paths', as
       [
         {
           id: 'submission-1',
-          label: 'submission-1 | AC | 120ms | 2048KB',
-          description: 'AC | 120ms | 2048KB',
-          detail: 'Submission submission-1: verdict=AC, time=120ms, memory=2048KB'
+          label: 'AC',
+          description: '120ms | 2048KB',
+          detail: 'verdict=AC, time=120ms, memory=2048KB'
         }
       ]
     );

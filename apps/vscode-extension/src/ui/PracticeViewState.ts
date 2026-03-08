@@ -87,37 +87,65 @@ export function formatSubmissionSummary(result: SubmissionResult): string {
 
 export function formatSubmissionDetail(result: SubmissionResult): string {
   if (result.status === 'queued' || result.status === 'running') {
-    return `Submission ${result.submissionId}: status=${result.status}`;
+    return `Status: ${result.status}`;
   }
 
   if (result.status === 'failed') {
     const failureReason = result.failureReason?.trim();
     return failureReason
-      ? `Submission ${result.submissionId}: failed - ${failureReason}`
-      : `Submission ${result.submissionId}: failed - no failure reason available`;
+      ? `Failed: ${failureReason}`
+      : 'Failed: no failure reason available';
   }
 
   if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
-    return `Submission ${result.submissionId}: ${formatVerdictDetail(result.verdict)}, time=${result.timeMs}ms, memory=${result.memoryKb}KB${formatFailureSnippet(result)}`;
+    return `${formatVerdictDetail(result.verdict)}, time=${result.timeMs}ms, memory=${result.memoryKb}KB${formatFailureSnippet(result)}`;
   }
 
   if (result.verdict !== undefined) {
-    return `Submission ${result.submissionId}: ${formatVerdictDetail(result.verdict)}${formatFailureSnippet(result)}`;
+    return `${formatVerdictDetail(result.verdict)}${formatFailureSnippet(result)}`;
   }
 
-  return `Submission ${result.submissionId}: status=${result.status}`;
+  return `Status: ${result.status}`;
 }
 
 export function formatPendingSubmissionSummary(): string {
   return 'Submitted';
 }
 
-export function formatPendingSubmissionDetail(submissionId: string): string {
-  return `Submission ${submissionId}: submitted to API`;
+export function formatPendingSubmissionDescription(): string {
+  return '';
 }
 
-export function formatSubmissionLabel(submissionId: string, summary: string): string {
-  return `${submissionId} | ${summary}`;
+export function formatPendingSubmissionDetail(submissionId: string): string {
+  return 'Submission queued for judging.';
+}
+
+export function formatSubmissionLabel(result: SubmissionResult): string {
+  if (result.status === 'queued' || result.status === 'running') {
+    return result.status;
+  }
+
+  if (result.verdict !== undefined) {
+    return formatVerdictSummary(result.verdict);
+  }
+
+  if (result.status === 'failed') {
+    return 'failed';
+  }
+
+  return result.status;
+}
+
+export function formatSubmissionDescription(result: SubmissionResult): string {
+  if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
+    return `${result.timeMs}ms | ${result.memoryKb}KB`;
+  }
+
+  if (result.status === 'failed' && result.failureReason?.trim()) {
+    return result.failureReason.trim();
+  }
+
+  return '';
 }
 
 export class PracticeViewState {
@@ -204,14 +232,14 @@ export class PracticeViewState {
   getSubmissionNodes(): readonly SubmissionTreeNode[] {
     const pendingNodes = Array.from(this.pendingSubmissions.values()).map((submission) => ({
       id: submission.submissionId,
-      label: formatSubmissionLabel(submission.submissionId, formatPendingSubmissionSummary()),
-      description: formatPendingSubmissionSummary(),
+      label: formatPendingSubmissionSummary(),
+      description: formatPendingSubmissionDescription(),
       detail: formatPendingSubmissionDetail(submission.submissionId)
     }));
     const resultNodes = Array.from(this.results.values()).map((result) => ({
       id: result.submissionId,
-      label: formatSubmissionLabel(result.submissionId, formatSubmissionSummary(result)),
-      description: formatSubmissionSummary(result),
+      label: formatSubmissionLabel(result),
+      description: formatSubmissionDescription(result),
       detail: formatSubmissionDetail(result)
     }));
     return [...pendingNodes, ...resultNodes];

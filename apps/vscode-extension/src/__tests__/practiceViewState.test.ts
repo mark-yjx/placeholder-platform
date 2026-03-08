@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
   PracticeViewState,
   formatProblemDetail,
+  formatPendingSubmissionDescription,
   formatSubmissionLabel,
+  formatSubmissionDescription,
   formatSubmissionDetail,
   formatPendingSubmissionDetail,
   formatPendingSubmissionSummary,
@@ -96,12 +98,12 @@ test('submission tree nodes expose verdict, time, memory, and detail text', () =
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-1',
-      label: 'submission-1 | AC | 120ms | 2048KB',
-      description: 'AC | 120ms | 2048KB',
-      detail: 'Submission submission-1: verdict=AC, time=120ms, memory=2048KB'
+      label: 'AC',
+      description: '120ms | 2048KB',
+      detail: 'verdict=AC, time=120ms, memory=2048KB'
     }
   ]);
-  assert.equal(state.getSubmissionDetail('submission-1'), 'Submission submission-1: verdict=AC, time=120ms, memory=2048KB');
+  assert.equal(state.getSubmissionDetail('submission-1'), 'verdict=AC, time=120ms, memory=2048KB');
 });
 
 test('submission tree nodes include newly created submissions before results arrive', () => {
@@ -112,15 +114,12 @@ test('submission tree nodes include newly created submissions before results arr
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-pending-1',
-      label: 'submission-pending-1 | Submitted',
-      description: 'Submitted',
-      detail: 'Submission submission-pending-1: submitted to API'
+      label: 'Submitted',
+      description: '',
+      detail: 'Submission queued for judging.'
     }
   ]);
-  assert.equal(
-    state.getSubmissionDetail('submission-pending-1'),
-    'Submission submission-pending-1: submitted to API'
-  );
+  assert.equal(state.getSubmissionDetail('submission-pending-1'), 'Submission queued for judging.');
 });
 
 test('submission result replaces the pending tree entry for the same submission id', () => {
@@ -138,9 +137,9 @@ test('submission result replaces the pending tree entry for the same submission 
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-1',
-      label: 'submission-1 | AC | 120ms | 2048KB',
-      description: 'AC | 120ms | 2048KB',
-      detail: 'Submission submission-1: verdict=AC, time=120ms, memory=2048KB'
+      label: 'AC',
+      description: '120ms | 2048KB',
+      detail: 'verdict=AC, time=120ms, memory=2048KB'
     }
   ]);
 });
@@ -166,7 +165,7 @@ test('submission detail state updates after result fetch with verdict, time, mem
     memoryKb: 144,
     failureInfo: 'ZeroDivisionError: division by zero',
     detail:
-      'Submission submission-1: finished with runtime error (RE), time=33ms, memory=144KB | ZeroDivisionError: division by zero'
+      'finished with runtime error (RE), time=33ms, memory=144KB | ZeroDivisionError: division by zero'
   });
 });
 
@@ -181,9 +180,9 @@ test('running submissions render status without verdict metrics', () => {
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-running-1',
-      label: 'submission-running-1 | running',
-      description: 'running',
-      detail: 'Submission submission-running-1: status=running'
+      label: 'running',
+      description: '',
+      detail: 'Status: running'
     }
   ]);
 });
@@ -200,15 +199,12 @@ test('failed submissions render failure reasons clearly in submission detail', (
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-failed-1',
-      label: 'submission-failed-1 | failed | sandbox could not start',
-      description: 'failed | sandbox could not start',
-      detail: 'Submission submission-failed-1: failed - sandbox could not start'
+      label: 'failed',
+      description: 'sandbox could not start',
+      detail: 'Failed: sandbox could not start'
     }
   ]);
-  assert.equal(
-    state.getSubmissionDetail('submission-failed-1'),
-    'Submission submission-failed-1: failed - sandbox could not start'
-  );
+  assert.equal(state.getSubmissionDetail('submission-failed-1'), 'Failed: sandbox could not start');
 });
 
 test('compile and runtime verdicts render as judged outcomes instead of generic failures', () => {
@@ -230,12 +226,12 @@ test('compile and runtime verdicts render as judged outcomes instead of generic 
   assert.equal(formatSubmissionSummary(compileError), 'Compile Error (CE) | 10ms | 20KB');
   assert.equal(
     formatSubmissionDetail(compileError),
-    'Submission submission-ce-1: finished with compile error (CE), time=10ms, memory=20KB'
+    'finished with compile error (CE), time=10ms, memory=20KB'
   );
   assert.equal(formatSubmissionSummary(runtimeError), 'Runtime Error (RE) | 30ms | 40KB');
   assert.equal(
     formatSubmissionDetail(runtimeError),
-    'Submission submission-re-1: finished with runtime error (RE), time=30ms, memory=40KB'
+    'finished with runtime error (RE), time=30ms, memory=40KB'
   );
 });
 
@@ -271,7 +267,7 @@ test('compile, runtime, and timeout verdicts include best-effort failure snippet
   );
   assert.equal(
     formatSubmissionDetail(compileError),
-    'Submission submission-ce-snippet-1: finished with compile error (CE), time=10ms, memory=20KB | SyntaxError: invalid syntax on line 3'
+    'finished with compile error (CE), time=10ms, memory=20KB | SyntaxError: invalid syntax on line 3'
   );
   assert.equal(
     formatSubmissionSummary(runtimeError),
@@ -279,7 +275,7 @@ test('compile, runtime, and timeout verdicts include best-effort failure snippet
   );
   assert.equal(
     formatSubmissionDetail(runtimeError),
-    'Submission submission-re-snippet-1: finished with runtime error (RE), time=30ms, memory=40KB | ZeroDivisionError: division by zero'
+    'finished with runtime error (RE), time=30ms, memory=40KB | ZeroDivisionError: division by zero'
   );
   assert.equal(
     formatSubmissionSummary(timeoutError),
@@ -287,7 +283,7 @@ test('compile, runtime, and timeout verdicts include best-effort failure snippet
   );
   assert.equal(
     formatSubmissionDetail(timeoutError),
-    'Submission submission-tle-snippet-1: finished with time limit exceeded (TLE), time=2000ms, memory=128KB | Execution exceeded the 2s time limit'
+    'finished with time limit exceeded (TLE), time=2000ms, memory=128KB | Execution exceeded the 2s time limit'
   );
 });
 
@@ -308,7 +304,7 @@ test('terminal submission results are not overwritten by later updates', () => {
 
   assert.equal(
     state.getSubmissionDetail('submission-locked-1'),
-    'Submission submission-locked-1: verdict=AC, time=120ms, memory=2048KB'
+    'verdict=AC, time=120ms, memory=2048KB'
   );
 });
 
@@ -322,20 +318,27 @@ test('submission result renderers stay stable', () => {
   };
 
   assert.equal(formatSubmissionSummary(result), 'WA | 222ms | 4096KB');
+  assert.equal(formatSubmissionLabel(result), 'WA');
+  assert.equal(formatSubmissionDescription(result), '222ms | 4096KB');
   assert.equal(
     formatSubmissionDetail(result),
-    'Submission submission-2: verdict=WA, time=222ms, memory=4096KB'
+    'verdict=WA, time=222ms, memory=4096KB'
   );
   assert.equal(formatPendingSubmissionSummary(), 'Submitted');
+  assert.equal(formatPendingSubmissionDescription(), '');
+  assert.equal(formatPendingSubmissionDetail('submission-pending-2'), 'Submission queued for judging.');
   assert.equal(
-    formatPendingSubmissionDetail('submission-pending-2'),
-    'Submission submission-pending-2: submitted to API'
+    formatSubmissionLabel({ submissionId: 'submission-3', status: 'running' }),
+    'running'
   );
-  assert.equal(formatSubmissionLabel('submission-2', 'WA | 222ms | 4096KB'), 'submission-2 | WA | 222ms | 4096KB');
+  assert.equal(
+    formatSubmissionDescription({ submissionId: 'submission-3', status: 'running' }),
+    ''
+  );
   assert.equal(formatSubmissionSummary({ submissionId: 'submission-3', status: 'running' }), 'running');
   assert.equal(
     formatSubmissionDetail({ submissionId: 'submission-3', status: 'running' }),
-    'Submission submission-3: status=running'
+    'Status: running'
   );
   assert.equal(
     formatSubmissionDetail({
@@ -343,6 +346,38 @@ test('submission result renderers stay stable', () => {
       status: 'failed',
       failureReason: 'sandbox could not start'
     }),
-    'Submission submission-4: failed - sandbox could not start'
+    'Failed: sandbox could not start'
   );
+  assert.equal(
+    formatSubmissionLabel({
+      submissionId: 'submission-4',
+      status: 'failed',
+      failureReason: 'sandbox could not start'
+    }),
+    'failed'
+  );
+  assert.equal(
+    formatSubmissionDescription({
+      submissionId: 'submission-4',
+      status: 'failed',
+      failureReason: 'sandbox could not start'
+    }),
+    'sandbox could not start'
+  );
+});
+
+test('submission tree nodes avoid duplicating the same text across label and description', () => {
+  const state = new PracticeViewState();
+
+  state.recordSubmissionResult({
+    submissionId: 'submission-dup-1',
+    status: 'finished',
+    verdict: 'WA',
+    timeMs: 222,
+    memoryKb: 4096
+  });
+
+  const [node] = state.getSubmissionNodes();
+  assert.ok(node);
+  assert.notEqual(node.label, node.description);
 });
