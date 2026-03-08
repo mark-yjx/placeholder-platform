@@ -31,3 +31,33 @@ test('submission detail empty state shows friendly placeholder instead of blank 
   assert.match(html, /Select a submission from the Submissions list to view details here\./);
   assert.match(html, /Selecting a submission will load its status, verdict, timing, memory, and failure info here\./);
 });
+
+test('submission detail renders running state without a blank detail body', () => {
+  const html = createSubmissionDetailHtml(
+    createSubmissionDetailViewModel({
+      submissionId: 'submission-running-1',
+      status: 'running',
+      detail: ''
+    })
+  );
+
+  assert.match(html, /<h2>submission-running-1<\/h2>/);
+  assert.match(html, /<strong>Status:<\/strong> running/);
+  assert.match(html, /Status: running/);
+});
+
+test('submission detail renders failed state with failure info fallback', () => {
+  const html = createSubmissionDetailHtml(
+    createSubmissionDetailViewModel({
+      submissionId: 'submission-failed-1',
+      status: 'failed',
+      failureInfo: 'compile step crashed',
+      detail: ''
+    })
+  );
+
+  assert.match(html, /<h2>submission-failed-1<\/h2>/);
+  assert.match(html, /<strong>Status:<\/strong> failed/);
+  assert.match(html, /<strong>Failure Info:<\/strong> compile step crashed/);
+  assert.match(html, /Failed: compile step crashed/);
+});

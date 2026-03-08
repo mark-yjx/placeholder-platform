@@ -11,6 +11,44 @@ export type SubmissionDetailViewModel = {
   isEmpty: boolean;
 };
 
+function normalizeSubmissionText(value?: string): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed ? trimmed : null;
+}
+
+function buildSubmissionDetailText(input: {
+  status: string;
+  verdict?: SubmissionResult['verdict'];
+  timeMs?: number;
+  memoryKb?: number;
+  failureInfo?: string;
+  detail: string;
+}): string {
+  const detail = normalizeSubmissionText(input.detail);
+  if (detail) {
+    return detail;
+  }
+
+  if (input.status === 'queued' || input.status === 'running') {
+    return `Status: ${input.status}`;
+  }
+
+  const failureInfo = normalizeSubmissionText(input.failureInfo);
+  if (input.status === 'failed') {
+    return failureInfo ? `Failed: ${failureInfo}` : 'Failed: no failure reason available';
+  }
+
+  if (input.verdict && input.timeMs !== undefined && input.memoryKb !== undefined) {
+    return `verdict=${input.verdict}, time=${input.timeMs}ms, memory=${input.memoryKb}KB`;
+  }
+
+  if (input.verdict) {
+    return `verdict=${input.verdict}`;
+  }
+
+  return `Status: ${input.status}`;
+}
+
 export function createSubmissionDetailViewModel(input: {
   submissionId: string;
   status: string;
@@ -33,14 +71,17 @@ export function createSubmissionDetailViewModel(input: {
     };
   }
 
+  const failureInfo = normalizeSubmissionText(input.failureInfo) ?? 'None';
+  const detail = buildSubmissionDetailText(input);
+
   return {
     submissionId: input.submissionId,
     status: input.status,
     verdict: input.verdict ?? 'Not available',
     time: input.timeMs === undefined ? 'Not available' : `${input.timeMs}ms`,
     memory: input.memoryKb === undefined ? 'Not available' : `${input.memoryKb}KB`,
-    failureInfo: input.failureInfo ?? 'None',
-    detail: input.detail,
+    failureInfo,
+    detail,
     isEmpty: false
   };
 }

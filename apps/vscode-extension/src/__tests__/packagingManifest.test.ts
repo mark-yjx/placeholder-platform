@@ -136,6 +136,10 @@ test('extension package keeps production packaging whitelist and activation even
     manifest.contributes.views.ojSidebar.find((view) => view.id === 'ojProblemDetail')?.type,
     'webview'
   );
+  assert.equal(
+    manifest.contributes.views.ojSidebar.find((view) => view.id === 'ojSubmissionDetail')?.type,
+    'webview'
+  );
   assert.deepEqual(manifest.contributes.menus?.['view/title'], [
     {
       command: 'oj.practice.fetchProblems',

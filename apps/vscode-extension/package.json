@@ -142,7 +142,8 @@
         },
         {
           "id": "ojSubmissionDetail",
-          "name": "Submission Detail"
+          "name": "Submission Detail",
+          "type": "webview"
         }
       ]
     },
