@@ -95,6 +95,9 @@ test('extension package keeps production packaging whitelist and activation even
     );
   }
   assert.deepEqual(manifest.activationEvents, [
+    'onStartupFinished',
+    'onCommand:oj.account.showActions',
+    'onCommand:oj.logout',
     'onCommand:oj.login',
     'onCommand:oj.practice.fetchProblems',
     'onCommand:oj.practice.submitCode',
@@ -115,6 +118,14 @@ test('extension package keeps production packaging whitelist and activation even
   assert.deepEqual(manifest.contributes.viewsContainers?.activitybar, [
     { id: 'ojSidebar', title: 'OJ', icon: 'media/icon.png' }
   ]);
+  assert.deepEqual(
+    (manifest.contributes.commands ?? []).slice(0, 3),
+    [
+      { command: 'oj.account.showActions', title: 'OJ: Account Actions' },
+      { command: 'oj.logout', title: 'OJ: Logout' },
+      { command: 'oj.login', title: 'OJ: Login' }
+    ]
+  );
   assert.deepEqual(
     manifest.contributes.views.ojSidebar.map((view) => ({
       id: view.id,

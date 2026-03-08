@@ -30,6 +30,9 @@
     "vscode": "^1.90.0"
   },
   "activationEvents": [
+    "onStartupFinished",
+    "onCommand:oj.account.showActions",
+    "onCommand:oj.logout",
     "onCommand:oj.login",
     "onCommand:oj.practice.fetchProblems",
     "onCommand:oj.practice.submitCode",
@@ -75,6 +78,14 @@
       }
     },
     "commands": [
+      {
+        "command": "oj.account.showActions",
+        "title": "OJ: Account Actions"
+      },
+      {
+        "command": "oj.logout",
+        "title": "OJ: Logout"
+      },
       {
         "command": "oj.login",
         "title": "OJ: Login"

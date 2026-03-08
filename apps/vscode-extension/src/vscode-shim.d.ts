@@ -1,6 +1,10 @@
 declare module 'vscode' {
   export type Event<T> = (listener: (event: T) => unknown) => Disposable;
   export type Disposable = { dispose(): unknown };
+  export const StatusBarAlignment: {
+    Left: 1;
+    Right: 2;
+  };
   export class EventEmitter<T> {
     readonly event: Event<T>;
     fire(data: T): void;
@@ -82,6 +86,14 @@ declare module 'vscode' {
   export const window: {
     registerTreeDataProvider(viewId: string, provider: TreeDataProvider<TreeItem>): Disposable;
     registerWebviewViewProvider(viewId: string, provider: WebviewViewProvider): Disposable;
+    createStatusBarItem(alignment?: number, priority?: number): {
+      text: string;
+      tooltip?: string;
+      command?: string;
+      show(): void;
+      hide(): void;
+      dispose(): void;
+    };
     createOutputChannel(name: string): {
       appendLine(value: string): void;
       show(preserveFocus?: boolean): void;

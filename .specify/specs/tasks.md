@@ -1059,3 +1059,74 @@ IN:
 OUT:
 - backend API changes
 - judge worker changes
+
+# Phase 13 – UI Architecture Refinement
+
+Goal:
+Move the extension toward a layout where account state lives in the status bar, problems remain in the sidebar, problem details open in the editor area, and submissions move to the panel.
+
+## 101. Extension UI architecture: move account to status bar
+
+Acceptance checks:
+- The extension shows `$(account) Sign in` in the status bar when unauthenticated.
+- The extension shows `$(account) <email>` in the status bar when authenticated.
+- Clicking the status bar item opens account actions for login/logout/settings.
+- Status bar account state refreshes after login and logout without changing existing auth persistence.
+
+Scope:
+IN:
+- extension activation and status bar wiring
+- account session display
+- extension tests
+OUT:
+- problem detail relocation
+- submissions panel relocation
+- backend auth changes
+
+## 102. Extension UI architecture: move problem detail to editor split
+
+Acceptance checks:
+- Selecting a problem opens or updates Problem Detail in the editor area instead of the sidebar.
+- Problem Detail supports split-view usage next to the coding file.
+- Problem selection still does not automatically open the starter file.
+
+Scope:
+IN:
+- problem detail editor provider
+- problem selection wiring
+- extension tests
+OUT:
+- submit flow redesign
+- backend API changes
+
+## 103. Extension UI architecture: move submissions to panel
+
+Acceptance checks:
+- Recent submissions render in a bottom-panel-oriented view instead of the sidebar.
+- Selecting a submission reveals verdict and failure details in the panel workflow.
+- Submission states remain `queued`, `running`, `finished`, or `failed`.
+
+Scope:
+IN:
+- submissions view placement
+- submission detail panel wiring
+- extension tests
+OUT:
+- judge pipeline changes
+- API contract changes
+
+## 104. Extension UI architecture: simplify sidebar to problems navigation
+
+Acceptance checks:
+- The sidebar becomes problems-focused navigation.
+- Sidebar account and detail views are removed once replacement surfaces are in place.
+- Problems refresh remains available from the Problems surface.
+
+Scope:
+IN:
+- sidebar contribution cleanup
+- extension manifest updates
+- extension tests
+OUT:
+- account/auth backend changes
+- problem content changes

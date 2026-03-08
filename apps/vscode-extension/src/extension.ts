@@ -24,6 +24,7 @@ import { PracticeTreeViews } from './ui/PracticeTreeViews';
 import { ProblemDetailWebviewProvider } from './ui/ProblemDetailWebviewProvider';
 import { SubmissionDetailWebviewProvider } from './ui/SubmissionDetailWebviewProvider';
 import { AccountWebviewProvider } from './ui/AccountWebviewProvider';
+import { AccountStatusBarController } from './ui/AccountStatusBarController';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('OJ VSCode');
@@ -64,6 +65,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   const submissionDetailProvider = new SubmissionDetailWebviewProvider();
   const accountProvider = new AccountWebviewProvider(authCommands, tokenStore, vscode.window);
+  const accountStatusBar = new AccountStatusBarController(
+    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100),
+    tokenStore,
+    vscode.window,
+    vscode.commands
+  );
   const practiceViews = new PracticeTreeViews(
     vscode.window,
     vscode.workspace,
@@ -80,7 +87,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     practiceViews,
     problemStarterWorkspace,
     localStateStore,
-    onAuthSessionChanged: () => accountProvider.refresh(),
+    onAuthSessionChanged: () => {
+      accountProvider.refresh();
+      accountStatusBar.refresh();
+    },
     output,
     window: vscode.window,
     registerCommand: (commandId, callback) => vscode.commands.registerCommand(commandId, callback)
@@ -100,6 +110,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     'ojAccount',
     accountProvider
   );
+  const accountStatusBarActionsDisposable = vscode.commands.registerCommand(
+    AccountStatusBarController.commandId,
+    async () => {
+      await accountStatusBar.showActions();
+    }
+  );
+  const logoutDisposable = vscode.commands.registerCommand('oj.logout', async () => {
+    await authCommands.logout();
+    accountProvider.refresh();
+    accountStatusBar.refresh();
+    vscode.window.showInformationMessage('Logged out of OJ.');
+  });
   const revealSubmissionDisposable = vscode.commands.registerCommand(
     'oj.practice.selectSubmission',
     (...args: unknown[]) => {
@@ -112,6 +134,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   context.subscriptions.push(output);
+  context.subscriptions.push(accountStatusBar);
   for (const disposable of disposables) {
     context.subscriptions.push(disposable);
   }
@@ -122,11 +145,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(problemDetailPanelDisposable);
   context.subscriptions.push(submissionDetailPanelDisposable);
   context.subscriptions.push(accountPanelDisposable);
+  context.subscriptions.push(accountStatusBarActionsDisposable);
+  context.subscriptions.push(logoutDisposable);
 
   output.appendLine('OJ VSCode extension activated');
   output.appendLine(`API base URL: ${apiBaseUrl}`);
   output.appendLine(`Request timeout: ${requestTimeoutMs}ms`);
   output.appendLine(describeTokenStorageBehavior());
+  accountStatusBar.refresh();
   await restorePracticeStateOnStartup({
     apiBaseUrl,
     tokenStore,
