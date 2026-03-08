@@ -14,6 +14,16 @@ export type SubmissionTreeNode = {
   readonly detail: string;
 };
 
+export type SubmissionDetailData = {
+  readonly submissionId: string;
+  readonly status: string;
+  readonly verdict?: SubmissionResult['verdict'];
+  readonly timeMs?: number;
+  readonly memoryKb?: number;
+  readonly failureInfo?: string;
+  readonly detail: string;
+};
+
 type PendingSubmission = {
   readonly submissionId: string;
 };
@@ -214,6 +224,32 @@ export class PracticeViewState {
     }
     const result = this.results.get(submissionId);
     return result ? formatSubmissionDetail(result) : null;
+  }
+
+  getSubmissionDetailData(submissionId: string): SubmissionDetailData | null {
+    const pending = this.pendingSubmissions.get(submissionId);
+    if (pending) {
+      return {
+        submissionId: pending.submissionId,
+        status: formatPendingSubmissionSummary(),
+        detail: formatPendingSubmissionDetail(pending.submissionId)
+      };
+    }
+
+    const result = this.results.get(submissionId);
+    if (!result) {
+      return null;
+    }
+
+    return {
+      submissionId: result.submissionId,
+      status: result.status,
+      verdict: result.verdict,
+      timeMs: result.timeMs,
+      memoryKb: result.memoryKb,
+      failureInfo: result.failureReason?.trim() || undefined,
+      detail: formatSubmissionDetail(result)
+    };
   }
 }
 

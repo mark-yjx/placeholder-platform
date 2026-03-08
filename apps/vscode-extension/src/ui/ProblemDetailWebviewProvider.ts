@@ -2,21 +2,14 @@ import * as vscode from 'vscode';
 import path from 'node:path';
 import { ProblemDetail } from '../api/PracticeApiClient';
 import {
+  handleProblemDetailMessage,
+  type ProblemDetailWebviewActions
+} from './ProblemDetailActions';
+import {
   createProblemDetailHtml as buildProblemDetailHtml,
   createProblemDetailViewModel as buildProblemDetailViewModel,
   type ProblemDetailViewModel
 } from './ProblemDetailViewModel';
-
-type ProblemDetailWebviewActions = {
-  openStarterFile(problemId: string): Promise<void>;
-  submitCurrentFile(): Promise<void>;
-  refreshProblem(problemId: string): Promise<void>;
-};
-
-type WebviewMessage =
-  | { command: 'openStarter' }
-  | { command: 'submitCurrentFile' }
-  | { command: 'refreshProblem' };
 
 export class ProblemDetailWebviewProvider implements vscode.WebviewViewProvider {
   private currentProblem: ProblemDetail | null = null;
@@ -30,24 +23,7 @@ export class ProblemDetailWebviewProvider implements vscode.WebviewViewProvider 
     this.render();
 
     webviewView.webview.onDidReceiveMessage(async (message: unknown) => {
-      if (!isWebviewMessage(message)) {
-        return;
-      }
-      const problemId = this.currentProblem?.problemId;
-      if (!problemId) {
-        return;
-      }
-      if (message.command === 'openStarter') {
-        await this.actions.openStarterFile(problemId);
-        return;
-      }
-      if (message.command === 'submitCurrentFile') {
-        await this.actions.submitCurrentFile();
-        return;
-      }
-      if (message.command === 'refreshProblem') {
-        await this.actions.refreshProblem(problemId);
-      }
+      await handleProblemDetailMessage(message, this.currentProblem, this.actions);
     });
   }
 
@@ -65,14 +41,6 @@ export class ProblemDetailWebviewProvider implements vscode.WebviewViewProvider 
       createProblemDetailViewModel(this.currentProblem)
     );
   }
-}
-
-function isWebviewMessage(message: unknown): message is WebviewMessage {
-  if (!message || typeof message !== 'object' || !('command' in message)) {
-    return false;
-  }
-  const command = (message as { command?: unknown }).command;
-  return command === 'openStarter' || command === 'submitCurrentFile' || command === 'refreshProblem';
 }
 
 function resolveStarterFilePath(problemId: string): string {

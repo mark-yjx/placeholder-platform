@@ -108,7 +108,11 @@ export class PracticeTreeViews {
     private readonly onProblemDetailChanged?: (problem: ProblemDetail) => void,
     private readonly onSubmissionDetailChanged?: (submission: {
       submissionId: string;
-      statusSummary: string;
+      status: string;
+      verdict?: SubmissionResult['verdict'];
+      timeMs?: number;
+      memoryKb?: number;
+      failureInfo?: string;
       detail: string;
     }) => void
   ) {}
@@ -166,16 +170,12 @@ export class PracticeTreeViews {
   }
 
   private emitSubmissionDetail(submissionId: string): void {
-    const node = this.state.getSubmissionNodes().find((candidate) => candidate.id === submissionId);
-    if (!node) {
+    const detail = this.state.getSubmissionDetailData(submissionId);
+    if (!detail) {
       return;
     }
 
-    this.onSubmissionDetailChanged?.({
-      submissionId,
-      statusSummary: node.description,
-      detail: node.detail
-    });
+    this.onSubmissionDetailChanged?.(detail);
   }
 
   async revealProblem(problemId: string): Promise<void> {

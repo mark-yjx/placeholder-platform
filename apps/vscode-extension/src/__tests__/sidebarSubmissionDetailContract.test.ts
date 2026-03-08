@@ -23,11 +23,16 @@ test('submission detail panel is registered in extension runtime', () => {
 
 test('submission detail panel exposes status and detail fields', () => {
   const providerSource = readFromPackageRoot('src', 'ui', 'SubmissionDetailWebviewProvider.ts');
+  const viewModelSource = readFromPackageRoot('src', 'ui', 'SubmissionDetailViewModel.ts');
 
-  assert.match(providerSource, /<strong>Status:<\/strong>/);
-  assert.match(providerSource, /<h2>\$\{submissionId\}<\/h2>/);
-  assert.match(providerSource, /statusSummary/);
-  assert.match(providerSource, /detail/);
+  assert.match(providerSource, /createSubmissionDetailViewModel/);
+  assert.match(viewModelSource, /<h2>\$\{submissionId\}<\/h2>/);
+  assert.match(viewModelSource, /<strong>Status:<\/strong>/);
+  assert.match(viewModelSource, /<strong>Verdict:<\/strong>/);
+  assert.match(viewModelSource, /<strong>Time:<\/strong>/);
+  assert.match(viewModelSource, /<strong>Memory:<\/strong>/);
+  assert.match(viewModelSource, /<strong>Failure Info:<\/strong>/);
+  assert.match(viewModelSource, /Select a submission from the Submissions list to view details here\./);
 });
 
 test('submission polling contract stops at terminal states in extension command flow', () => {

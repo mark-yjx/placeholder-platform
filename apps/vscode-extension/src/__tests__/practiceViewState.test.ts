@@ -145,6 +145,31 @@ test('submission result replaces the pending tree entry for the same submission 
   ]);
 });
 
+test('submission detail state updates after result fetch with verdict, time, memory, and failure info', () => {
+  const state = new PracticeViewState();
+
+  state.recordSubmissionCreated('submission-1');
+  state.recordSubmissionResult({
+    submissionId: 'submission-1',
+    status: 'finished',
+    verdict: 'RE',
+    timeMs: 33,
+    memoryKb: 144,
+    failureReason: 'ZeroDivisionError: division by zero'
+  });
+
+  assert.deepEqual(state.getSubmissionDetailData('submission-1'), {
+    submissionId: 'submission-1',
+    status: 'finished',
+    verdict: 'RE',
+    timeMs: 33,
+    memoryKb: 144,
+    failureInfo: 'ZeroDivisionError: division by zero',
+    detail:
+      'Submission submission-1: finished with runtime error (RE), time=33ms, memory=144KB | ZeroDivisionError: division by zero'
+  });
+});
+
 test('running submissions render status without verdict metrics', () => {
   const state = new PracticeViewState();
 
