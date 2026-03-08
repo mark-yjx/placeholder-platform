@@ -27,7 +27,7 @@ test('sidebar-first workflow checklist documents the full no-command-palette flo
   assert.match(checklist, /without using the command palette/i);
   assert.match(checklist, /click `Login`/i);
   assert.match(checklist, /click `Fetch Problems`/i);
-  assert.match(checklist, /click `Open Starter`/i);
+  assert.match(checklist, /click `Open`/i);
   assert.match(checklist, /click `Submit Current File`/i);
   assert.match(checklist, /`queued` -> `running` -> `finished\|failed`/);
   assert.match(checklist, /entryFunction/i);

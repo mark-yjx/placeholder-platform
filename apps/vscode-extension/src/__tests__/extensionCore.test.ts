@@ -177,12 +177,12 @@ test('registered command writes to output channel on success', async () => {
       starterCode: 'def problem_1():\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
     }
   ]);
-  assert.deepEqual(practiceViewCalls.openedProblems, ['problem-1']);
-  assert.deepEqual(practiceViewCalls.starterFiles, ['problem-1']);
+  assert.deepEqual(practiceViewCalls.openedProblems, []);
+  assert.deepEqual(practiceViewCalls.starterFiles, []);
   assert.ok(infoMessages.some((message) => message.includes('Loaded 2 problems.')));
   assert.ok(
     infoMessages.some((message) =>
-      message.includes('Submission submission-1: status=queued')
+      message.includes('Submission queued.')
     )
   );
 });
@@ -263,6 +263,7 @@ test('select problem and submit current file persist per-problem local workspace
   });
 
   await handlers.get('oj.practice.selectProblem')?.('problem-1');
+  await handlers.get('oj.practice.openProblemStarter')?.('problem-1');
   await handlers.get('oj.practice.submitCurrentFile')?.();
 
   assert.equal(localStateStore.getSelectedProblemId(), 'problem-1');
@@ -272,7 +273,7 @@ test('select problem and submit current file persist per-problem local workspace
   });
 });
 
-test('select problem reveals statement and opens starter from the same fetched detail', async () => {
+test('select problem updates detail state only and does not auto-open files', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const shownErrors: string[] = [];
   const detailCalls: string[] = [];
@@ -352,15 +353,22 @@ test('select problem reveals statement and opens starter from the same fetched d
       starterCode: 'def solve():\n    return 42\n'
     }
   ]);
-  assert.deepEqual(revealedProblems, ['problem-1']);
-  assert.deepEqual(openedStarters, ['problem-1']);
+  assert.deepEqual(revealedProblems, []);
+  assert.deepEqual(openedStarters, []);
   assert.deepEqual(shownErrors, []);
 });
 
-test('select problem reports a clear error when statement content is missing', async () => {
+test('select problem keeps detail flow alive when statement content is missing', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const shownErrors: string[] = [];
   const openedStarters: string[] = [];
+  const detailedProblems: Array<{
+    problemId: string;
+    versionId: string;
+    title: string;
+    statementMarkdown?: string;
+    starterCode?: string;
+  }> = [];
 
   class MissingStatementPracticeCommands extends PracticeCommands {
     override async fetchProblemDetail(problemId: string) {
@@ -386,7 +394,7 @@ test('select problem reports a clear error when statement content is missing', a
     ),
     practiceViews: {
       showProblems: () => undefined,
-      showProblemDetail: () => undefined,
+      showProblemDetail: (problem) => detailedProblems.push(problem),
       showSubmissionCreated: () => undefined,
       showSubmissionResult: () => undefined,
       revealSubmission: () => undefined,
@@ -414,10 +422,88 @@ test('select problem reports a clear error when statement content is missing', a
 
   await handlers.get('oj.practice.selectProblem')?.('problem-1');
 
+  assert.deepEqual(detailedProblems, [
+    {
+      problemId: 'problem-1',
+      versionId: 'problem-1-v1',
+      title: 'Two Sum',
+      statementMarkdown: '',
+      starterCode: 'def solve():\n    return 42\n'
+    }
+  ]);
   assert.deepEqual(openedStarters, []);
+  assert.deepEqual(shownErrors, []);
+});
+
+test('open problem starter command opens and records the selected problem file', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const localStateStore = new LocalPracticeStateStore(new FakeMemento());
+  const fetchedDetails: string[] = [];
+  const openedStarters: string[] = [];
+
+  class RecordingPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      fetchedDetails.push(problemId);
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Collapse Identical Digits',
+        statementMarkdown: 'Solve it',
+        entryFunction: 'collapse',
+        starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
+      };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    practiceCommands: new RecordingPracticeCommands(
+      new InMemoryPracticeApiClient(),
+      new SessionTokenStore()
+    ),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    localStateStore,
+    practiceViews: {
+      showProblems: () => undefined,
+      showProblemDetail: () => undefined,
+      showSubmissionCreated: () => undefined,
+      showSubmissionResult: () => undefined,
+      revealSubmission: () => undefined,
+      revealProblem: async () => undefined,
+      setSelectedProblem: (problemId) => {
+        void localStateStore.setSelectedProblemId(problemId);
+      },
+      getSelectedProblemId: () => 'collapse'
+    },
+    problemStarterWorkspace: {
+      openProblemStarter: async (problem: { problemId: string }) => {
+        openedStarters.push(problem.problemId);
+        return `/workspace/.oj/problems/${problem.problemId}.py`;
+      }
+    } as unknown as ProblemStarterWorkspace,
+    output: { appendLine: () => undefined },
+    window: {
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'ignored',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.practice.openProblemStarter')?.('collapse');
+
+  assert.deepEqual(fetchedDetails, ['collapse']);
+  assert.deepEqual(openedStarters, ['collapse']);
   assert.equal(
-    shownErrors.some((message) => message.includes('Problem statement is unavailable for problem-1')),
-    true
+    localStateStore.getProblemState('collapse')?.lastOpenedFilePath,
+    '/workspace/.oj/problems/collapse.py'
   );
 });
 
@@ -1512,7 +1598,7 @@ test('running submission result shows actionable progress notification', async (
 
   assert.ok(
     infoMessages.some((message) =>
-      message.includes('Submission submission-1 is still running. Run OJ: View Result again shortly.')
+      message.includes('Submission is still running. Run OJ: View Result again shortly.')
     )
   );
 });
@@ -1624,9 +1710,7 @@ test('submit current file polls until finished and stops on terminal state', asy
     }
   ]);
   assert.ok(
-    outputLines.some((line) =>
-      line.includes('Submission submission-finished-1: verdict=AC, time=123ms, memory=456KB')
-    )
+    outputLines.some((line) => line.includes('verdict=AC, time=123ms, memory=456KB'))
   );
 });
 
@@ -1825,28 +1909,26 @@ test('judged compile/runtime/timeout failures and API transport failures surface
   await judgedHandlers.get('oj.practice.submitCurrentFile')?.();
 
   assert.ok(
-    judgedOutputLines.some((line) =>
-      line.includes('Submission submission-runtime-1: status=queued')
-    )
+    judgedOutputLines.some((line) => line.includes('Submitted current file: submission-runtime-1'))
   );
   assert.ok(
     judgedOutputLines.some((line) =>
       line.includes(
-        'Submission submission-runtime-1: finished with compile error (CE), time=11ms, memory=22KB | SyntaxError: invalid syntax on line 3'
+        'finished with compile error (CE), time=11ms, memory=22KB | SyntaxError: invalid syntax on line 3'
       )
     )
   );
   assert.ok(
     judgedOutputLines.some((line) =>
       line.includes(
-        'Submission submission-runtime-1: finished with runtime error (RE), time=77ms, memory=88KB | ZeroDivisionError: division by zero'
+        'finished with runtime error (RE), time=77ms, memory=88KB | ZeroDivisionError: division by zero'
       )
     )
   );
   assert.ok(
     judgedOutputLines.some((line) =>
       line.includes(
-        'Submission submission-runtime-1: finished with time limit exceeded (TLE), time=2000ms, memory=99KB | Execution exceeded the 2s time limit'
+        'finished with time limit exceeded (TLE), time=2000ms, memory=99KB | Execution exceeded the 2s time limit'
       )
     )
   );

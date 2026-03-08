@@ -3,6 +3,7 @@ import { resolveProblemStatementMarkdown } from './PracticeViewState';
 
 export type ProblemDetailViewModel = {
   title: string;
+  problemId: string;
   statement: string;
   entryFunction: string;
   starterFilePath: string | null;
@@ -16,6 +17,7 @@ export function createProblemDetailViewModel(
   if (!problem) {
     return {
       title: 'Problem Detail',
+      problemId: 'No problem selected yet.',
       statement: 'Fetch problems, then select one from the Problems list to view details here.',
       entryFunction: 'No problem selected yet.',
       starterFilePath: null,
@@ -25,6 +27,7 @@ export function createProblemDetailViewModel(
 
   return {
     title: problem.title,
+    problemId: problem.problemId,
     statement:
       resolveProblemStatementMarkdown(problem) ??
       'No statementMarkdown content is available for this problem yet.',
@@ -43,6 +46,7 @@ function escapeHtml(value: string): string {
 
 export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   const title = escapeHtml(input.title);
+  const problemId = escapeHtml(input.problemId);
   const statement = escapeHtml(input.statement);
   const entryFunction = escapeHtml(input.entryFunction);
   const starterFilePath = escapeHtml(input.starterFilePath ?? 'No file path available yet.');
@@ -60,10 +64,11 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   <body>
     <h2>${title}</h2>
     ${emptyState}
+    <p><strong>Problem ID:</strong> <code>${problemId}</code></p>
     <p><strong>Entry Function:</strong> <code>${entryFunction}</code></p>
-    <p><strong>Starter:</strong> <code>${starterFilePath}</code></p>
+    <p><strong>Problem File:</strong> <code>${starterFilePath}</code></p>
     <div>
-      <button${openStarterAttributes}>Open Starter</button>
+      <button${openStarterAttributes}>Open</button>
       <button${submitAttributes}>Submit</button>
       <button${refreshAttributes}>Refresh</button>
     </div>

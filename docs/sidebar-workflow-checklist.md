@@ -14,7 +14,7 @@ Use this checklist to verify the interactive sidebar workflow without using the 
 1. In the `Account` sidebar view, click `Login` and authenticate with a student account.
 2. In the `Account` sidebar view, click `Fetch Problems`.
 3. In the `Problems` sidebar view, click a problem to open its `Problem Detail` panel.
-4. In `Problem Detail`, click `Open Starter` to open `.oj/problems/<problemId>.py`.
+4. In `Problem Detail`, click `Open` to open `.oj/problems/<problemId>.py`.
 5. Edit the starter file in the editor.
 6. In `Problem Detail`, click `Submit Current File`.
 7. In the `Submissions` sidebar view, click the new submission entry.

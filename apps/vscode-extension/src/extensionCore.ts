@@ -132,6 +132,15 @@ export function registerExtensionCommands(
     dependencies.output.appendLine(formatSubmissionDetail(result));
   };
 
+  const openProblemStarterForProblem = async (problemId: string): Promise<void> => {
+    const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
+    dependencies.practiceViews?.showProblemDetail?.(problemDetail);
+    const openedFilePath = await dependencies.problemStarterWorkspace?.openProblemStarter(problemDetail);
+    if (openedFilePath) {
+      await dependencies.localStateStore?.recordLastOpenedFile(problemId, openedFilePath);
+    }
+  };
+
   const pollSubmissionLifecycle = async (submissionId: string): Promise<void> => {
     let retryCount = 0;
     activePollingSubmissionId = submissionId;
@@ -363,6 +372,14 @@ export function registerExtensionCommands(
       })
     ),
     dependencies.registerCommand(
+      'oj.practice.openProblemStarter',
+      runWithHandling('oj.practice.openProblemStarter', async (...args: unknown[]) => {
+        const explicitProblemId = typeof args[0] === 'string' ? args[0] : '';
+        const problemId = explicitProblemId || (await resolveSelectedProblemId());
+        await openProblemStarterForProblem(problemId);
+      })
+    ),
+    dependencies.registerCommand(
       'oj.practice.submitCode',
       runWithHandling('oj.practice.submitCode', async () => {
         const problemId = await resolveSelectedProblemId();
@@ -377,9 +394,7 @@ export function registerExtensionCommands(
         dependencies.practiceViews?.showSubmissionCreated(submission.submissionId);
         presentSubmissionResult({ submissionId: submission.submissionId, status: 'queued' });
         dependencies.output.appendLine(`Submitted: ${submission.submissionId}`);
-        dependencies.window.showInformationMessage(
-          `Submission ${submission.submissionId}: status=queued`
-        );
+        dependencies.window.showInformationMessage('Submission queued.');
         await pollSubmissionLifecycle(submission.submissionId);
       })
     ),
@@ -401,9 +416,7 @@ export function registerExtensionCommands(
         dependencies.practiceViews?.showSubmissionCreated(submission.submissionId);
         presentSubmissionResult({ submissionId: submission.submissionId, status: 'queued' });
         dependencies.output.appendLine(`Submitted current file: ${submission.submissionId}`);
-        dependencies.window.showInformationMessage(
-          `Submission ${submission.submissionId}: status=queued`
-        );
+        dependencies.window.showInformationMessage('Submission queued.');
         await pollSubmissionLifecycle(submission.submissionId);
       })
     ),
@@ -420,7 +433,7 @@ export function registerExtensionCommands(
         dependencies.output.appendLine(formatSubmissionDetail(result));
         if (result.status === 'queued' || result.status === 'running') {
           dependencies.window.showInformationMessage(
-            `Submission ${result.submissionId} is still ${result.status}. Run OJ: View Result again shortly.`
+            `Submission is still ${result.status}. Run OJ: View Result again shortly.`
           );
         }
       })
@@ -437,14 +450,6 @@ export function registerExtensionCommands(
         await dependencies.localStateStore?.setSelectedProblemId(problemId);
         const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
         dependencies.practiceViews?.showProblemDetail?.(problemDetail);
-        if (!resolveProblemStatementMarkdown(problemDetail)) {
-          throw new Error(`Problem statement is unavailable for ${problemId}`);
-        }
-        await dependencies.practiceViews?.revealProblem(problemId);
-        const openedFilePath = await dependencies.problemStarterWorkspace?.openProblemStarter(problemDetail);
-        if (openedFilePath) {
-          await dependencies.localStateStore?.recordLastOpenedFile(problemId, openedFilePath);
-        }
       })
     ),
     dependencies.registerCommand(

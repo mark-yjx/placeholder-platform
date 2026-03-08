@@ -18,7 +18,7 @@ test('problem detail panel is registered in extension runtime', () => {
   const extensionSource = readFromPackageRoot('src', 'extension.ts');
 
   assert.match(extensionSource, /registerWebviewViewProvider\(\s*'ojProblemDetail'/);
-  assert.match(extensionSource, /executeCommand\('oj\.practice\.selectProblem'/);
+  assert.match(extensionSource, /executeCommand\('oj\.practice\.openProblemStarter'/);
   assert.match(extensionSource, /executeCommand\('oj\.practice\.submitCurrentFile'/);
   assert.match(extensionSource, /executeCommand\('oj\.practice\.fetchProblems'/);
 });
@@ -30,9 +30,10 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(providerSource, /createProblemDetailViewModel\(/);
   assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
   assert.match(viewModelSource, /Fetch problems, then select one from the Problems list to view details here\./);
+  assert.match(viewModelSource, /Problem ID:/);
   assert.match(viewModelSource, /Entry Function:/);
-  assert.match(viewModelSource, /Starter:/);
-  assert.match(viewModelSource, /Open Starter/);
+  assert.match(viewModelSource, /Problem File:/);
+  assert.match(viewModelSource, /Open/);
   assert.match(viewModelSource, /data-command="submitCurrentFile"/);
   assert.match(viewModelSource, />Submit</);
   assert.match(viewModelSource, /Refresh/);

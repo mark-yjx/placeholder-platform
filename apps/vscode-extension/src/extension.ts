@@ -51,7 +51,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const engagementCommands = new EngagementCommands(new HttpEngagementApiClient(clientConfig), tokenStore);
   const problemDetailProvider = new ProblemDetailWebviewProvider({
     openStarterFile: async (problemId) => {
-      await vscode.commands.executeCommand('oj.practice.selectProblem', problemId);
+      await vscode.commands.executeCommand('oj.practice.openProblemStarter', problemId);
     },
     submitCurrentFile: async () => {
       await vscode.commands.executeCommand('oj.practice.submitCurrentFile');
