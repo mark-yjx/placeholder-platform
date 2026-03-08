@@ -8,6 +8,7 @@ import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { extractSubmitPayload } from './submission/SubmissionPayloadExtraction';
 import { LocalPracticeStateStore } from './runtime/LocalPracticeStateStore';
 import { createLoginViewModel } from './auth/AuthViews';
+import { resolveProblemStatementMarkdown } from './ui/PracticeViewState';
 
 export type DisposableLike = { dispose: () => void };
 
@@ -414,7 +415,7 @@ export function registerExtensionCommands(
         await dependencies.localStateStore?.setSelectedProblemId(problemId);
         const problemDetail = await dependencies.practiceCommands.fetchProblemDetail(problemId);
         dependencies.practiceViews?.showProblemDetail?.(problemDetail);
-        if (!problemDetail.statement?.trim()) {
+        if (!resolveProblemStatementMarkdown(problemDetail)) {
           throw new Error(`Problem statement is unavailable for ${problemId}`);
         }
         await dependencies.practiceViews?.revealProblem(problemId);

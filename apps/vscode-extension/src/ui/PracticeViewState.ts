@@ -218,8 +218,9 @@ export class PracticeViewState {
 }
 
 export function formatProblemDetail(problem: PublishedProblem): string {
-  const statement = typeof problem.statement === 'string' && problem.statement.trim().length > 0
-    ? problem.statement.trim()
+  const statement = resolveProblemStatementMarkdown(problem);
+  const statementBody = statement
+    ? statement
     : 'No statement available.';
   return `# ${problem.title}
 
@@ -227,6 +228,21 @@ export function formatProblemDetail(problem: PublishedProblem): string {
 
 ## Statement
 
-${statement}
+${statementBody}
 `;
+}
+
+export function resolveProblemStatementMarkdown(problem: {
+  statementMarkdown?: string;
+  statement?: string;
+}): string | null {
+  if (typeof problem.statementMarkdown === 'string' && problem.statementMarkdown.trim().length > 0) {
+    return problem.statementMarkdown.trim();
+  }
+
+  if (typeof problem.statement === 'string' && problem.statement.trim().length > 0) {
+    return problem.statement.trim();
+  }
+
+  return null;
 }

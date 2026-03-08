@@ -172,7 +172,7 @@ test('registered command writes to output channel on success', async () => {
       problemId: 'problem-1',
       versionId: 'problem-1-v1',
       title: 'Two Sum',
-      statement: 'Solve Two Sum.',
+      statementMarkdown: 'Solve Two Sum.',
       starterCode: 'def problem_1():\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
     }
   ]);
@@ -281,6 +281,7 @@ test('select problem reveals statement and opens starter from the same fetched d
     problemId: string;
     versionId: string;
     title: string;
+    statementMarkdown?: string;
     statement?: string;
     starterCode?: string;
   }> = [];
@@ -292,7 +293,7 @@ test('select problem reveals statement and opens starter from the same fetched d
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
         starterCode: 'def solve():\n    return 42\n'
       };
     }
@@ -346,7 +347,7 @@ test('select problem reveals statement and opens starter from the same fetched d
       problemId: 'problem-1',
       versionId: 'problem-1-v1',
       title: 'Two Sum',
-      statement: 'Solve it',
+      statementMarkdown: 'Solve it',
       starterCode: 'def solve():\n    return 42\n'
     }
   ]);
@@ -366,7 +367,7 @@ test('select problem reports a clear error when statement content is missing', a
         problemId,
         versionId: `${problemId}-v1`,
         title: 'Two Sum',
-        statement: '',
+        statementMarkdown: '',
         starterCode: 'def solve():\n    return 42\n'
       };
     }

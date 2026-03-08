@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { ProblemDetail } from '../api/PracticeApiClient';
+import { resolveProblemStatementMarkdown } from './PracticeViewState';
 
 type ProblemDetailWebviewActions = {
   openStarterFile(problemId: string): Promise<void>;
@@ -59,7 +60,9 @@ export class ProblemDetailWebviewProvider implements vscode.WebviewViewProvider 
     const problem = this.currentProblem;
     this.currentView.webview.html = createDetailHtml({
       title: problem?.title ?? 'No problem selected',
-      statement: problem?.statement ?? 'Select a problem from the Problems list to view details.',
+      statement:
+        (problem ? resolveProblemStatementMarkdown(problem) : null) ??
+        'Select a problem from the Problems list to view details.',
       starterFilePath: problem ? resolveStarterFilePath(problem.problemId) : null
     });
   }

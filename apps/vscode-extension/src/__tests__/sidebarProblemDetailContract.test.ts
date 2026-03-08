@@ -27,6 +27,8 @@ test('problem detail panel includes required fields and actions', () => {
   const providerSource = readFromPackageRoot('src', 'ui', 'ProblemDetailWebviewProvider.ts');
 
   assert.match(providerSource, /<h2>\$\{title\}<\/h2>/);
+  assert.match(providerSource, /resolveProblemStatementMarkdown\(problem\)/);
+  assert.match(providerSource, /Select a problem from the Problems list to view details\./);
   assert.match(providerSource, /Starter:/);
   assert.match(providerSource, /Open Starter/);
   assert.match(providerSource, /Submit Current File/);

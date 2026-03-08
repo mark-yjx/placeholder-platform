@@ -69,7 +69,7 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
         problemId: 'problem-1',
         versionId: 'problem-1-v1',
         title: 'Two Sum',
-        statement: 'Solve it',
+        statementMarkdown: 'Solve it',
         starterCode: 'def two_sum():\n    pass\n'
       });
     }
@@ -112,7 +112,7 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
       problemId: 'problem-1',
       versionId: 'problem-1-v1',
       title: 'Two Sum',
-      statement: 'Solve it',
+      statementMarkdown: 'Solve it',
       starterCode: 'def two_sum():\n    pass\n'
     });
 

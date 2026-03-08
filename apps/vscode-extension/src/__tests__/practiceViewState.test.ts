@@ -37,7 +37,7 @@ test('problem tree nodes mirror loaded problem data', () => {
 test('problem details render as markdown content', () => {
   const state = new PracticeViewState();
   state.setProblems([
-    { problemId: 'problem-1', title: 'Two Sum', statement: 'Add two numbers.' }
+    { problemId: 'problem-1', title: 'Two Sum', statementMarkdown: 'Add two numbers.' }
   ]);
 
   assert.equal(
@@ -45,7 +45,7 @@ test('problem details render as markdown content', () => {
     '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nAdd two numbers.\n'
   );
   assert.equal(
-    formatProblemDetail({ problemId: 'problem-2', title: 'FizzBuzz', statement: '' }),
+    formatProblemDetail({ problemId: 'problem-2', title: 'FizzBuzz', statementMarkdown: '' }),
     '# FizzBuzz\n\n- Problem ID: problem-2\n\n## Statement\n\nNo statement available.\n'
   );
 });
@@ -58,7 +58,7 @@ test('problem detail fetch updates cached statement for later reveal', () => {
     problemId: 'problem-1',
     versionId: 'problem-1-v1',
     title: 'Two Sum',
-    statement: 'Return the sum of two integers.',
+    statementMarkdown: 'Return the sum of two integers.',
     starterCode: 'def solve():\n    pass\n'
   });
 
