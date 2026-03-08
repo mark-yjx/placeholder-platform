@@ -36,7 +36,16 @@ export class InMemoryProblemRepository
     }));
   }
 
-  async getStarterCode(_versionId: string): Promise<string | null> {
+  async getManifestAssets(
+    _versionId: string
+  ): Promise<{
+    entryFunction: string;
+    language: string;
+    visibility: 'public' | 'private';
+    timeLimitMs: number;
+    memoryLimitKb: number;
+    starterCode: string;
+  } | null> {
     return null;
   }
 }

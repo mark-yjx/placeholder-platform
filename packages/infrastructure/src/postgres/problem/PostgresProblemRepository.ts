@@ -25,7 +25,12 @@ type TimelineRow = {
   publication_state: string;
 };
 
-type ProblemStarterAssetRow = {
+type ProblemManifestAssetRow = {
+  entry_function: string;
+  language: string;
+  visibility: 'public' | 'private';
+  time_limit_ms: number;
+  memory_limit_kb: number;
   starter_code: string;
 };
 
@@ -90,8 +95,13 @@ WHERE pv.problem_id = $1
 ORDER BY pv.version_number ASC
 `;
 
-const FIND_PROBLEM_STARTER_SQL = `
+const FIND_PROBLEM_MANIFEST_ASSETS_SQL = `
 SELECT pva.starter_code AS starter_code
+     , pva.entry_function AS entry_function
+     , pva.language AS language
+     , pva.visibility AS visibility
+     , pva.time_limit_ms AS time_limit_ms
+     , pva.memory_limit_kb AS memory_limit_kb
 FROM problem_version_assets pva
 WHERE pva.problem_version_id = $1
 LIMIT 1
@@ -212,8 +222,28 @@ export class PostgresProblemRepository
     }));
   }
 
-  async getStarterCode(versionId: string): Promise<string | null> {
-    const rows = await this.client.query<ProblemStarterAssetRow>(FIND_PROBLEM_STARTER_SQL, [versionId]);
-    return rows[0]?.starter_code ?? null;
+  async getManifestAssets(versionId: string): Promise<{
+    entryFunction: string;
+    language: string;
+    visibility: 'public' | 'private';
+    timeLimitMs: number;
+    memoryLimitKb: number;
+    starterCode: string;
+  } | null> {
+    const rows = await this.client.query<ProblemManifestAssetRow>(FIND_PROBLEM_MANIFEST_ASSETS_SQL, [
+      versionId
+    ]);
+    if (!rows[0]) {
+      return null;
+    }
+
+    return {
+      entryFunction: rows[0].entry_function,
+      language: rows[0].language,
+      visibility: rows[0].visibility,
+      timeLimitMs: rows[0].time_limit_ms,
+      memoryLimitKb: rows[0].memory_limit_kb,
+      starterCode: rows[0].starter_code
+    };
   }
 }

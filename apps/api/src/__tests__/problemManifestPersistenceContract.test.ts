@@ -37,6 +37,9 @@ test('student-facing problem projections do not expose hidden or raw test payloa
   assert.match(service, /problemId:/);
   assert.match(service, /versionId:/);
   assert.match(service, /title:/);
-  assert.match(service, /statement:/);
+  assert.match(service, /statementMarkdown:/);
+  assert.match(service, /entryFunction:/);
+  assert.match(service, /timeLimitMs:/);
+  assert.match(service, /memoryLimitKb:/);
   assert.match(service, /starterCode:/);
 });

@@ -42,8 +42,12 @@ function createRuntime() {
             problemId,
             versionId: 'problem-1-v1',
             title: 'Two Sum',
-            statement: 'Solve it',
-            starterCode: 'def solve():\n    return 42\n'
+            statementMarkdown: 'Solve it',
+            entryFunction: 'two_sum',
+            language: 'python',
+            starterCode: 'def two_sum(nums, target):\n    return 42\n',
+            timeLimitMs: 2000,
+            memoryLimitKb: 262144
           };
         }
       },
@@ -522,9 +526,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
           return [
             {
               problemId: 'problem-1',
-              versionId: 'problem-1-v1',
-              title: 'Two Sum',
-              statement: 'Solve it'
+              title: 'Two Sum'
             }
           ];
         },
@@ -534,8 +536,12 @@ test('local runtime routes problem, favorites, and reviews through injected pers
             problemId,
             versionId: 'problem-1-v1',
             title: 'Two Sum',
-            statement: 'Solve it',
-            starterCode: 'def solve():\n    return 42\n'
+            statementMarkdown: 'Solve it',
+            entryFunction: 'two_sum',
+            language: 'python',
+            starterCode: 'def two_sum(nums, target):\n    return 42\n',
+            timeLimitMs: 2000,
+            memoryLimitKb: 262144
           };
         }
       },
@@ -654,9 +660,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     problems: [
       {
         problemId: 'problem-1',
-        versionId: 'problem-1-v1',
-        title: 'Two Sum',
-        statement: 'Solve it'
+        title: 'Two Sum'
       }
     ]
   });
@@ -671,8 +675,12 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     problemId: 'problem-1',
     versionId: 'problem-1-v1',
     title: 'Two Sum',
-    statement: 'Solve it',
-    starterCode: 'def solve():\n    return 42\n'
+    statementMarkdown: 'Solve it',
+    entryFunction: 'two_sum',
+    language: 'python',
+    starterCode: 'def two_sum(nums, target):\n    return 42\n',
+    timeLimitMs: 2000,
+    memoryLimitKb: 262144
   });
 
   const favorite = await invoke({
@@ -805,6 +813,82 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     'submissionResults.getBySubmissionId:submission-1',
     'submissionResults.getBySubmissionId:submission-1'
   ]);
+});
+
+test('student problem endpoints whitelist manifest-driven public fields only', async () => {
+  const runtime = {
+    ...createRuntime(),
+    persistence: {
+      ...createRuntime().persistence,
+      studentProblemQuery: {
+        async listPublishedProblems() {
+          return [
+            {
+              problemId: 'collapse',
+              title: 'Collapse Identical Digits',
+              versionId: 'collapse-v1',
+              statement: 'should not leak'
+            }
+          ] as never;
+        },
+        async getPublishedProblemDetail(problemId: string) {
+          return {
+            problemId,
+            versionId: 'collapse-v1',
+            title: 'Collapse Identical Digits',
+            statementMarkdown: '# Statement',
+            entryFunction: 'collapse',
+            language: 'python',
+            starterCode: 'def collapse(number):\n    return number\n',
+            timeLimitMs: 2000,
+            memoryLimitKb: 262144,
+            hiddenTests: [{ input: [111], expected: 1 }],
+            publicTests: [{ input: [122], expected: 12 }]
+          } as never;
+        }
+      }
+    }
+  };
+
+  const studentToken = await loginAs(runtime, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
+
+  const listResponse = await invoke({
+    path: '/problems',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(listResponse.statusCode, 200);
+  assert.deepEqual(listResponse.body, {
+    problems: [
+      {
+        problemId: 'collapse',
+        title: 'Collapse Identical Digits'
+      }
+    ]
+  });
+
+  const detailResponse = await invoke({
+    path: '/problems/collapse',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(detailResponse.statusCode, 200);
+  assert.deepEqual(detailResponse.body, {
+    problemId: 'collapse',
+    versionId: 'collapse-v1',
+    title: 'Collapse Identical Digits',
+    statementMarkdown: '# Statement',
+    entryFunction: 'collapse',
+    language: 'python',
+    starterCode: 'def collapse(number):\n    return number\n',
+    timeLimitMs: 2000,
+    memoryLimitKb: 262144
+  });
+  assert.equal('hiddenTests' in (detailResponse.body as Record<string, unknown>), false);
+  assert.equal('publicTests' in (detailResponse.body as Record<string, unknown>), false);
 });
 
 test('student submission detail returns failureReason for failed submissions', async () => {

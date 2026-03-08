@@ -56,17 +56,19 @@ type LocalApiRuntime = {
       listPublishedProblems: () => Promise<
         readonly {
           problemId: string;
-          versionId: string;
           title: string;
-          statement: string;
         }[]
       >;
       getPublishedProblemDetail: (problemId: string) => Promise<{
         problemId: string;
         versionId: string;
         title: string;
-        statement: string;
-        starterCode?: string;
+        statementMarkdown: string;
+        entryFunction: string;
+        language: string;
+        starterCode: string;
+        timeLimitMs: number;
+        memoryLimitKb: number;
       }>;
     };
     favorites: {
@@ -504,7 +506,12 @@ export function createApiRequestHandler(
           )
         );
         const problems = await persistence.studentProblemQuery.listPublishedProblems();
-        sendJson(response, 200, { problems });
+        sendJson(response, 200, {
+          problems: problems.map((problem) => ({
+            problemId: problem.problemId,
+            title: problem.title
+          }))
+        });
       } catch (error) {
         sendError(response, mapUnknownError(error));
       }
@@ -525,7 +532,17 @@ export function createApiRequestHandler(
         const problem = await persistence.studentProblemQuery.getPublishedProblemDetail(
           problemDetailMatch[1]
         );
-        sendJson(response, 200, problem);
+        sendJson(response, 200, {
+          problemId: problem.problemId,
+          versionId: problem.versionId,
+          title: problem.title,
+          statementMarkdown: problem.statementMarkdown,
+          entryFunction: problem.entryFunction,
+          language: problem.language,
+          starterCode: problem.starterCode,
+          timeLimitMs: problem.timeLimitMs,
+          memoryLimitKb: problem.memoryLimitKb
+        });
       } catch (error) {
         sendError(response, mapUnknownError(error));
       }

@@ -1,6 +1,15 @@
 import { PublicationState } from '@packages/domain/src/problem';
 import { ProblemRepository } from '@packages/domain/src/ports';
 
+export type ManifestProblemAssets = {
+  entryFunction: string;
+  language: string;
+  visibility: 'public' | 'private';
+  timeLimitMs: number;
+  memoryLimitKb: number;
+  starterCode: string;
+};
+
 export interface StudentProblemQueryRepository extends ProblemRepository {
   listAll(): Promise<readonly {
     id: string;
@@ -11,47 +20,48 @@ export interface StudentProblemQueryRepository extends ProblemRepository {
       publicationState: PublicationState;
     };
   }[]>;
-  getStarterCode(versionId: string): Promise<string | null>;
+  getManifestAssets(versionId: string): Promise<ManifestProblemAssets | null>;
 }
 
 export type StudentProblemView = {
   problemId: string;
-  versionId: string;
   title: string;
-  statement: string;
 };
 
 export type StudentProblemDetailView = StudentProblemView & {
-  starterCode?: string;
+  versionId: string;
+  statementMarkdown: string;
+  entryFunction: string;
+  language: string;
+  starterCode: string;
+  timeLimitMs: number;
+  memoryLimitKb: number;
 };
-
-function createFallbackStarterCode(entryFunction = 'solve'): string {
-  return [
-    `def ${entryFunction}():`,
-    '    # YOUR CODE HERE',
-    '    raise NotImplementedError',
-    '',
-    '',
-    'if __name__ == "__main__":',
-    '    import doctest',
-    '    doctest.testmod()',
-    ''
-  ].join('\n');
-}
 
 export class StudentProblemQueryService {
   constructor(private readonly problems: StudentProblemQueryRepository) {}
 
   async listPublishedProblems(): Promise<readonly StudentProblemView[]> {
     const problems = await this.problems.listAll();
-    return problems
-      .filter((problem) => problem.latestVersion.publicationState === PublicationState.PUBLISHED)
-      .map((problem) => ({
+    const publishedProblems: StudentProblemView[] = [];
+
+    for (const problem of problems) {
+      if (problem.latestVersion.publicationState !== PublicationState.PUBLISHED) {
+        continue;
+      }
+
+      const assets = await this.problems.getManifestAssets(problem.latestVersion.id);
+      if (!assets || assets.visibility !== 'public') {
+        continue;
+      }
+
+      publishedProblems.push({
         problemId: problem.id,
-        versionId: problem.latestVersion.id,
-        title: problem.latestVersion.title,
-        statement: problem.latestVersion.statement
-      }));
+        title: problem.latestVersion.title
+      });
+    }
+
+    return publishedProblems;
   }
 
   async getPublishedProblemDetail(problemId: string): Promise<StudentProblemDetailView> {
@@ -59,13 +69,22 @@ export class StudentProblemQueryService {
     if (!problem || problem.latestVersion.publicationState !== PublicationState.PUBLISHED) {
       throw new Error('Problem not found');
     }
-    const starterCode = await this.problems.getStarterCode(problem.latestVersion.id);
+
+    const assets = await this.problems.getManifestAssets(problem.latestVersion.id);
+    if (!assets || assets.visibility !== 'public') {
+      throw new Error('Problem not found');
+    }
+
     return {
       problemId: problem.id,
       versionId: problem.latestVersion.id,
       title: problem.latestVersion.title,
-      statement: problem.latestVersion.statement,
-      starterCode: starterCode ?? createFallbackStarterCode()
+      statementMarkdown: problem.latestVersion.statement,
+      entryFunction: assets.entryFunction,
+      language: assets.language,
+      starterCode: assets.starterCode,
+      timeLimitMs: assets.timeLimitMs,
+      memoryLimitKb: assets.memoryLimitKb
     };
   }
 }
