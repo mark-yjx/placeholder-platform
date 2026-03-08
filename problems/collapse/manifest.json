@@ -1,0 +1,13 @@
+{
+  "problemId": "collapse",
+  "title": "Collapse Identical Digits",
+  "entryFunction": "collapse",
+  "language": "python",
+  "timeLimitMs": 2000,
+  "memoryLimitKb": 65536,
+  "visibility": "public",
+  "difficulty": "easy",
+  "tags": ["digits", "iteration"],
+  "version": "1.0.0",
+  "author": "COMP9021 Staff"
+}
