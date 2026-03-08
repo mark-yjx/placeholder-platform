@@ -26,6 +26,13 @@ function readExtensionPackageJson(): {
   activationEvents: readonly string[];
   contributes: {
     commands?: readonly { command: string; title: string }[];
+    menus?: {
+      'view/title'?: readonly {
+        command: string;
+        when?: string;
+        group?: string;
+      }[];
+    };
     viewsContainers?: {
       activitybar?: readonly { id: string; title: string; icon: string }[];
     };
@@ -125,4 +132,15 @@ test('extension package keeps production packaging whitelist and activation even
     manifest.contributes.views.ojSidebar.find((view) => view.id === 'ojAccount')?.type,
     'webview'
   );
+  assert.equal(
+    manifest.contributes.views.ojSidebar.find((view) => view.id === 'ojProblemDetail')?.type,
+    'webview'
+  );
+  assert.deepEqual(manifest.contributes.menus?.['view/title'], [
+    {
+      command: 'oj.practice.fetchProblems',
+      when: 'view == ojProblems',
+      group: 'navigation'
+    }
+  ]);
 });

@@ -137,11 +137,21 @@
         },
         {
           "id": "ojProblemDetail",
-          "name": "Problem Detail"
+          "name": "Problem Detail",
+          "type": "webview"
         },
         {
           "id": "ojSubmissionDetail",
           "name": "Submission Detail"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "oj.practice.fetchProblems",
+          "when": "view == ojProblems",
+          "group": "navigation"
         }
       ]
     }
