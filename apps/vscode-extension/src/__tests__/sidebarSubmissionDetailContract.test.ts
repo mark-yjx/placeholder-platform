@@ -35,11 +35,15 @@ test('submission detail panel exposes status and detail fields', () => {
   assert.match(viewModelSource, /<strong>Time:<\/strong>/);
   assert.match(viewModelSource, /<strong>Memory:<\/strong>/);
   assert.match(viewModelSource, /<strong>Failure Info:<\/strong>/);
+  assert.match(viewModelSource, /const failureInfoSection = failureInfo/);
   assert.match(viewModelSource, /buildSubmissionDetailText/);
   assert.match(viewModelSource, /input\.status === 'queued' \|\| input\.status === 'running'/);
   assert.match(viewModelSource, /return `Status: \$\{input\.status\}`/);
   assert.match(viewModelSource, /no failure reason available/);
-  assert.match(viewModelSource, /Select a submission from the Submissions list to view details here\./);
+  assert.match(
+    viewModelSource,
+    /Selecting a submission will load its status, verdict, timing, memory, and failure info here\./
+  );
 });
 
 test('submission polling contract stops at terminal states in extension command flow', () => {

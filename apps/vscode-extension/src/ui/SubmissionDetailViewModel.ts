@@ -6,7 +6,7 @@ export type SubmissionDetailViewModel = {
   verdict: string;
   time: string;
   memory: string;
-  failureInfo: string;
+  failureInfo: string | null;
   detail: string;
   isEmpty: boolean;
 };
@@ -65,13 +65,13 @@ export function createSubmissionDetailViewModel(input: {
       verdict: 'Not available',
       time: 'Not available',
       memory: 'Not available',
-      failureInfo: 'Select a submission from the Submissions list to view details here.',
+      failureInfo: null,
       detail: 'No submission details available yet.',
       isEmpty: true
     };
   }
 
-  const failureInfo = normalizeSubmissionText(input.failureInfo) ?? 'None';
+  const failureInfo = normalizeSubmissionText(input.failureInfo);
   const detail = buildSubmissionDetailText(input);
 
   return {
@@ -99,10 +99,13 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
   const verdict = escapeHtml(input.verdict);
   const time = escapeHtml(input.time);
   const memory = escapeHtml(input.memory);
-  const failureInfo = escapeHtml(input.failureInfo);
+  const failureInfo = input.failureInfo ? escapeHtml(input.failureInfo) : null;
   const detail = escapeHtml(input.detail);
   const emptyState = input.isEmpty
     ? '<p>Selecting a submission will load its status, verdict, timing, memory, and failure info here.</p>'
+    : '';
+  const failureInfoSection = failureInfo
+    ? `<p><strong>Failure Info:</strong> ${failureInfo}</p>`
     : '';
 
   return `<!doctype html>
@@ -114,7 +117,7 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
     <p><strong>Verdict:</strong> ${verdict}</p>
     <p><strong>Time:</strong> ${time}</p>
     <p><strong>Memory:</strong> ${memory}</p>
-    <p><strong>Failure Info:</strong> ${failureInfo}</p>
+    ${failureInfoSection}
     <hr />
     <pre style="white-space: pre-wrap;">${detail}</pre>
   </body>
