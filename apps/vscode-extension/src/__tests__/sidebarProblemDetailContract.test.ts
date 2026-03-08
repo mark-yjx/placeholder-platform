@@ -25,14 +25,16 @@ test('problem detail panel is registered in extension runtime', () => {
 
 test('problem detail panel includes required fields and actions', () => {
   const providerSource = readFromPackageRoot('src', 'ui', 'ProblemDetailWebviewProvider.ts');
+  const viewModelSource = readFromPackageRoot('src', 'ui', 'ProblemDetailViewModel.ts');
 
-  assert.match(providerSource, /<h2>\$\{title\}<\/h2>/);
-  assert.match(providerSource, /resolveProblemStatementMarkdown\(problem\)/);
-  assert.match(providerSource, /Select a problem from the Problems list to view details\./);
-  assert.match(providerSource, /Starter:/);
-  assert.match(providerSource, /Open Starter/);
-  assert.match(providerSource, /data-command="submitCurrentFile"/);
-  assert.match(providerSource, /Submit Current File/);
-  assert.match(providerSource, /Refresh/);
-  assert.match(providerSource, /postMessage\(\{ command: button\.dataset\.command \}\)/);
+  assert.match(providerSource, /createProblemDetailViewModel\(/);
+  assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
+  assert.match(viewModelSource, /Fetch problems, then select one from the Problems list to view details here\./);
+  assert.match(viewModelSource, /Entry Function:/);
+  assert.match(viewModelSource, /Starter:/);
+  assert.match(viewModelSource, /Open Starter/);
+  assert.match(viewModelSource, /data-command="submitCurrentFile"/);
+  assert.match(viewModelSource, />Submit</);
+  assert.match(viewModelSource, /Refresh/);
+  assert.match(viewModelSource, /postMessage\(\{ command: button\.dataset\.command \}\)/);
 });

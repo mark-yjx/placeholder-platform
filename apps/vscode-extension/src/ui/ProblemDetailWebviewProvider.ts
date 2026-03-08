@@ -1,7 +1,11 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { ProblemDetail } from '../api/PracticeApiClient';
-import { resolveProblemStatementMarkdown } from './PracticeViewState';
+import {
+  createProblemDetailHtml as buildProblemDetailHtml,
+  createProblemDetailViewModel as buildProblemDetailViewModel,
+  type ProblemDetailViewModel
+} from './ProblemDetailViewModel';
 
 type ProblemDetailWebviewActions = {
   openStarterFile(problemId: string): Promise<void>;
@@ -57,14 +61,9 @@ export class ProblemDetailWebviewProvider implements vscode.WebviewViewProvider 
       return;
     }
 
-    const problem = this.currentProblem;
-    this.currentView.webview.html = createDetailHtml({
-      title: problem?.title ?? 'No problem selected',
-      statement:
-        (problem ? resolveProblemStatementMarkdown(problem) : null) ??
-        'Select a problem from the Problems list to view details.',
-      starterFilePath: problem ? resolveStarterFilePath(problem.problemId) : null
-    });
+    this.currentView.webview.html = createDetailHtml(
+      createProblemDetailViewModel(this.currentProblem)
+    );
   }
 }
 
@@ -85,42 +84,13 @@ function resolveStarterFilePath(problemId: string): string {
   return path.join(workspaceRoot, relativePath);
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
+export function createProblemDetailViewModel(problem: ProblemDetail | null): ProblemDetailViewModel {
+  return buildProblemDetailViewModel(
+    problem,
+    problem ? resolveStarterFilePath(problem.problemId) : null
+  );
 }
 
-function createDetailHtml(input: {
-  title: string;
-  statement: string;
-  starterFilePath: string | null;
-}): string {
-  const title = escapeHtml(input.title);
-  const statement = escapeHtml(input.statement);
-  const starterFilePath = escapeHtml(input.starterFilePath ?? 'No file path available yet.');
-
-  return `<!doctype html>
-<html lang="en">
-  <body>
-    <h2>${title}</h2>
-    <p><strong>Starter:</strong> <code>${starterFilePath}</code></p>
-    <div>
-      <button data-command="openStarter">Open Starter</button>
-      <button data-command="submitCurrentFile">Submit Current File</button>
-      <button data-command="refreshProblem">Refresh</button>
-    </div>
-    <hr />
-    <pre style="white-space: pre-wrap;">${statement}</pre>
-    <script>
-      const vscodeApi = acquireVsCodeApi();
-      for (const button of document.querySelectorAll('button[data-command]')) {
-        button.addEventListener('click', () => {
-          vscodeApi.postMessage({ command: button.dataset.command });
-        });
-      }
-    </script>
-  </body>
-</html>`;
+export function createDetailHtml(input: ProblemDetailViewModel): string {
+  return buildProblemDetailHtml(input);
 }
