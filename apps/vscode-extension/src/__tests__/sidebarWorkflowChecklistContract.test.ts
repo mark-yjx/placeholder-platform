@@ -14,11 +14,31 @@ function readFromRepoRoot(...segments: string[]): string {
   throw new Error(`Unable to resolve file: ${segments.join('/')}`);
 }
 
-test('sidebar account view exposes login and fetch problems actions', () => {
-  const source = readFromRepoRoot('apps', 'vscode-extension', 'src', 'ui', 'PracticeTreeViews.ts');
+test('sidebar account panel exposes login, fetch problems, and logout actions', () => {
+  const extensionSource = readFromRepoRoot('apps', 'vscode-extension', 'src', 'extension.ts');
+  const providerSource = readFromRepoRoot(
+    'apps',
+    'vscode-extension',
+    'src',
+    'ui',
+    'AccountWebviewProvider.ts'
+  );
+  const viewModelSource = readFromRepoRoot(
+    'apps',
+    'vscode-extension',
+    'src',
+    'ui',
+    'AccountViewModel.ts'
+  );
 
-  assert.match(source, /command:\s*'oj\.login'/);
-  assert.match(source, /command:\s*'oj\.practice\.fetchProblems'/);
+  assert.match(extensionSource, /registerWebviewViewProvider\(\s*'ojAccount'/);
+  assert.match(providerSource, /message\.command === 'login'/);
+  assert.match(providerSource, /message\.command === 'logout'/);
+  assert.match(viewModelSource, /type="email"/);
+  assert.match(viewModelSource, /type="password"/);
+  assert.match(viewModelSource, /data-command="login"/);
+  assert.match(viewModelSource, /data-command="fetchProblems"/);
+  assert.match(viewModelSource, /data-command="logout"/);
 });
 
 test('sidebar-first workflow checklist documents the full no-command-palette flow', () => {

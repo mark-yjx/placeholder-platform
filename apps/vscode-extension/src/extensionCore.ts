@@ -69,6 +69,7 @@ export type ExtensionCommandDependencies = {
   };
   problemStarterWorkspace?: ProblemStarterWorkspace;
   localStateStore?: LocalPracticeStateStore;
+  onAuthSessionChanged?: () => void;
   output: OutputChannelLike;
   window: WindowLike;
   registerCommand: RegisterCommand;
@@ -349,6 +350,7 @@ export function registerExtensionCommands(
         }
 
         await dependencies.authCommands.login(request);
+        dependencies.onAuthSessionChanged?.();
         dependencies.output.appendLine('Authenticated');
       })
     ),

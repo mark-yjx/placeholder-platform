@@ -8,10 +8,15 @@ export class AuthCommands {
     private readonly tokenStore: SessionTokenStore
   ) {}
 
-  async login(request: LoginRequest): Promise<void> {
+  async login(request: LoginRequest): Promise<{ email: string | null; role: string | null }> {
     validateLoginInput(request);
     const response = await this.authClient.login(request);
-    await this.tokenStore.setAccessToken(response.accessToken);
+    await this.tokenStore.setSession({
+      accessToken: response.accessToken,
+      email: response.email ?? request.email.trim(),
+      role: response.role
+    });
+    return this.tokenStore.getSessionIdentity();
   }
 
   async logout(): Promise<void> {

@@ -576,8 +576,15 @@ test('login command prompts for email and password before calling auth login', a
   const inputBoxValues = ['admin@example.com', 'ignored'];
 
   class RecordingAuthCommands extends AuthCommands {
-    override async login(request: { email: string; password: string }): Promise<void> {
+    override async login(request: { email: string; password: string }): Promise<{
+      email: string | null;
+      role: string | null;
+    }> {
       receivedRequest = request;
+      return {
+        email: request.email,
+        role: null
+      };
     }
   }
 
@@ -621,8 +628,12 @@ test('login command cancels cleanly when email prompt is dismissed', async () =>
   let loginCalls = 0;
 
   class RecordingAuthCommands extends AuthCommands {
-    override async login(): Promise<void> {
+    override async login(): Promise<{ email: string | null; role: string | null }> {
       loginCalls += 1;
+      return {
+        email: null,
+        role: null
+      };
     }
   }
 
@@ -661,8 +672,12 @@ test('login command cancels cleanly when password prompt is dismissed', async ()
   const inputBoxValues = ['student1@example.com', undefined];
 
   class RecordingAuthCommands extends AuthCommands {
-    override async login(): Promise<void> {
+    override async login(): Promise<{ email: string | null; role: string | null }> {
       loginCalls += 1;
+      return {
+        email: null,
+        role: null
+      };
     }
   }
 

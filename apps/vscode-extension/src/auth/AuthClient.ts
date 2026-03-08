@@ -5,6 +5,8 @@ export type LoginRequest = {
 
 export type LoginResponse = {
   accessToken: string;
+  email?: string;
+  role?: 'admin' | 'student';
 };
 
 export interface AuthClient {

@@ -18,7 +18,7 @@ export class InMemoryAuthClient implements AuthClient {
   ) {}
 
   async login(_request: LoginRequest): Promise<LoginResponse> {
-    return { accessToken: 'dev-student-token' };
+    return { accessToken: 'dev-student-token', role: 'student' };
   }
 }
 

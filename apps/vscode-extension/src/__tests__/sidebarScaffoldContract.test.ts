@@ -14,10 +14,10 @@ function readFromPackageRoot(...segments: string[]): string {
   throw new Error(`Unable to resolve file: ${segments.join('/')}`);
 }
 
-test('sidebar scaffold keeps three registered tree views', () => {
+test('sidebar scaffold keeps problem and submission tree views only', () => {
   const source = readFromPackageRoot('src', 'ui', 'PracticeTreeViews.ts');
 
   assert.match(source, /registerTreeDataProvider\('ojProblems'/);
   assert.match(source, /registerTreeDataProvider\('ojSubmissions'/);
-  assert.match(source, /registerTreeDataProvider\('ojAccount'/);
+  assert.doesNotMatch(source, /registerTreeDataProvider\('ojAccount'/);
 });

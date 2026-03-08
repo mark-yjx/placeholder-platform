@@ -28,14 +28,26 @@ test('session token store persists token in SecretStorage', async () => {
   const secrets = new FakeSecretStorage();
   const store = new SessionTokenStore(secrets);
 
-  await store.setAccessToken('student-token');
+  await store.setSession({
+    accessToken: 'student-token',
+    email: 'student@example.com',
+    role: 'student'
+  });
 
   assert.equal(store.getAccessToken(), 'student-token');
+  assert.deepEqual(store.getSessionIdentity(), {
+    email: 'student@example.com',
+    role: 'student'
+  });
 
   const reloadedStore = new SessionTokenStore(secrets);
   await reloadedStore.hydrate();
   assert.equal(reloadedStore.getAccessToken(), 'student-token');
   assert.equal(reloadedStore.isAuthenticated(), true);
+  assert.deepEqual(reloadedStore.getSessionIdentity(), {
+    email: 'student@example.com',
+    role: 'student'
+  });
 });
 
 test('session token store clears persisted token from SecretStorage', async () => {
@@ -49,4 +61,8 @@ test('session token store clears persisted token from SecretStorage', async () =
   await reloadedStore.hydrate();
   assert.equal(reloadedStore.getAccessToken(), null);
   assert.equal(reloadedStore.isAuthenticated(), false);
+  assert.deepEqual(reloadedStore.getSessionIdentity(), {
+    email: null,
+    role: null
+  });
 });

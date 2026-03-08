@@ -23,6 +23,7 @@ import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { PracticeTreeViews } from './ui/PracticeTreeViews';
 import { ProblemDetailWebviewProvider } from './ui/ProblemDetailWebviewProvider';
 import { SubmissionDetailWebviewProvider } from './ui/SubmissionDetailWebviewProvider';
+import { AccountWebviewProvider } from './ui/AccountWebviewProvider';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('OJ VSCode');
@@ -62,6 +63,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
   const submissionDetailProvider = new SubmissionDetailWebviewProvider();
+  const accountProvider = new AccountWebviewProvider(authCommands, tokenStore, vscode.window, {
+    fetchProblems: async () => {
+      await vscode.commands.executeCommand('oj.practice.fetchProblems');
+    }
+  });
   const practiceViews = new PracticeTreeViews(
     vscode.window,
     vscode.workspace,
@@ -78,6 +84,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     practiceViews,
     problemStarterWorkspace,
     localStateStore,
+    onAuthSessionChanged: () => accountProvider.refresh(),
     output,
     window: vscode.window,
     registerCommand: (commandId, callback) => vscode.commands.registerCommand(commandId, callback)
@@ -92,6 +99,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const submissionDetailPanelDisposable = vscode.window.registerWebviewViewProvider(
     'ojSubmissionDetail',
     submissionDetailProvider
+  );
+  const accountPanelDisposable = vscode.window.registerWebviewViewProvider(
+    'ojAccount',
+    accountProvider
   );
   const revealSubmissionDisposable = vscode.commands.registerCommand(
     'oj.practice.selectSubmission',
@@ -114,6 +125,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(revealSubmissionDisposable);
   context.subscriptions.push(problemDetailPanelDisposable);
   context.subscriptions.push(submissionDetailPanelDisposable);
+  context.subscriptions.push(accountPanelDisposable);
 
   output.appendLine('OJ VSCode extension activated');
   output.appendLine(`API base URL: ${apiBaseUrl}`);

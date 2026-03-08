@@ -62,44 +62,10 @@ class SubmissionsTreeDataProvider implements vscode.TreeDataProvider<vscode.Tree
   }
 }
 
-class AccountTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
-  readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
-
-  refresh(): void {
-    this.onDidChangeTreeDataEmitter.fire();
-  }
-
-  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
-    return element;
-  }
-
-  async getChildren(): Promise<readonly vscode.TreeItem[]> {
-    const loginItem = new vscode.TreeItem('Login', vscode.TreeItemCollapsibleState.None);
-    loginItem.id = 'account-login';
-    loginItem.description = 'Authenticate with OJ';
-    loginItem.command = {
-      command: 'oj.login',
-      title: 'OJ: Login'
-    };
-
-    const fetchProblemsItem = new vscode.TreeItem('Fetch Problems', vscode.TreeItemCollapsibleState.None);
-    fetchProblemsItem.id = 'account-fetch-problems';
-    fetchProblemsItem.description = 'Load problems from API';
-    fetchProblemsItem.command = {
-      command: 'oj.practice.fetchProblems',
-      title: 'OJ: Fetch Problems'
-    };
-
-    return [loginItem, fetchProblemsItem];
-  }
-}
-
 export class PracticeTreeViews {
   private readonly state = new PracticeViewState();
   private readonly problemsProvider = new ProblemsTreeDataProvider(this.state);
   private readonly submissionsProvider = new SubmissionsTreeDataProvider(this.state);
-  private readonly accountProvider = new AccountTreeDataProvider();
   private selectedSubmissionId: string | null = null;
 
   constructor(
@@ -120,8 +86,7 @@ export class PracticeTreeViews {
   register(registerTreeDataProvider: (viewId: string, provider: vscode.TreeDataProvider<vscode.TreeItem>) => vscode.Disposable): readonly vscode.Disposable[] {
     return [
       registerTreeDataProvider('ojProblems', this.problemsProvider),
-      registerTreeDataProvider('ojSubmissions', this.submissionsProvider),
-      registerTreeDataProvider('ojAccount', this.accountProvider)
+      registerTreeDataProvider('ojSubmissions', this.submissionsProvider)
     ];
   }
 

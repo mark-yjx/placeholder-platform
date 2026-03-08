@@ -132,7 +132,8 @@
         },
         {
           "id": "ojAccount",
-          "name": "Account"
+          "name": "Account",
+          "type": "webview"
         },
         {
           "id": "ojProblemDetail",
