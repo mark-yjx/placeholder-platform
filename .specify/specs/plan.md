@@ -252,3 +252,36 @@ Acceptance checks:
 - The compose worker can be started with `docker compose up` and process queue work without a second manual worker process.
 - Release docs include a concrete VSIX packaging/checklist path and the expected API base URL configuration for the extension.
 - Documentation contradictions between implemented runtime behavior and planning docs are removed.
+
+### Phase 12: Runtime Metrics Hardening
+
+Goals:
+- Remove misleading runtime metrics from the user experience when the platform did not actually measure them.
+- Make it explicit that the current `memory=0KB` behavior is a runtime limitation in the worker/sandbox path, not merely a presentation bug.
+- Introduce a trustworthy metrics contract across worker, API, and extension layers.
+- Distinguish clearly between measured metrics, unavailable metrics, and legacy placeholder/fallback values.
+- Ensure the UI never implies that a metric was measured when it was not.
+
+Why this phase is needed:
+- The current local worker path falls back to `memoryKb = 0` when sandbox execution does not provide a measured value.
+- That `0` is then persisted and rendered as if it were a real measurement.
+- This creates a false signal for users and makes runtime metrics look precise when they are not.
+- The problem is architectural: the runtime contract currently allows placeholder values to masquerade as measured values.
+
+Measured vs unavailable vs placeholder:
+- Measured metrics are values the sandbox/runtime explicitly collected during real execution.
+- Unavailable metrics are values the system could not collect for a particular run or runtime.
+- Placeholder or fallback values are synthetic defaults such as `0` used to satisfy a type or rendering path.
+- Placeholder values must not be exposed as real execution metrics.
+
+Non-goals:
+- No judge lifecycle redesign. Submission states remain `queued -> running -> finished | failed`.
+- No change to terminal-state immutability.
+- No unrelated submission-pipeline rewrite.
+- No breaking change to the end-to-end submission flow while the metrics contract is being hardened.
+
+Acceptance checks:
+- The extension renders unavailable metrics as unavailable, not as measured zeroes.
+- Worker/runtime code can express whether memory and time were measured or unavailable.
+- The API propagates runtime metrics faithfully without hidden zero-filling.
+- Documentation explains exactly what runtime metrics mean and when they may be unavailable.

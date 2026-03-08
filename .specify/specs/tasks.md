@@ -1130,3 +1130,178 @@ IN:
 OUT:
 - account/auth backend changes
 - problem content changes
+
+# Phase 14 – UI Refinement
+
+Goal:
+Refine the extension shell so account access starts from a status bar icon, the sidebar stays focused on navigation, and submissions move toward a panel-oriented workflow.
+
+## 105. Task A — Move account to status bar icon + login webview
+
+Acceptance checks:
+- The extension shows only an account icon in the status bar: `$(account)`
+- The status bar does NOT display username text
+- Clicking the icon opens a login webview
+- The login webview includes:
+  - email input
+  - password input
+  - remember me checkbox
+  - login button
+- Existing sidebar Account view is no longer the primary login UX
+- Existing command-palette login remains fallback only
+
+Scope:
+IN:
+- status bar item
+- login webview
+- auth UI wiring
+OUT:
+- submissions panel
+- problem detail rendering
+- backend auth redesign
+
+## 106. Task B — Remove sidebar Account section
+
+Acceptance checks:
+- Sidebar no longer shows an Account section
+- Problems remains in sidebar
+- No regression in auth flow
+
+Scope:
+IN:
+- extension sidebar contributions
+OUT:
+- submissions panel
+- backend changes
+
+## 107. Task C — Move submissions from sidebar to VS Code panel
+
+Acceptance checks:
+- Submissions no longer render in sidebar
+- Submissions render in a panel view
+- Panel shows recent submissions with:
+  - status
+  - verdict
+  - time
+  - memory
+  - failure/error details
+- Submission lifecycle terminology remains:
+  queued -> running -> finished | failed
+
+Scope:
+IN:
+- extension panel view
+- submission panel rendering
+OUT:
+- judge logic
+- backend changes
+
+## 108. Task D — Remove obsolete login entry points from primary UX
+
+Acceptance checks:
+- Sidebar account login is removed
+- Status bar icon is the primary login entry point
+- Command-palette login remains fallback only
+
+Scope:
+IN:
+- extension UX cleanup
+OUT:
+- backend auth changes
+
+# Phase 15 – Runtime Metrics Hardening
+
+Goal:
+Make runtime metrics trustworthy end to end so the Online Judge does not expose placeholder execution data such as `memory = 0KB` as if it were measured.
+
+## 109. Task A — UI: hide unmeasured memory values
+
+Acceptance checks:
+- If `memoryKb` is greater than `0`, the extension renders the measured memory value.
+- If `memoryKb` is `0` or missing, the extension does NOT display `0KB`.
+- Unavailable memory is rendered with a neutral placeholder such as `—` or `N/A`.
+- Tests cover:
+  - `memoryKb > 0`
+  - `memoryKb = 0`
+  - `memoryKb` missing
+- No unrelated refactor is introduced.
+
+Scope:
+IN:
+- submission detail rendering
+- submission list rendering where memory is shown
+- extension tests
+OUT:
+- worker metrics collection
+- backend persistence changes
+
+## 110. Task B — Worker: introduce explicit runtime metrics contract
+
+Acceptance checks:
+- Worker execution result types distinguish between measured metrics and unavailable metrics.
+- The worker/runtime contract does not silently coerce unavailable memory into `0`.
+- The contract remains compatible with the existing submission lifecycle and terminal-state semantics.
+- Tests cover the new runtime metrics type/contract.
+- No unrelated refactor is introduced.
+
+Scope:
+IN:
+- worker runtime types
+- sandbox execution result contract
+- worker unit or contract tests
+OUT:
+- UI rendering changes beyond what is required to consume the contract
+- judge lifecycle redesign
+
+## 111. Task C — Sandbox: collect real memory usage
+
+Acceptance checks:
+- The Docker sandbox execution path attempts to collect real memory usage during execution.
+- Measured memory is persisted when available.
+- If memory cannot be collected, the runtime marks it unavailable rather than returning `0`.
+- Integration or contract tests cover both measured and unavailable metric paths.
+- No unrelated refactor is introduced.
+
+Scope:
+IN:
+- Docker sandbox adapter
+- worker execution plumbing for runtime metrics
+- integration or contract tests
+OUT:
+- API route redesign
+- unrelated judge behavior changes
+
+## 112. Task D — Judge/API: propagate metrics faithfully
+
+Acceptance checks:
+- The API exposes runtime metrics only when they were actually measured or explicitly available.
+- No hidden conversion changes unavailable metrics into zero.
+- Extension-facing payloads preserve the distinction between measured and unavailable metrics.
+- Tests cover result query and API payload behavior for available vs unavailable metrics.
+- No unrelated refactor is introduced.
+
+Scope:
+IN:
+- result query service
+- API submission result payloads
+- API tests
+OUT:
+- extension UX redesign beyond metrics display
+- submission state-machine changes
+
+## 113. Task E — Docs: document runtime metric semantics
+
+Acceptance checks:
+- `docs/judge-pipeline.md` explains what `time` and `memory` represent.
+- Documentation states explicitly that unavailable metrics are shown as unavailable, not as `0`.
+- Documentation distinguishes measured metrics from placeholders/fallbacks.
+- Documentation remains consistent with the existing `queued -> running -> finished | failed` lifecycle.
+- No unrelated refactor is introduced.
+
+Scope:
+IN:
+- judge pipeline documentation
+- runtime metric semantics documentation
+OUT:
+- code changes
+- backend behavior changes
