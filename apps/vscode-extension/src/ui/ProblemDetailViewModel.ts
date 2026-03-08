@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { ProblemDetail } from '../api/PracticeApiClient';
 import { resolveProblemStatementMarkdown } from './PracticeViewState';
 
@@ -29,8 +30,11 @@ export function createProblemDetailViewModel(
 
   const title = problem.title?.trim() || 'Untitled problem';
   const statement = resolveProblemStatementMarkdown(problem) ?? 'No statement available.';
-  const entryFunction = problem.entryFunction?.trim() ?? 'Not available';
+  const entryFunction = problem.entryFunction?.trim() || 'Unknown';
   const language = problem.language?.trim() ?? null;
+  const starterFileLabel = starterFilePath?.trim()
+    ? path.basename(starterFilePath)
+    : `${problem.problemId}.py`;
 
   return {
     title,
@@ -38,7 +42,7 @@ export function createProblemDetailViewModel(
     statement,
     entryFunction,
     language,
-    starterFilePath,
+    starterFilePath: starterFileLabel,
     isEmpty: false
   };
 }
@@ -54,19 +58,15 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   const title = escapeHtml(input.title);
   const problemId = escapeHtml(input.problemId);
   const statement = escapeHtml(input.statement);
-  const entryFunction = escapeHtml(input.entryFunction);
-  const language = input.language ? escapeHtml(input.language) : null;
-  const starterFilePath = escapeHtml(input.starterFilePath ?? 'No file path available yet.');
+  const starterFilePath = escapeHtml(input.starterFilePath ?? 'No problem selected yet.');
   const openStarterAttributes = input.isEmpty ? ' data-command="openStarter" disabled' : ' data-command="openStarter"';
   const submitAttributes = input.isEmpty
     ? ' data-command="submitCurrentFile" disabled'
     : ' data-command="submitCurrentFile"';
-  const refreshAttributes = input.isEmpty ? ' data-command="refreshProblem" disabled' : ' data-command="refreshProblem"';
   const statementBody = input.isEmpty
     ? `<p role="status">${statement}</p>`
     : `<pre style="white-space: pre-wrap;">${statement}</pre>`;
   const toolkitScript = 'https://unpkg.com/@vscode/webview-ui-toolkit@1.4.0/dist/toolkit.min.js';
-  const languageRow = language ? `<p><strong>Language:</strong> <code>${language}</code></p>` : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -77,13 +77,10 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   <body>
     <h2>${title}</h2>
     <p><strong>Problem ID:</strong> <code>${problemId}</code></p>
-    <p><strong>Entry Function:</strong> <code>${entryFunction}</code></p>
-    ${languageRow}
-    <p><strong>Problem File:</strong> <code>${starterFilePath}</code></p>
+    <p><strong>Starter File:</strong> <code>${starterFilePath}</code></p>
     <div>
       <vscode-button${openStarterAttributes}>Open Coding File</vscode-button>
       <vscode-button appearance="primary"${submitAttributes}>Submit</vscode-button>
-      <vscode-button${refreshAttributes}>Refresh</vscode-button>
     </div>
     <hr />
     <h3>Statement</h3>

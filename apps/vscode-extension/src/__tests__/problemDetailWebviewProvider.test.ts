@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 import { createProblemDetailHtml, createProblemDetailViewModel } from '../ui/ProblemDetailViewModel';
 
 test('fetched problem detail renders expected fields', () => {
-  const html = createProblemDetailHtml(
-    createProblemDetailViewModel({
+  const viewModel = createProblemDetailViewModel({
       problemId: 'collapse',
       versionId: 'collapse-v1',
       title: 'Collapse Identical Digits',
@@ -12,19 +11,21 @@ test('fetched problem detail renders expected fields', () => {
       entryFunction: 'collapse',
       language: 'python',
       starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
-    }, '.oj/problems/collapse.py')
-  );
+    }, '/home/mark/src/oj-vscode/.oj/problems/collapse.py');
+  const html = createProblemDetailHtml(viewModel);
 
+  assert.equal(viewModel.entryFunction, 'collapse');
   assert.match(html, /<h2>Collapse Identical Digits<\/h2>/);
   assert.match(html, /Problem ID:<\/strong> <code>collapse<\/code>/);
-  assert.match(html, /Entry Function:<\/strong> <code>collapse<\/code>/);
-  assert.match(html, /Language:<\/strong> <code>python<\/code>/);
+  assert.doesNotMatch(html, /Entry Function:/);
+  assert.doesNotMatch(html, /Language:/);
   assert.match(html, /# Collapse Identical Digits/);
   assert.match(html, /Collapse duplicate digits\./);
-  assert.match(html, /Problem File:<\/strong> <code>\.oj\/problems\/collapse\.py<\/code>/);
+  assert.match(html, /Starter File:<\/strong> <code>collapse\.py<\/code>/);
+  assert.doesNotMatch(html, /\/home\/mark\/src\/oj-vscode\/\.oj\/problems\/collapse\.py/);
   assert.match(html, /<vscode-button data-command="openStarter">Open Coding File<\/vscode-button>/);
   assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile">Submit<\/vscode-button>/);
-  assert.match(html, /<vscode-button data-command="refreshProblem">Refresh<\/vscode-button>/);
+  assert.doesNotMatch(html, /Refresh/);
 });
 
 test('empty state shows friendly placeholder instead of blank panel', () => {
@@ -34,24 +35,26 @@ test('empty state shows friendly placeholder instead of blank panel', () => {
   assert.match(html, /Select a problem from the Problems list to view details\./);
   assert.match(html, /<strong>Problem ID:<\/strong> <code>No problem selected yet\.<\/code>/);
   assert.match(html, /No problem selected yet\./);
+  assert.match(html, /<strong>Starter File:<\/strong> <code>No problem selected yet\.<\/code>/);
   assert.match(html, /<vscode-button data-command="openStarter" disabled>Open Coding File<\/vscode-button>/);
   assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile" disabled>Submit<\/vscode-button>/);
 });
 
 test('problem detail falls back safely when optional fields are missing', () => {
-  const html = createProblemDetailHtml(
-    createProblemDetailViewModel({
+  const viewModel = createProblemDetailViewModel({
       problemId: 'legacy-problem',
       versionId: 'legacy-problem-v1',
       title: undefined as unknown as string,
       statementMarkdown: undefined as unknown as string,
       entryFunction: undefined as unknown as string,
       starterCode: 'print(42)\n'
-    }, '.oj/problems/legacy-problem.py')
-  );
+    }, '/tmp/workspace/.oj/problems/legacy-problem.py');
+  const html = createProblemDetailHtml(viewModel);
 
+  assert.equal(viewModel.entryFunction, 'Unknown');
   assert.match(html, /<h2>Untitled problem<\/h2>/);
-  assert.match(html, /Entry Function:<\/strong> <code>Not available<\/code>/);
-  assert.match(html, /Problem File:<\/strong> <code>\.oj\/problems\/legacy-problem\.py<\/code>/);
+  assert.doesNotMatch(html, /Entry Function:/);
+  assert.match(html, /Starter File:<\/strong> <code>legacy-problem\.py<\/code>/);
+  assert.doesNotMatch(html, /\/tmp\/workspace\/\.oj\/problems\/legacy-problem\.py/);
   assert.match(html, /No statement available\./);
 });
