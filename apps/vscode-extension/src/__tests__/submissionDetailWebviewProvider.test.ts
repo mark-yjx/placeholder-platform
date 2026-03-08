@@ -22,6 +22,37 @@ test('submission detail renders expected fields for finished judged result', () 
   assert.doesNotMatch(html, /<strong>Failure Info:<\/strong>/);
 });
 
+test('submission detail renders neutral memory placeholder when memory is zero', () => {
+  const html = createSubmissionDetailHtml(
+    createSubmissionDetailViewModel({
+      submissionId: 'submission-zero-memory-1',
+      status: 'finished',
+      verdict: 'WA',
+      timeMs: 120,
+      memoryKb: 0,
+      detail: 'verdict=WA, time=120ms, memory=N/A'
+    })
+  );
+
+  assert.match(html, /<strong>Memory:<\/strong> N\/A/);
+  assert.doesNotMatch(html, /0KB/);
+});
+
+test('submission detail renders neutral memory placeholder when memory is missing', () => {
+  const html = createSubmissionDetailHtml(
+    createSubmissionDetailViewModel({
+      submissionId: 'submission-missing-memory-1',
+      status: 'finished',
+      verdict: 'CE',
+      timeMs: 11,
+      detail: 'verdict=CE, time=11ms, memory=N/A'
+    })
+  );
+
+  assert.match(html, /<strong>Memory:<\/strong> N\/A/);
+  assert.doesNotMatch(html, /0KB/);
+});
+
 test('submission detail empty state shows friendly placeholder instead of blank panel', () => {
   const html = createSubmissionDetailHtml(createSubmissionDetailViewModel(null));
 

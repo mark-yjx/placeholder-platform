@@ -69,13 +69,17 @@ function formatFailureSnippet(result: SubmissionResult): string {
   return snippet ? ` | ${snippet}` : '';
 }
 
+function formatMemoryMetric(memoryKb?: number): string {
+  return memoryKb !== undefined && memoryKb > 0 ? `${memoryKb}KB` : 'N/A';
+}
+
 export function formatSubmissionSummary(result: SubmissionResult): string {
   if (result.status === 'queued' || result.status === 'running') {
     return result.status;
   }
 
-  if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
-    return `${formatVerdictSummary(result.verdict)} | ${result.timeMs}ms | ${result.memoryKb}KB${formatFailureSnippet(result)}`;
+  if (result.verdict !== undefined && result.timeMs !== undefined) {
+    return `${formatVerdictSummary(result.verdict)} | ${result.timeMs}ms | ${formatMemoryMetric(result.memoryKb)}${formatFailureSnippet(result)}`;
   }
 
   if (result.status === 'failed' && result.failureReason?.trim()) {
@@ -97,8 +101,8 @@ export function formatSubmissionDetail(result: SubmissionResult): string {
       : 'Failed: no failure reason available';
   }
 
-  if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
-    return `${formatVerdictDetail(result.verdict)}, time=${result.timeMs}ms, memory=${result.memoryKb}KB${formatFailureSnippet(result)}`;
+  if (result.verdict !== undefined && result.timeMs !== undefined) {
+    return `${formatVerdictDetail(result.verdict)}, time=${result.timeMs}ms, memory=${formatMemoryMetric(result.memoryKb)}${formatFailureSnippet(result)}`;
   }
 
   if (result.verdict !== undefined) {
@@ -125,8 +129,8 @@ export function formatSubmissionLabel(result: SubmissionResult): string {
     return result.status;
   }
 
-  if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
-    return `${formatVerdictSummary(result.verdict)}    ${result.timeMs}ms | ${result.memoryKb}KB`;
+  if (result.verdict !== undefined && result.timeMs !== undefined) {
+    return `${formatVerdictSummary(result.verdict)}    ${result.timeMs}ms | ${formatMemoryMetric(result.memoryKb)}`;
   }
 
   if (result.verdict !== undefined) {

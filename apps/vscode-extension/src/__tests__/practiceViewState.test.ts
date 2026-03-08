@@ -107,6 +107,52 @@ test('submission tree nodes expose verdict, time, memory, and detail text', () =
   assert.equal(state.getSubmissionDetail('submission-1'), 'verdict=AC, time=120ms, memory=2048KB');
 });
 
+test('submission tree nodes hide unmeasured zero memory with a neutral placeholder', () => {
+  const state = new PracticeViewState();
+
+  state.recordSubmissionResult({
+    submissionId: 'submission-zero-memory-1',
+    status: 'finished',
+    verdict: 'WA',
+    timeMs: 222,
+    memoryKb: 0
+  });
+
+  assert.deepEqual(state.getSubmissionNodes(), [
+    {
+      id: 'submission-zero-memory-1',
+      label: 'WA    222ms | N/A',
+      description: '',
+      detail: 'verdict=WA, time=222ms, memory=N/A'
+    }
+  ]);
+  assert.equal(state.getSubmissionDetail('submission-zero-memory-1'), 'verdict=WA, time=222ms, memory=N/A');
+});
+
+test('submission tree nodes hide missing memory with a neutral placeholder', () => {
+  const state = new PracticeViewState();
+
+  state.recordSubmissionResult({
+    submissionId: 'submission-missing-memory-1',
+    status: 'finished',
+    verdict: 'CE',
+    timeMs: 15
+  });
+
+  assert.deepEqual(state.getSubmissionNodes(), [
+    {
+      id: 'submission-missing-memory-1',
+      label: 'Compile Error (CE)    15ms | N/A',
+      description: '',
+      detail: 'finished with compile error (CE), time=15ms, memory=N/A'
+    }
+  ]);
+  assert.equal(
+    state.getSubmissionDetail('submission-missing-memory-1'),
+    'finished with compile error (CE), time=15ms, memory=N/A'
+  );
+});
+
 test('submission tree nodes include newly created submissions before results arrive', () => {
   const state = new PracticeViewState();
 
@@ -324,6 +370,18 @@ test('submission result renderers stay stable', () => {
   assert.equal(
     formatSubmissionDetail(result),
     'verdict=WA, time=222ms, memory=4096KB'
+  );
+  assert.equal(
+    formatSubmissionSummary({ submissionId: 'submission-4', status: 'finished', verdict: 'WA', timeMs: 222, memoryKb: 0 }),
+    'WA | 222ms | N/A'
+  );
+  assert.equal(
+    formatSubmissionLabel({ submissionId: 'submission-5', status: 'finished', verdict: 'WA', timeMs: 222 }),
+    'WA    222ms | N/A'
+  );
+  assert.equal(
+    formatSubmissionDetail({ submissionId: 'submission-6', status: 'finished', verdict: 'WA', timeMs: 222 }),
+    'verdict=WA, time=222ms, memory=N/A'
   );
   assert.equal(formatPendingSubmissionSummary(), 'Submitted');
   assert.equal(formatPendingSubmissionDescription(), '');

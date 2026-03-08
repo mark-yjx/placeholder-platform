@@ -16,6 +16,10 @@ function normalizeSubmissionText(value?: string): string | null {
   return trimmed ? trimmed : null;
 }
 
+function formatMemoryMetric(memoryKb?: number): string {
+  return memoryKb !== undefined && memoryKb > 0 ? `${memoryKb}KB` : 'N/A';
+}
+
 function buildSubmissionDetailText(input: {
   status: string;
   verdict?: SubmissionResult['verdict'];
@@ -79,7 +83,7 @@ export function createSubmissionDetailViewModel(input: {
     status: input.status,
     verdict: input.verdict ?? 'Not available',
     time: input.timeMs === undefined ? 'Not available' : `${input.timeMs}ms`,
-    memory: input.memoryKb === undefined ? 'Not available' : `${input.memoryKb}KB`,
+    memory: formatMemoryMetric(input.memoryKb),
     failureInfo,
     detail,
     isEmpty: false
