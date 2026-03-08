@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 function resolveRepoRoot(): string {
@@ -92,4 +94,106 @@ test('problem import appends a new version when collapse content changes', async
       latestDigest: updated.contentDigest
     }
   ]);
+});
+
+test('problem import rejects a problem directory without manifest.json', async () => {
+  const importer = await loadImporterModule();
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'oj-manifest-missing-'));
+  const problemDir = path.join(tempRoot, 'missing-manifest');
+
+  await mkdir(problemDir, { recursive: true });
+  await writeFile(path.join(problemDir, 'statement.md'), '# Missing Manifest\n', 'utf8');
+  await writeFile(path.join(problemDir, 'starter.py'), 'def run():\n    return 1\n', 'utf8');
+  await writeFile(path.join(problemDir, 'public.json'), '[]\n', 'utf8');
+  await writeFile(path.join(problemDir, 'hidden.json'), '[]\n', 'utf8');
+
+  assert.throws(
+    () => importer.readProblemDefinition(problemDir),
+    /Missing required manifest file: .*manifest\.json/
+  );
+});
+
+test('problem import rejects malformed manifest.json', async () => {
+  const importer = await loadImporterModule();
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'oj-manifest-malformed-'));
+  const problemDir = path.join(tempRoot, 'bad-manifest');
+
+  await mkdir(problemDir, { recursive: true });
+  await writeFile(path.join(problemDir, 'manifest.json'), '{"problemId":', 'utf8');
+  await writeFile(path.join(problemDir, 'statement.md'), '# Bad Manifest\n', 'utf8');
+  await writeFile(path.join(problemDir, 'starter.py'), 'def run():\n    return 1\n', 'utf8');
+  await writeFile(path.join(problemDir, 'public.json'), '[]\n', 'utf8');
+  await writeFile(path.join(problemDir, 'hidden.json'), '[]\n', 'utf8');
+
+  assert.throws(
+    () => importer.readProblemDefinition(problemDir),
+    /Invalid manifest JSON at .*manifest\.json/
+  );
+});
+
+test('problem import rejects missing sibling test files in the manifest layout', async () => {
+  const importer = await loadImporterModule();
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'oj-manifest-missing-tests-'));
+  const problemDir = path.join(tempRoot, 'missing-tests');
+
+  await mkdir(problemDir, { recursive: true });
+  await writeFile(
+    path.join(problemDir, 'manifest.json'),
+    JSON.stringify({
+      problemId: 'missing-tests',
+      title: 'Missing Tests',
+      entryFunction: 'run',
+      language: 'python',
+      timeLimitMs: 1000,
+      memoryLimitKb: 1024,
+      visibility: 'public'
+    }),
+    'utf8'
+  );
+  await writeFile(path.join(problemDir, 'statement.md'), '# Missing Tests\n', 'utf8');
+  await writeFile(path.join(problemDir, 'starter.py'), 'def run():\n    return 1\n', 'utf8');
+  await writeFile(path.join(problemDir, 'public.json'), '[]\n', 'utf8');
+
+  assert.throws(
+    () => importer.readProblemDefinition(problemDir),
+    /ENOENT|hidden\.json/
+  );
+});
+
+test('problem import rejects malformed public.json and hidden.json payloads', async () => {
+  const importer = await loadImporterModule();
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'oj-manifest-bad-tests-'));
+  const problemDir = path.join(tempRoot, 'bad-tests');
+
+  await mkdir(problemDir, { recursive: true });
+  await writeFile(
+    path.join(problemDir, 'manifest.json'),
+    JSON.stringify({
+      problemId: 'bad-tests',
+      title: 'Bad Tests',
+      entryFunction: 'run',
+      language: 'python',
+      timeLimitMs: 1000,
+      memoryLimitKb: 1024,
+      visibility: 'public'
+    }),
+    'utf8'
+  );
+  await writeFile(path.join(problemDir, 'statement.md'), '# Bad Tests\n', 'utf8');
+  await writeFile(path.join(problemDir, 'starter.py'), 'def run():\n    return 1\n', 'utf8');
+  await writeFile(path.join(problemDir, 'public.json'), '{not-json}\n', 'utf8');
+  await writeFile(path.join(problemDir, 'hidden.json'), '[]\n', 'utf8');
+
+  assert.throws(
+    () => importer.readProblemDefinition(problemDir),
+    /Expected JSON array|Unexpected token/
+  );
+
+  await writeFile(path.join(problemDir, 'public.json'), '[]\n', 'utf8');
+  await writeFile(path.join(problemDir, 'hidden.json'), '{not-json}\n', 'utf8');
+
+  assert.throws(
+    () => importer.readProblemDefinition(problemDir),
+    /Expected JSON array|Unexpected token/
+  );
 });

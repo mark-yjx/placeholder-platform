@@ -260,38 +260,54 @@ export function createContentDigest(problem) {
     .digest('hex');
 }
 
-function parseProblemJson(problemDir) {
-  const problemJsonPath = path.join(problemDir, 'problem.json');
-  const raw = fs.readFileSync(problemJsonPath, 'utf8');
-  return JSON.parse(raw);
+function readRequiredTextFile(filePath, label) {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      throw new Error(`Missing required ${label}: ${filePath}`);
+    }
+    throw error;
+  }
+}
+
+function parseManifestJson(problemDir) {
+  const manifestPath = path.join(problemDir, 'manifest.json');
+  const raw = readRequiredTextFile(manifestPath, 'manifest file');
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid manifest JSON at ${manifestPath}: ${message}`);
+  }
 }
 
 export function readProblemDefinition(problemDir) {
-  const metadata = parseProblemJson(problemDir);
-  const statement = fs.readFileSync(path.join(problemDir, 'statement.md'), 'utf8');
-  const starterCode = fs.readFileSync(path.join(problemDir, 'starter.py'), 'utf8');
-  const testsDir = path.join(problemDir, 'tests');
-  const publicTests = parseJsonCasesWithRawValues(path.join(testsDir, 'public.json'));
-  const hiddenTests = parseJsonCasesWithRawValues(path.join(testsDir, 'hidden.json'));
+  const metadata = parseManifestJson(problemDir);
+  const statement = readRequiredTextFile(path.join(problemDir, 'statement.md'), 'statement file');
+  const starterCode = readRequiredTextFile(path.join(problemDir, 'starter.py'), 'starter file');
+  const publicTests = parseJsonCasesWithRawValues(path.join(problemDir, 'public.json'));
+  const hiddenTests = parseJsonCasesWithRawValues(path.join(problemDir, 'hidden.json'));
 
-  if (typeof metadata.slug !== 'string' || metadata.slug.trim().length === 0) {
-    throw new Error(`Problem at ${problemDir} must define a non-empty slug`);
+  if (typeof metadata.problemId !== 'string' || metadata.problemId.trim().length === 0) {
+    throw new Error(`Problem at ${problemDir} must define a non-empty problemId`);
   }
   if (typeof metadata.title !== 'string' || metadata.title.trim().length === 0) {
-    throw new Error(`Problem ${metadata.slug} must define a non-empty title`);
+    throw new Error(`Problem ${metadata.problemId} must define a non-empty title`);
   }
   if (typeof metadata.entryFunction !== 'string' || metadata.entryFunction.trim().length === 0) {
-    throw new Error(`Problem ${metadata.slug} must define a non-empty entryFunction`);
+    throw new Error(`Problem ${metadata.problemId} must define a non-empty entryFunction`);
   }
   if (metadata.language !== 'python') {
-    throw new Error(`Problem ${metadata.slug} must use language "python"`);
+    throw new Error(`Problem ${metadata.problemId} must use language "python"`);
   }
   if (metadata.visibility !== 'public' && metadata.visibility !== 'private') {
-    throw new Error(`Problem ${metadata.slug} must use visibility "public" or "private"`);
+    throw new Error(`Problem ${metadata.problemId} must use visibility "public" or "private"`);
   }
 
   const definition = {
-    slug: metadata.slug.trim(),
+    slug: metadata.problemId.trim(),
     title: metadata.title.trim(),
     statement,
     starterCode,

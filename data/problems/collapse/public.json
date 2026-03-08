@@ -1,0 +1,5 @@
+[
+  { "input": 0, "expected": 0 },
+  { "input": 12321, "expected": 12321 },
+  { "input": -1111222232222111, "expected": -12321 }
+]
