@@ -99,8 +99,8 @@ test('submission tree nodes expose verdict, time, memory, and detail text', () =
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-1',
-      label: 'AC',
-      description: '120ms | 2048KB',
+      label: 'AC    120ms | 2048KB',
+      description: '',
       detail: 'verdict=AC, time=120ms, memory=2048KB'
     }
   ]);
@@ -138,8 +138,8 @@ test('submission result replaces the pending tree entry for the same submission 
   assert.deepEqual(state.getSubmissionNodes(), [
     {
       id: 'submission-1',
-      label: 'AC',
-      description: '120ms | 2048KB',
+      label: 'AC    120ms | 2048KB',
+      description: '',
       detail: 'verdict=AC, time=120ms, memory=2048KB'
     }
   ]);
@@ -319,8 +319,8 @@ test('submission result renderers stay stable', () => {
   };
 
   assert.equal(formatSubmissionSummary(result), 'WA | 222ms | 4096KB');
-  assert.equal(formatSubmissionLabel(result), 'WA');
-  assert.equal(formatSubmissionDescription(result), '222ms | 4096KB');
+  assert.equal(formatSubmissionLabel(result), 'WA    222ms | 4096KB');
+  assert.equal(formatSubmissionDescription(result), '');
   assert.equal(
     formatSubmissionDetail(result),
     'verdict=WA, time=222ms, memory=4096KB'
@@ -352,6 +352,26 @@ test('submission result renderers stay stable', () => {
   assert.equal(
     formatSubmissionLabel({
       submissionId: 'submission-4',
+      status: 'finished',
+      verdict: 'WA',
+      timeMs: 222,
+      memoryKb: 4096
+    }),
+    'WA    222ms | 4096KB'
+  );
+  assert.equal(
+    formatSubmissionDescription({
+      submissionId: 'submission-4',
+      status: 'finished',
+      verdict: 'WA',
+      timeMs: 222,
+      memoryKb: 4096
+    }),
+    ''
+  );
+  assert.equal(
+    formatSubmissionLabel({
+      submissionId: 'submission-5',
       status: 'failed',
       failureReason: 'sandbox could not start'
     }),
@@ -359,7 +379,7 @@ test('submission result renderers stay stable', () => {
   );
   assert.equal(
     formatSubmissionDescription({
-      submissionId: 'submission-4',
+      submissionId: 'submission-5',
       status: 'failed',
       failureReason: 'sandbox could not start'
     }),
@@ -380,5 +400,6 @@ test('submission tree nodes avoid duplicating the same text across label and des
 
   const [node] = state.getSubmissionNodes();
   assert.ok(node);
-  assert.notEqual(node.label, node.description);
+  assert.equal(node.label, 'WA    222ms | 4096KB');
+  assert.equal(node.description, '');
 });

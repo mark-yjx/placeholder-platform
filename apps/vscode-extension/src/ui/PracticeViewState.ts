@@ -125,6 +125,10 @@ export function formatSubmissionLabel(result: SubmissionResult): string {
     return result.status;
   }
 
+  if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
+    return `${formatVerdictSummary(result.verdict)}    ${result.timeMs}ms | ${result.memoryKb}KB`;
+  }
+
   if (result.verdict !== undefined) {
     return formatVerdictSummary(result.verdict);
   }
@@ -137,8 +141,8 @@ export function formatSubmissionLabel(result: SubmissionResult): string {
 }
 
 export function formatSubmissionDescription(result: SubmissionResult): string {
-  if (result.verdict !== undefined && result.timeMs !== undefined && result.memoryKb !== undefined) {
-    return `${result.timeMs}ms | ${result.memoryKb}KB`;
+  if (result.verdict !== undefined) {
+    return '';
   }
 
   if (result.status === 'failed' && result.failureReason?.trim()) {
