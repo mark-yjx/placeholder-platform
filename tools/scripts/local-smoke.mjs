@@ -9,7 +9,9 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(scriptDir, '../..');
 const composeFile = path.join(root, 'deploy/local/docker-compose.yml');
 const extensionDistRoot = path.join(root, 'apps', 'vscode-extension', 'dist');
-const MISSING_SOLVE_MESSAGE = 'Submission must define a top-level solve() function';
+function createMissingEntrypointMessage(entryFunction) {
+  return `Submission must define a top-level ${entryFunction}() function`;
+}
 const PYTHON_AST_EXTRACTOR = String.raw`
 import ast
 import json
@@ -361,10 +363,14 @@ function assertNonCompileErrorVerdict(view) {
   }
 }
 
-export function extractSolveOnlyPayload(sourceCode) {
+export function extractEntrypointPayload(sourceCode, entryFunction) {
   const trimmedSource = String(sourceCode ?? '').trim();
   if (!trimmedSource) {
     throw new Error('Source code is required');
+  }
+  const selectedEntrypoint = String(entryFunction ?? '').trim();
+  if (!selectedEntrypoint) {
+    throw new Error('Problem entryFunction is required for submission extraction');
   }
 
   const python = resolvePythonCommand();
@@ -393,9 +399,9 @@ export function extractSolveOnlyPayload(sourceCode) {
     const blocks = JSON.parse(result.stdout);
     const functionBlocks = blocks.filter((block) => block.kind === 'function');
     const constantBlocks = blocks.filter((block) => block.kind === 'constant');
-    const solveBlock = functionBlocks.find((block) => block.name === 'solve');
-    if (!solveBlock) {
-      throw new Error(MISSING_SOLVE_MESSAGE);
+    const entrypointBlock = functionBlocks.find((block) => block.name === selectedEntrypoint);
+    if (!entrypointBlock) {
+      throw new Error(createMissingEntrypointMessage(selectedEntrypoint));
     }
 
     const includedFunctions = new Set();
@@ -408,7 +414,7 @@ export function extractSolveOnlyPayload(sourceCode) {
         constantByName.set(name, block);
       }
     }
-    const functionQueue = ['solve'];
+    const functionQueue = [selectedEntrypoint];
     const constantQueue = [];
 
     const processReference = (reference) => {
@@ -486,7 +492,7 @@ export function extractSolveOnlyPayload(sourceCode) {
       .join('\n\n')
       .trim();
     if (!extractedSourceCode) {
-      throw new Error('Submission extraction produced no runnable solve() payload');
+      throw new Error(`Submission extraction produced no runnable ${selectedEntrypoint}() payload`);
     }
 
     return `${extractedSourceCode}\n`;
@@ -495,17 +501,17 @@ export function extractSolveOnlyPayload(sourceCode) {
   }
 }
 
-export function assertMissingSolveRejected() {
+export function assertMissingEntrypointRejected(entryFunction) {
   try {
-    extractSolveOnlyPayload('print(42)\n');
+    extractEntrypointPayload('print(42)\n', entryFunction);
   } catch (error) {
-    if (error instanceof Error && error.message === MISSING_SOLVE_MESSAGE) {
+    if (error instanceof Error && error.message === createMissingEntrypointMessage(entryFunction)) {
       return;
     }
     throw error;
   }
 
-  throw new Error('Expected missing solve() payload to be rejected');
+  throw new Error(`Expected missing ${entryFunction}() payload to be rejected`);
 }
 
 async function waitForSubmissionResult(submissionId, token, expectedStatus, expectedVerdict, attempts, intervalMs) {
@@ -629,12 +635,12 @@ INSERT INTO problem_version_assets (
 )
 VALUES (
   '${problemVersionId}',
-  'solve',
+  'collapse',
   'python',
   'public',
   2000,
   131072,
-  E'def solve():\\n    return 42\\n',
+  E'def collapse():\\n    return 42\\n',
   'local-smoke-${problemVersionId}'
 )
 ON CONFLICT (problem_version_id) DO UPDATE SET
@@ -755,14 +761,14 @@ async function runFlow() {
   assertReviewPresent(reviewsBefore, problemId, 'review list before restart');
   console.log('ok');
 
-  process.stdout.write('[smoke] reject missing solve() payload... ');
-  assertMissingSolveRejected();
+  process.stdout.write('[smoke] reject missing configured entryFunction payload... ');
+  assertMissingEntrypointRejected('collapse');
   console.log('ok');
 
-  const sourceCode = extractSolveOnlyPayload(`
-def solve():
+  const sourceCode = extractEntrypointPayload(`
+def collapse():
     return 42
-`);
+`, 'collapse');
 
   process.stdout.write('[smoke] submit through extension practice client and wait for compose worker result... ');
   const submission = await extensionStudentLoop.practiceCommands.submitCode({

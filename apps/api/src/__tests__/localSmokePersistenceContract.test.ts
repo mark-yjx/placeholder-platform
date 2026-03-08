@@ -67,10 +67,10 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /worker logs missing running event/);
   assert.match(script, /expected exactly one claimed worker event/);
   assert.match(script, /expected exactly one completed worker event/);
-  assert.match(script, /reject missing solve\(\) payload/);
-  assert.match(script, /assertMissingSolveRejected/);
-  assert.match(script, /extractSolveOnlyPayload/);
-  assert.match(script, /Submission must define a top-level solve\(\) function/);
+  assert.match(script, /reject missing configured entryFunction payload/);
+  assert.match(script, /assertMissingEntrypointRejected/);
+  assert.match(script, /extractEntrypointPayload/);
+  assert.match(script, /Submission must define a top-level .*?\(\) function/);
   assert.match(script, /configureSmokeJudge/);
   assert.match(script, /practiceCommands\.listSubmissions/);
   assert.match(script, /assertNonCompileErrorVerdict/);
@@ -79,7 +79,7 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /COUNT\(\*\) FROM judge_results/);
   assert.match(script, /COUNT\(\*\) FROM judge_jobs/);
   assert.match(script, /sourceCode/);
-  assert.match(script, /def solve\(\):\s+return 42/);
+  assert.match(script, /def collapse\(\):\s+return 42/);
   assert.doesNotMatch(script, /sourceCode:\s*'print\(42\)'/);
   assert.match(script, /restart compose api service/);
   assert.match(script, /docker', \['compose', '-f', composeFile, 'restart', 'api']/);
@@ -89,11 +89,11 @@ test('local smoke verifies compose worker processing and persistence after API r
   assert.match(script, /assertNoDuplicateWorkerProcessing\(submissionId\)/);
 });
 
-test('local smoke submission helper rejects missing solve() and keeps solve() dependency closure', async () => {
-  const { assertMissingSolveRejected, extractSolveOnlyPayload } = await importSmokeModule();
+test('local smoke submission helper rejects missing configured entryFunction and keeps helper closure', async () => {
+  const { assertMissingEntrypointRejected, extractEntrypointPayload } = await importSmokeModule();
 
-  assert.doesNotThrow(() => assertMissingSolveRejected());
-  const extracted = extractSolveOnlyPayload(`
+  assert.doesNotThrow(() => assertMissingEntrypointRejected('collapse'));
+  const extracted = extractEntrypointPayload(`
 import math
 DEBUG = 999
 OFFSET = 2
@@ -104,16 +104,16 @@ def helper(value):
 def unused():
     return DEBUG
 
-def solve():
+def collapse():
     return helper(40.8)
 
 print("debug")
-`);
+`, 'collapse');
 
   assert.match(extracted, /^import math$/m);
   assert.match(extracted, /^OFFSET = 2$/m);
   assert.match(extracted, /^def helper\(value\):$/m);
-  assert.match(extracted, /^def solve\(\):$/m);
+  assert.match(extracted, /^def collapse\(\):$/m);
   assert.doesNotMatch(extracted, /^DEBUG = 999$/m);
   assert.doesNotMatch(extracted, /^def unused\(\):$/m);
   assert.doesNotMatch(extracted, /print\("debug"\)/);
@@ -128,14 +128,14 @@ test('README and demo checklist document smoke:local as the one-command local de
   assert.match(readme, /npm run smoke:local/);
   assert.match(readme, /builds and exercises the extension HTTP client path/i);
   assert.match(readme, /imports sample problems from `data\/problems`/);
-  assert.match(readme, /verifies the extension `solve\(\)` submit contract/i);
+  assert.match(readme, /verifies the extension `entryFunction` submit contract/i);
   assert.match(readme, /queued -> running -> finished\|failed/);
 
   assert.match(checklist, /One-Command Demo/);
   assert.match(checklist, /npm run smoke:local/);
   assert.match(checklist, /exercises the extension login\/fetch\/submit flow against the live API/i);
   assert.match(checklist, /imports sample problems from `data\/problems`/);
-  assert.match(checklist, /rejects submissions without a top-level `solve\(\)`/i);
+  assert.match(checklist, /rejects submissions without the configured top-level entry function/i);
   assert.match(checklist, /waits for API readiness instead of relying on fixed startup sleeps/);
   assert.match(checklist, /no duplicate worker processing/);
   assert.match(checklist, /do not start a second host-side `npm run worker:start`/i);

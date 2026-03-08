@@ -1395,12 +1395,23 @@ test('submit current file rejects an empty editor', async () => {
   );
 });
 
-test('submit current file rejects missing solve()', async () => {
+test('submit current file rejects missing configured entryFunction()', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const outputLines: string[] = [];
   let submitCalled = false;
 
   class RecordingPracticeCommands extends PracticeCommands {
+    override async fetchProblemDetail(problemId: string) {
+      return {
+        problemId,
+        versionId: `${problemId}-v1`,
+        title: 'Collapse Identical Digits',
+        statementMarkdown: 'Solve it',
+        entryFunction: 'collapse',
+        starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
+      };
+    }
+
     override async submitCode(): Promise<{ submissionId: string }> {
       submitCalled = true;
       return { submissionId: 'submission-1' };
@@ -1435,7 +1446,7 @@ test('submit current file rejects missing solve()', async () => {
         document: {
           languageId: 'python',
           fileName: '/tmp/solution.py',
-          getText: () => 'def collapse(number):\n    return number\n'
+          getText: () => 'def solve():\n    return 42\n'
         }
       },
       showErrorMessage: () => undefined,
@@ -1454,18 +1465,18 @@ test('submit current file rejects missing solve()', async () => {
   assert.equal(submitCalled, false);
   assert.ok(
     outputLines.some((line) =>
-      line.includes('[oj.practice.submitCurrentFile] error: Submission must define a top-level solve() function')
+      line.includes('[oj.practice.submitCurrentFile] error: Submission must define a top-level collapse() function')
     )
   );
 });
 
-test('submit payload extraction keeps solve() only when no helper is referenced', () => {
+test('submit payload extraction keeps configured entryFunction only when no helper is referenced', () => {
   const extracted = extractSubmitPayload(`
 import math
 
-def solve():
+def collapse():
     """ 
-    >>> solve()
+    >>> collapse()
     42
     """
     return 42
@@ -1475,31 +1486,31 @@ def unused():
 
 if __name__ == "__main__":
     print("debug")
-`.trim());
+`.trim(), 'collapse');
 
-  assert.match(extracted, /^def solve\(\):$/m);
-  assert.doesNotMatch(extracted, />>> solve/);
+  assert.match(extracted, /^def collapse\(\):$/m);
+  assert.doesNotMatch(extracted, />>> collapse/);
   assert.doesNotMatch(extracted, /^def unused\(\):$/m);
   assert.doesNotMatch(extracted, /__name__ == "__main__"/);
 });
 
-test('submit payload extraction includes solve() and referenced helper defs', () => {
+test('submit payload extraction includes configured entryFunction and referenced helper defs', () => {
   const extracted = extractSubmitPayload(`
 import math
 
 def helper(value):
     return math.floor(value)
 
-def solve():
+def collapse():
     return helper(2.7)
-`.trim());
+`.trim(), 'collapse');
 
   assert.match(extracted, /^import math$/m);
   assert.match(extracted, /^def helper\(value\):$/m);
-  assert.match(extracted, /^def solve\(\):$/m);
+  assert.match(extracted, /^def collapse\(\):$/m);
 });
 
-test('submit payload extraction includes constants required by solve() helper closure', () => {
+test('submit payload extraction includes constants required by entryFunction helper closure', () => {
   const extracted = extractSubmitPayload(`
 import math
 DEBUG = 999
@@ -1508,28 +1519,28 @@ OFFSET = 2
 def helper(value):
     return math.floor(value) + OFFSET
 
-def solve():
+def collapse():
     return helper(40.8)
-`.trim());
+`.trim(), 'collapse');
 
   assert.match(extracted, /^import math$/m);
   assert.match(extracted, /^OFFSET = 2$/m);
   assert.match(extracted, /^def helper\(value\):$/m);
-  assert.match(extracted, /^def solve\(\):$/m);
+  assert.match(extracted, /^def collapse\(\):$/m);
   assert.doesNotMatch(extracted, /^DEBUG = 999$/m);
 });
 
 test('submit payload extraction excludes __main__ blocks', () => {
   const extracted = extractSubmitPayload(`
-def solve():
+def collapse():
     return 42
 
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
-`.trim());
+`.trim(), 'collapse');
 
-  assert.match(extracted, /^def solve\(\):$/m);
+  assert.match(extracted, /^def collapse\(\):$/m);
   assert.doesNotMatch(extracted, /doctest/);
   assert.doesNotMatch(extracted, /__name__ == "__main__"/);
 });

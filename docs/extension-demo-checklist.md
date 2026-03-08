@@ -15,7 +15,7 @@ What it does:
 - starts the compose-managed stack
 - applies schema and seed data
 - imports sample problems from `data/problems`
-- rejects submissions without a top-level `solve()` before sending a valid payload
+- rejects submissions without the configured top-level entry function before sending a valid payload
 - waits for API readiness instead of relying on fixed startup sleeps
 - submits a real solution through the live API and compose worker
 - verifies a terminal submission result with no duplicate worker processing

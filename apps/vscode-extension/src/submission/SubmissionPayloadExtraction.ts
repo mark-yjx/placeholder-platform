@@ -256,7 +256,7 @@ function parseTopLevelBlocks(sourceCode: string): readonly ExtractedBlock[] {
   }
 }
 
-export function extractSubmitPayload(sourceCode: string, entryFunction = 'solve'): string {
+export function extractSubmitPayload(sourceCode: string, entryFunction: string): string {
   const trimmed = sourceCode.trim();
   if (!trimmed) {
     throw new Error('Source code is required');
