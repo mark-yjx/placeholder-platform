@@ -31,6 +31,11 @@ type ProblemManifestAssetRow = {
   visibility: 'public' | 'private';
   time_limit_ms: number;
   memory_limit_kb: number;
+  examples: Array<{
+    input: unknown;
+    output?: unknown;
+    expected?: unknown;
+  }> | null;
   starter_code: string;
 };
 
@@ -107,6 +112,7 @@ SELECT pva.starter_code AS starter_code
      , pva.visibility AS visibility
      , pva.time_limit_ms AS time_limit_ms
      , pva.memory_limit_kb AS memory_limit_kb
+     , pva.examples AS examples
 FROM problem_version_assets pva
 WHERE pva.problem_version_id = $1
 LIMIT 1
@@ -244,6 +250,10 @@ export class PostgresProblemRepository
     timeLimitMs: number;
     memoryLimitKb: number;
     starterCode: string;
+    examples: readonly {
+      input: unknown;
+      output: unknown;
+    }[];
     publicTests: readonly {
       input: unknown;
       output: unknown;
@@ -268,6 +278,10 @@ export class PostgresProblemRepository
       timeLimitMs: rows[0].time_limit_ms,
       memoryLimitKb: rows[0].memory_limit_kb,
       starterCode: rows[0].starter_code,
+      examples: (rows[0].examples ?? []).map((example) => ({
+        input: example.input,
+        output: example.output ?? example.expected
+      })),
       publicTests: publicTestRows.map((row) => ({
         input: row.input,
         output: row.expected

@@ -8,6 +8,10 @@ export type ManifestProblemAssets = {
   timeLimitMs: number;
   memoryLimitKb: number;
   starterCode: string;
+  examples: readonly {
+    input: unknown;
+    output: unknown;
+  }[];
   publicTests: readonly {
     input: unknown;
     output: unknown;
@@ -40,6 +44,10 @@ export type StudentProblemDetailView = StudentProblemView & {
   starterCode: string;
   timeLimitMs: number;
   memoryLimitKb: number;
+  examples: readonly {
+    input: unknown;
+    output: unknown;
+  }[];
   publicTests: readonly {
     input: unknown;
     output: unknown;
@@ -93,6 +101,7 @@ export class StudentProblemQueryService {
       starterCode: assets.starterCode,
       timeLimitMs: assets.timeLimitMs,
       memoryLimitKb: assets.memoryLimitKb,
+      examples: assets.examples,
       publicTests: assets.publicTests
     };
   }

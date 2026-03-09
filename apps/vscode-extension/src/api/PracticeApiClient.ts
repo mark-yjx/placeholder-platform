@@ -20,6 +20,7 @@ export type ProblemDetail = PublishedProblem & {
   language?: 'python';
   timeLimitMs?: number;
   memoryLimitKb?: number;
+  examples?: readonly PublicProblemTestCase[];
   publicTests?: readonly PublicProblemTestCase[];
 };
 

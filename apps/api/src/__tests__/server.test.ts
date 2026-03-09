@@ -48,6 +48,7 @@ function createRuntime() {
             starterCode: 'def two_sum(nums, target):\n    return 42\n',
             timeLimitMs: 2000,
             memoryLimitKb: 262144,
+            examples: [{ input: [2, 7, 11, 15], output: [0, 1] }],
             publicTests: []
           };
         }
@@ -543,6 +544,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
             starterCode: 'def two_sum(nums, target):\n    return 42\n',
             timeLimitMs: 2000,
             memoryLimitKb: 262144,
+            examples: [{ input: [2, 7, 11, 15], output: [0, 1] }],
             publicTests: []
           };
         }
@@ -683,6 +685,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     starterCode: 'def two_sum(nums, target):\n    return 42\n',
     timeLimitMs: 2000,
     memoryLimitKb: 262144,
+    examples: [{ input: [2, 7, 11, 15], output: [0, 1] }],
     publicTests: []
   });
 
@@ -845,6 +848,7 @@ test('student problem endpoints whitelist manifest-driven public fields only', a
             starterCode: 'def collapse(number):\n    return number\n',
             timeLimitMs: 2000,
             memoryLimitKb: 262144,
+            examples: [{ input: [111], output: 1 }],
             hiddenTests: [{ input: [111], expected: 1 }],
             publicTests: [{ input: [122], output: 12 }]
           } as never;
@@ -889,6 +893,7 @@ test('student problem endpoints whitelist manifest-driven public fields only', a
     starterCode: 'def collapse(number):\n    return number\n',
     timeLimitMs: 2000,
     memoryLimitKb: 262144,
+    examples: [{ input: [111], output: 1 }],
     publicTests: [{ input: [122], output: 12 }]
   });
   assert.equal('hiddenTests' in (detailResponse.body as Record<string, unknown>), false);

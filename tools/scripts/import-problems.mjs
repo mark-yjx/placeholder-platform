@@ -326,6 +326,7 @@ export function createContentDigest(problem) {
     title: problem.title,
     statement: problem.statement,
     starterCode: problem.starterCode,
+    examples: problem.examples,
     publicTests: problem.publicTests,
     hiddenTests: problem.hiddenTests,
     entryFunction: problem.entryFunction,
@@ -398,6 +399,8 @@ export function readProblemDefinition(problemDir) {
   }
 
   validateManifestCases(metadata, 'publicTests', metadata.problemId);
+  validateManifestCases(metadata, 'examples', metadata.problemId);
+  const examples = parseManifestCasesFile(manifestPath, 'examples', metadata.problemId);
   const publicTests = parseManifestCasesFile(manifestPath, 'publicTests', metadata.problemId);
   const hiddenTests = parseJsonCasesFile(path.join(problemDir, 'hidden.json'), 'hidden test file');
 
@@ -406,6 +409,7 @@ export function readProblemDefinition(problemDir) {
     title: metadata.title.trim(),
     statement,
     starterCode,
+    examples,
     publicTests,
     hiddenTests,
     entryFunction: metadata.entryFunction.trim(),
@@ -545,10 +549,11 @@ INSERT INTO problem_version_assets (
   tags,
   manifest_version,
   author,
+  examples,
   starter_code,
   content_digest
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, $12)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11::jsonb, $12, $13)
 `;
 
 const INSERT_PROBLEM_TEST_SQL = `
@@ -622,6 +627,7 @@ export function createPostgresProblemImportStore(sqlClient) {
         JSON.stringify(problem.tags ?? []),
         problem.version ?? null,
         problem.author ?? null,
+        JSON.stringify(problem.examples),
         problem.starterCode,
         problem.contentDigest
       ]);
@@ -652,6 +658,7 @@ export function createPostgresProblemImportStore(sqlClient) {
         JSON.stringify(problem.tags ?? []),
         problem.version ?? null,
         problem.author ?? null,
+        JSON.stringify(problem.examples),
         problem.starterCode,
         problem.contentDigest
       ]);

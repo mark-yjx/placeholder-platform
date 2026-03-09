@@ -25,7 +25,9 @@ test('import persistence stores optional manifest metadata alongside problem ass
   assert.match(importer, /tags,/i);
   assert.match(importer, /manifest_version,/i);
   assert.match(importer, /author,/i);
+  assert.match(importer, /examples,/i);
   assert.match(importer, /JSON\.stringify\(problem\.tags \?\? \[\]\)/);
+  assert.match(importer, /JSON\.stringify\(problem\.examples\)/);
 });
 
 test('student-facing problem projections expose public tests without leaking hidden or raw judge payloads', () => {
@@ -41,5 +43,6 @@ test('student-facing problem projections expose public tests without leaking hid
   assert.match(service, /timeLimitMs:/);
   assert.match(service, /memoryLimitKb:/);
   assert.match(service, /starterCode:/);
+  assert.match(service, /examples:/);
   assert.match(service, /publicTests:/);
 });

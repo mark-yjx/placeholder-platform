@@ -56,7 +56,8 @@ export class InMemoryPracticeApiClient implements PracticeApiClient {
       language: 'python',
       starterCode: `def ${problemId.replace(/-/g, '_')}():\n    # YOUR CODE HERE\n    raise NotImplementedError\n`,
       timeLimitMs: 2000,
-      memoryLimitKb: 262144
+      memoryLimitKb: 262144,
+      examples: [{ input: [1, 2, 3], output: 6 }]
     };
   }
 

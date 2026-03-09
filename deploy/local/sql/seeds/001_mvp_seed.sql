@@ -46,6 +46,7 @@ INSERT INTO problem_version_assets (
   tags,
   manifest_version,
   author,
+  examples,
   starter_code,
   content_digest
 )
@@ -61,12 +62,13 @@ VALUES
     '["digits","iteration"]'::jsonb,
     '1.0.0',
     'COMP9021 Staff',
+    '[{"input":"111","output":"1"},{"input":"111122223333","output":"123"}]'::jsonb,
 $$def collapse(number):
     """Collapse adjacent repeated digits while preserving sign."""
     # YOUR CODE HERE
     raise NotImplementedError
 $$,
-    '15b2fb79497422f1b3ca4993577bdaf7e6d4cd45f442dbe7966503999ccb1873'
+    '80eb5ef2cfe2f2ec81f65a90aa834fded90dd2148e742ffb73b9f297eb875e7f'
   )
 ON CONFLICT (problem_version_id) DO NOTHING;
 

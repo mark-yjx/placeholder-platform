@@ -90,6 +90,16 @@ test('phase manifest metadata migration defines optional manifest fields on prob
   assert.match(seed, /author,/i);
 });
 
+test('phase manifest examples migration defines optional examples array on problem assets', () => {
+  const sql = readFromRoot('deploy', 'local', 'sql', 'migrations', '010_problem_manifest_examples.sql');
+  const seed = readFromRoot('deploy', 'local', 'sql', 'seeds', '001_mvp_seed.sql');
+
+  assert.match(sql, /ALTER TABLE problem_version_assets/i);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS examples JSONB/i);
+  assert.match(sql, /CHECK \(examples IS NULL OR jsonb_typeof\(examples\) = 'array'\)/i);
+  assert.match(seed, /examples,/i);
+});
+
 test('auth password migration stores password hashes for local login verification', () => {
   const migration = readFromRoot('deploy', 'local', 'sql', 'migrations', '008_auth_passwords.sql');
   const seed = readFromRoot('deploy', 'local', 'sql', 'seeds', '001_mvp_seed.sql');

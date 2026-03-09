@@ -177,7 +177,8 @@ test('registered command writes to output channel on success', async () => {
       language: 'python',
       starterCode: 'def problem_1():\n    # YOUR CODE HERE\n    raise NotImplementedError\n',
       timeLimitMs: 2000,
-      memoryLimitKb: 262144
+      memoryLimitKb: 262144,
+      examples: [{ input: [1, 2, 3], output: 6 }]
     }
   ]);
   assert.deepEqual(practiceViewCalls.openedProblems, []);

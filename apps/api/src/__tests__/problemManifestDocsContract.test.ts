@@ -38,6 +38,7 @@ test('problem manifest spec defines canonical manifest metadata and layer respon
   assert.match(spec, /`timeLimitMs`/);
   assert.match(spec, /`memoryLimitKb`/);
   assert.match(spec, /`visibility`/);
+  assert.match(spec, /`examples`/);
   assert.match(spec, /`difficulty`/);
   assert.match(spec, /`tags`/);
   assert.match(spec, /`version`/);
@@ -71,6 +72,10 @@ test('sample collapse manifest problem folder matches the canonical manifest lay
     timeLimitMs: number;
     memoryLimitKb: number;
     visibility: string;
+    examples: Array<{
+      input: unknown;
+      output: unknown;
+    }>;
     publicTests: Array<{
       input: unknown;
       output: unknown;
@@ -95,6 +100,7 @@ test('sample collapse manifest problem folder matches the canonical manifest lay
   assert.equal(manifest.timeLimitMs, 2000);
   assert.equal(manifest.memoryLimitKb, 65536);
   assert.equal(manifest.visibility, 'public');
+  assert.equal(manifest.examples.length > 0, true);
   assert.equal(manifest.publicTests.length > 0, true);
   assert.equal(manifest.difficulty, 'easy');
   assert.deepEqual(manifest.tags, ['digits', 'iteration']);

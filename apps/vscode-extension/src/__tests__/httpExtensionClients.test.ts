@@ -71,6 +71,7 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
         title: 'Two Sum',
         statementMarkdown: 'Solve it',
         starterCode: 'def two_sum():\n    pass\n',
+        examples: [{ input: [2, 7, 11, 15], output: [0, 1] }],
         publicTests: [{ input: 1, output: 1 }]
       });
     }
@@ -115,6 +116,7 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
       title: 'Two Sum',
       statementMarkdown: 'Solve it',
       starterCode: 'def two_sum():\n    pass\n',
+      examples: [{ input: [2, 7, 11, 15], output: [0, 1] }],
       publicTests: [{ input: 1, output: 1 }]
     });
 

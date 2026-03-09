@@ -53,6 +53,7 @@ async function writeManifestProblem(
       timeLimitMs,
       memoryLimitKb,
       visibility,
+      examples: [],
       publicTests: []
     }),
     'utf8'
@@ -72,6 +73,10 @@ test('problem import creates collapse on first import and skips an identical re-
   assert.deepEqual(definitions[0].tags, ['digits', 'iteration']);
   assert.equal(definitions[0].version, '1.0.0');
   assert.equal(definitions[0].author, 'COMP9021 Staff');
+  assert.deepEqual(definitions[0].examples, [
+    { inputJson: '111', expectedJson: '1' },
+    { inputJson: '111122223333', expectedJson: '123' }
+  ]);
   assert.deepEqual(definitions[0].publicTests, [
     { inputJson: '0', expectedJson: '0' },
     { inputJson: '12321', expectedJson: '12321' },
@@ -213,6 +218,7 @@ test('problem import rejects missing hidden.json in the manifest layout', async 
       timeLimitMs: 1000,
       memoryLimitKb: 1024,
       visibility: 'public',
+      examples: [],
       publicTests: []
     }),
     'utf8'
@@ -268,7 +274,7 @@ test('problem import rejects invalid manifest field values for entryFunction, la
   }
 });
 
-test('problem import rejects malformed publicTests and hidden.json payloads', async () => {
+test('problem import rejects malformed examples, publicTests and hidden.json payloads', async () => {
   const importer = await loadImporterModule();
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'oj-manifest-bad-tests-'));
   const problemDir = path.join(tempRoot, 'bad-tests');
@@ -284,6 +290,31 @@ test('problem import rejects malformed publicTests and hidden.json payloads', as
       timeLimitMs: 1000,
       memoryLimitKb: 1024,
       visibility: 'public',
+      examples: '{not-json}',
+      publicTests: []
+    }),
+    'utf8'
+  );
+  await writeFile(path.join(problemDir, 'statement.md'), '# Bad Tests\n', 'utf8');
+  await writeFile(path.join(problemDir, 'starter.py'), 'def run():\n    return 1\n', 'utf8');
+  await writeFile(path.join(problemDir, 'hidden.json'), '[]\n', 'utf8');
+
+  assert.throws(
+    () => importer.readProblemDefinition(problemDir),
+    /must define examples as an array/
+  );
+
+  await writeFile(
+    path.join(problemDir, 'manifest.json'),
+    JSON.stringify({
+      problemId: 'bad-tests',
+      title: 'Bad Tests',
+      entryFunction: 'run',
+      language: 'python',
+      timeLimitMs: 1000,
+      memoryLimitKb: 1024,
+      visibility: 'public',
+      examples: [],
       publicTests: '{not-json}'
     }),
     'utf8'
@@ -307,6 +338,7 @@ test('problem import rejects malformed publicTests and hidden.json payloads', as
       timeLimitMs: 1000,
       memoryLimitKb: 1024,
       visibility: 'public',
+      examples: [],
       publicTests: []
     }),
     'utf8'
@@ -317,6 +349,53 @@ test('problem import rejects malformed publicTests and hidden.json payloads', as
     () => importer.readProblemDefinition(problemDir),
     /Expected JSON array|Invalid JSON/
   );
+});
+
+test('problem import treats starter.py as code-only and reads examples/public/hidden tests from explicit files', async () => {
+  const importer = await loadImporterModule();
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'oj-manifest-starter-only-'));
+  const problemDir = path.join(tempRoot, 'starter-only');
+
+  await mkdir(problemDir, { recursive: true });
+  await writeFile(
+    path.join(problemDir, 'manifest.json'),
+    JSON.stringify({
+      problemId: 'starter-only',
+      title: 'Starter Only',
+      entryFunction: 'run',
+      language: 'python',
+      timeLimitMs: 1000,
+      memoryLimitKb: 1024,
+      visibility: 'public',
+      examples: [{ input: 1, output: 2 }],
+      publicTests: [{ input: 2, output: 3 }]
+    }),
+    'utf8'
+  );
+  await writeFile(path.join(problemDir, 'statement.md'), '# Starter Only\n', 'utf8');
+  await writeFile(
+    path.join(problemDir, 'starter.py'),
+    [
+      'def run(value):',
+      '    """Example implementation."""',
+      '    # doctest-looking content here must not be treated as tests',
+      '    # >>> run(10)',
+      '    # 11',
+      '    return value + 1',
+      ''
+    ].join('\n'),
+    'utf8'
+  );
+  await writeFile(
+    path.join(problemDir, 'hidden.json'),
+    JSON.stringify([{ input: 9, output: 10 }]),
+    'utf8'
+  );
+
+  const definition = importer.readProblemDefinition(problemDir);
+  assert.deepEqual(definition.examples, [{ inputJson: '1', expectedJson: '2' }]);
+  assert.deepEqual(definition.publicTests, [{ inputJson: '2', expectedJson: '3' }]);
+  assert.deepEqual(definition.hiddenTests, [{ inputJson: '9', expectedJson: '10' }]);
 });
 
 test('runProblemImport rejects malformed manifests before any import succeeds', async () => {
