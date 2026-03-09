@@ -7,27 +7,56 @@ Minimal FastAPI scaffold for the admin-facing API.
 From the repository root:
 
 ```bash
-python3 -m venv /tmp/oj-admin-api-venv
+UV_CACHE_DIR=/tmp/uv-cache uv venv --clear /tmp/oj-admin-api-venv
 source /tmp/oj-admin-api-venv/bin/activate
-pip install -r apps/admin-api/requirements.txt
+UV_CACHE_DIR=/tmp/uv-cache uv pip install --python /tmp/oj-admin-api-venv/bin/python -r apps/admin-api/requirements.txt
+ADMIN_EMAIL=admin@example.com \
+ADMIN_PASSWORD='correct horse' \
+ADMIN_TOKEN_SECRET='local-admin-secret' \
 uvicorn app.main:app --app-dir apps/admin-api --reload --port 8200
 ```
 
-The health route is available at:
+Routes available in this MVP:
 
 ```text
 GET http://127.0.0.1:8200/healthz
+POST http://127.0.0.1:8200/admin/auth/login
+GET http://127.0.0.1:8200/admin/auth/me
 ```
 
-Expected response:
+Expected login request:
 
 ```json
-{ "status": "ok" }
+{
+  "email": "admin@example.com",
+  "password": "correct horse"
+}
+```
+
+Expected login response:
+
+```json
+{
+  "token": "<signed token>",
+  "user": {
+    "email": "admin@example.com",
+    "role": "admin"
+  }
+}
 ```
 
 ## Run tests
 
 ```bash
 source /tmp/oj-admin-api-venv/bin/activate
-PYTHONDONTWRITEBYTECODE=1 pytest -p no:cacheprovider apps/admin-api/tests
+PYTHONDONTWRITEBYTECODE=1 python -m pytest -p no:cacheprovider apps/admin-api/tests
 ```
+
+Admin auth is configured explicitly through:
+
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `ADMIN_TOKEN_SECRET`
+
+The API does not persist admin users yet. It validates against the configured
+admin credentials and returns a signed bearer token for the Admin Web MVP.

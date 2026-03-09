@@ -63,3 +63,63 @@ body {
   max-width: 48ch;
   color: #44516b;
 }
+
+.auth-card {
+  max-width: 28rem;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(20, 33, 61, 0.18);
+  border-radius: 14px;
+  background: #fffdf8;
+  color: inherit;
+  font: inherit;
+}
+
+.primary-button,
+.secondary-button {
+  width: fit-content;
+  padding: 0.8rem 1.15rem;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button {
+  border: none;
+  background: #14213d;
+  color: #fdf7ec;
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.secondary-button {
+  margin-top: 1.5rem;
+  border: 1px solid rgba(20, 33, 61, 0.2);
+  background: transparent;
+  color: #14213d;
+}
+
+.error-message {
+  margin: 0;
+  color: #a12c2c;
+  font-weight: 600;
+}
