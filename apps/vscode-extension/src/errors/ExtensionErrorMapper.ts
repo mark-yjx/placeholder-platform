@@ -1,3 +1,5 @@
+import { StudentOnlyExtensionError, STUDENT_ONLY_EXTENSION_MESSAGE } from '../auth/AuthCommands';
+
 export type ApiErrorPayload = {
   error?: {
     code?: string;
@@ -27,6 +29,13 @@ function normalizeApiMessage(payload?: ApiErrorPayload): string | null {
 }
 
 export function mapExtensionError(error: unknown): MappedExtensionError {
+  if (error instanceof StudentOnlyExtensionError) {
+    return {
+      userMessage: STUDENT_ONLY_EXTENSION_MESSAGE,
+      logMessage: STUDENT_ONLY_EXTENSION_MESSAGE
+    };
+  }
+
   if (error instanceof ExtensionApiError) {
     const apiMessage = normalizeApiMessage(error.payload);
 

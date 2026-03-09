@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AuthClient } from '../auth/AuthClient';
-import { AuthCommands } from '../auth/AuthCommands';
+import { AuthCommands, STUDENT_ONLY_EXTENSION_MESSAGE } from '../auth/AuthCommands';
 import { SecretStorageLike, SessionTokenStore } from '../auth/SessionTokenStore';
 import { ExtensionApiError } from '../errors/ExtensionErrorMapper';
 import { AccountWebviewProvider } from '../ui/AccountWebviewProvider';
@@ -67,7 +67,8 @@ test('account panel renders unauthenticated login form', () => {
     })
   );
 
-  assert.match(html, /Sign in to OJ\./);
+  assert.match(html, /Sign in to OJ as a student\./);
+  assert.doesNotMatch(html, /Administrators must use Web Admin/);
   assert.match(html, /<vscode-text-field id="oj-account-email" type="email">/);
   assert.match(html, /<vscode-text-field id="oj-account-password" type="password">/);
   assert.match(html, /<vscode-button appearance="primary" data-command="login">Login<\/vscode-button>/);
@@ -84,7 +85,7 @@ test('account panel renders unauthenticated state when identity is incomplete', 
     })
   );
 
-  assert.match(html, /Sign in to OJ\./);
+  assert.match(html, /Sign in to OJ as a student\./);
   assert.match(html, /data-command="login"/);
 });
 
@@ -224,8 +225,43 @@ test('account panel clears incomplete session after login', async () => {
     email: null,
     role: null
   });
-  assert.match(webview.html, /Sign in to OJ\./);
+  assert.match(webview.html, /Sign in to OJ as a student\./);
   assert.deepEqual(errorMessages, [
     'Login failed because the account profile is incomplete. Try again or contact your instructor.'
   ]);
+});
+
+test('account panel rejects admin login and clears any existing session', async () => {
+  const tokenStore = new SessionTokenStore(new FakeSecretStorage());
+  await tokenStore.setSession({
+    accessToken: 'student-token',
+    email: 'student@example.com',
+    role: 'student'
+  });
+  const errorMessages: string[] = [];
+  const webview = new FakeWebview();
+  const provider = new AccountWebviewProvider(
+    new AuthCommands(new FakeAuthClient({ accessToken: 'admin-token', role: 'admin' }), tokenStore),
+    tokenStore,
+    {
+      showInformationMessage: () => undefined,
+      showErrorMessage: (message) => errorMessages.push(message)
+    }
+  );
+
+  provider.resolveWebviewView({ webview } as never);
+  await webview.dispatch({
+    command: 'login',
+    email: 'admin@example.com',
+    password: 'secret'
+  });
+
+  assert.equal(tokenStore.isAuthenticated(), false);
+  assert.deepEqual(tokenStore.getSessionIdentity(), {
+    email: null,
+    role: null
+  });
+  assert.match(webview.html, /Sign in to OJ as a student\./);
+  assert.match(webview.html, new RegExp(STUDENT_ONLY_EXTENSION_MESSAGE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.deepEqual(errorMessages, [STUDENT_ONLY_EXTENSION_MESSAGE]);
 });

@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { EngagementCommands } from '../engagement/EngagementCommands';
-import { AuthCommands } from '../auth/AuthCommands';
+import { AuthCommands, STUDENT_ONLY_EXTENSION_MESSAGE } from '../auth/AuthCommands';
 import { PracticeCommands } from '../practice/PracticeCommands';
 import { SecretStorageLike, SessionTokenStore } from '../auth/SessionTokenStore';
 import { registerExtensionCommands } from '../extensionCore';
@@ -573,7 +573,8 @@ test('login command prompts for email and password before calling auth login', a
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   let receivedRequest: { email: string; password: string } | null = null;
   const shownPrompts: string[] = [];
-  const inputBoxValues = ['admin@example.com', 'ignored'];
+  const shownPlaceholders: string[] = [];
+  const inputBoxValues = ['student@example.com', 'ignored'];
 
   class RecordingAuthCommands extends AuthCommands {
     override async login(request: { email: string; password: string }): Promise<{
@@ -601,6 +602,7 @@ test('login command prompts for email and password before calling auth login', a
       showInformationMessage: () => undefined,
       showInputBox: async (options) => {
         shownPrompts.push(options?.prompt ?? '');
+        shownPlaceholders.push(options?.placeHolder ?? '');
         return inputBoxValues.shift();
       },
       showQuickPick: async (items) => items[0]
@@ -614,10 +616,11 @@ test('login command prompts for email and password before calling auth login', a
   await handlers.get('oj.login')?.();
 
   assert.deepEqual(receivedRequest, {
-    email: 'admin@example.com',
+    email: 'student@example.com',
     password: 'ignored'
   });
   assert.deepEqual(shownPrompts, ['OJ Login: email', 'OJ Login: password']);
+  assert.deepEqual(shownPlaceholders, ['student1@example.com', 'Enter your password']);
 });
 
 test('login command cancels cleanly when email prompt is dismissed', async () => {
@@ -764,15 +767,15 @@ test('login command stores token in SecretStorage on success', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const secrets = new FakeSecretStorage();
   const tokenStore = new SessionTokenStore(secrets);
-  const inputBoxValues = ['admin@example.com', 'ignored'];
+  const inputBoxValues = ['student@example.com', 'ignored'];
 
   class RecordingAuthClient extends InMemoryAuthClient {
-    override async login(request: { email: string; password: string }): Promise<{ accessToken: string }> {
+    override async login(request: { email: string; password: string }): Promise<{ accessToken: string; role: 'student' }> {
       assert.deepEqual(request, {
-        email: 'admin@example.com',
+        email: 'student@example.com',
         password: 'ignored'
       });
-      return { accessToken: 'admin-token' };
+      return { accessToken: 'student-token', role: 'student' };
     }
   }
 
@@ -798,12 +801,74 @@ test('login command stores token in SecretStorage on success', async () => {
 
   await handlers.get('oj.login')?.();
 
-  assert.equal(tokenStore.getAccessToken(), 'admin-token');
+  assert.equal(tokenStore.getAccessToken(), 'student-token');
   const restoredStore = new SessionTokenStore(secrets);
   await restoredStore.hydrate();
-  assert.equal(restoredStore.getAccessToken(), 'admin-token');
+  assert.equal(restoredStore.getAccessToken(), 'student-token');
   assert.ok(outputLines.includes('Authenticated'));
   assert.ok(infoMessages.includes('[oj.login] success'));
+});
+
+test('login command rejects admin-role logins and clears the existing session', async () => {
+  const outputLines: string[] = [];
+  const shownErrors: string[] = [];
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const secrets = new FakeSecretStorage();
+  const tokenStore = new SessionTokenStore(secrets);
+  await tokenStore.setSession({
+    accessToken: 'student-token',
+    email: 'student@example.com',
+    role: 'student'
+  });
+  const inputBoxValues = ['admin@example.com', 'ignored'];
+  let authSessionChangedCount = 0;
+
+  class AdminAuthClient extends InMemoryAuthClient {
+    override async login(): Promise<{ accessToken: string; role: 'admin' }> {
+      return { accessToken: 'admin-token', role: 'admin' };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new AdminAuthClient(), tokenStore),
+    practiceCommands: new PracticeCommands(new InMemoryPracticeApiClient(), new SessionTokenStore()),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    onAuthSessionChanged: () => {
+      authSessionChangedCount += 1;
+    },
+    output: { appendLine: (line) => outputLines.push(line) },
+    window: {
+      showErrorMessage: (message) => shownErrors.push(message),
+      showInformationMessage: () => undefined,
+      showInputBox: async () => inputBoxValues.shift(),
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.login')?.();
+
+  assert.equal(authSessionChangedCount, 1);
+  assert.equal(tokenStore.isAuthenticated(), false);
+  assert.deepEqual(tokenStore.getSessionIdentity(), {
+    email: null,
+    role: null
+  });
+  const restoredStore = new SessionTokenStore(secrets);
+  await restoredStore.hydrate();
+  assert.equal(restoredStore.isAuthenticated(), false);
+  assert.deepEqual(restoredStore.getSessionIdentity(), {
+    email: null,
+    role: null
+  });
+  assert.ok(shownErrors.includes(`[oj.login] ${STUDENT_ONLY_EXTENSION_MESSAGE}`));
+  assert.ok(outputLines.includes(`[oj.login] error: ${STUDENT_ONLY_EXTENSION_MESSAGE}`));
 });
 
 test('command error is reported cleanly', async () => {

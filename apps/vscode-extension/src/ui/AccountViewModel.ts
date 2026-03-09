@@ -24,7 +24,7 @@ export function createAccountViewModel(input: {
   if (!input.isAuthenticated || !email || !role) {
     return {
       title: 'Account',
-      status: 'Sign in to OJ.',
+      status: 'Sign in to OJ as a student.',
       email: '',
       role: '',
       errorMessage: input.errorMessage ?? '',
@@ -34,7 +34,7 @@ export function createAccountViewModel(input: {
 
   return {
     title: 'Account',
-    status: 'You are signed in to OJ.',
+    status: 'You are signed in to OJ as a student.',
     email,
     role,
     errorMessage: input.errorMessage ?? '',

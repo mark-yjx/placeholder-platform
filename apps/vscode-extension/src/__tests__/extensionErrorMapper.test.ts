@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  StudentOnlyExtensionError,
+  STUDENT_ONLY_EXTENSION_MESSAGE
+} from '../auth/AuthCommands';
+import {
   ExtensionApiError,
   mapExtensionError
 } from '../errors/ExtensionErrorMapper';
@@ -79,4 +83,11 @@ test('unexpected failures hide raw stack traces from the user', () => {
 
   assert.equal(mapped.userMessage, 'Something went wrong. Check the OJ output channel for details, then try again.');
   assert.match(mapped.logMessage, /boom/);
+});
+
+test('admin-role login rejection surfaces the student-only boundary message', () => {
+  assert.deepEqual(mapExtensionError(new StudentOnlyExtensionError()), {
+    userMessage: STUDENT_ONLY_EXTENSION_MESSAGE,
+    logMessage: STUDENT_ONLY_EXTENSION_MESSAGE
+  });
 });

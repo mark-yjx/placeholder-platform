@@ -326,7 +326,7 @@ export function registerExtensionCommands(
     const loginView = createLoginViewModel();
     const email = await dependencies.window.showInputBox({
       prompt: `${loginView.title}: email`,
-      placeHolder: 'student1@example.com or admin@example.com',
+      placeHolder: 'student1@example.com',
       ignoreFocusOut: true
     });
     if (email === undefined) {
@@ -355,9 +355,12 @@ export function registerExtensionCommands(
           return false;
         }
 
-        await dependencies.authCommands.login(request);
-        dependencies.onAuthSessionChanged?.();
-        dependencies.output.appendLine('Authenticated');
+        try {
+          await dependencies.authCommands.login(request);
+          dependencies.output.appendLine('Authenticated');
+        } finally {
+          dependencies.onAuthSessionChanged?.();
+        }
       })
     ),
     dependencies.registerCommand(
