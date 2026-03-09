@@ -10,6 +10,7 @@ from app.core.auth import (
     require_admin_identity,
 )
 from app.models.auth import (
+    LoginRequest,
     MeResponse,
     SessionResponse,
     TotpEnrollConfirmRequest,
@@ -38,6 +39,38 @@ def _build_admin_web_error_redirect(detail: str) -> RedirectResponse:
     return RedirectResponse(
         url=f"{_build_admin_web_redirect('/login')}?error={safe_message}",
         status_code=status.HTTP_302_FOUND,
+    )
+
+
+@router.post("/login", response_model=SessionResponse)
+def login_with_password(
+    payload: LoginRequest,
+    service: AdminAuthService = Depends(_get_auth_service),
+) -> SessionResponse:
+    try:
+        session = service.login_with_password(payload.email, payload.password)
+    except AdminAuthConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc) or "Invalid email or password.",
+        ) from exc
+
+    if session.user is None or session.token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+        )
+
+    return SessionResponse(
+        state=session.state,
+        token=session.token,
+        user=session.user,
+        pendingExpiresAt=session.pending_expires_at,
     )
 
 

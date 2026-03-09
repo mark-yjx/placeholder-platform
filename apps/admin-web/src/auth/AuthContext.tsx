@@ -8,6 +8,7 @@ import {
 import {
   confirmTotpEnrollment,
   fetchCurrentAdmin,
+  loginAdminLocal,
   logoutAdmin,
   microsoftLoginUrl,
   verifyAdminTotp
@@ -19,6 +20,7 @@ type AuthContextValue = {
   status: AuthStatus;
   user: AdminUser | null;
   pendingExpiresAt: string | null;
+  loginLocal: (email: string, password: string) => Promise<AuthStatus>;
   beginMicrosoftLogin: () => void;
   completeCallback: (token: string) => Promise<AuthStatus>;
   verifyTotp: (code: string) => Promise<void>;
@@ -101,6 +103,14 @@ export function AuthProvider({ children, initialSession }: AuthProviderProps) {
     status,
     user,
     pendingExpiresAt,
+    async loginLocal(email: string, password: string) {
+      const response = await loginAdminLocal(email, password);
+      storeAdminToken(response.token);
+      setStatus(response.state);
+      setUser(response.user);
+      setPendingExpiresAt(response.pendingExpiresAt ?? null);
+      return response.state;
+    },
     beginMicrosoftLogin() {
       window.location.assign(microsoftLoginUrl());
     },

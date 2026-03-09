@@ -3,9 +3,16 @@ from urllib.parse import parse_qs, urlparse
 
 from fastapi.testclient import TestClient
 
-from app.core.auth import AdminIdentity
+from app.core.auth import AdminAuthSettings, AdminIdentity
 from app.main import create_app
-from app.services.admin_auth import AdminAuthSession, TotpEnrollment, TotpVerificationError
+from app.services import admin_auth
+from app.services.admin_auth import (
+    AdminAuthSession,
+    ExternalAdminIdentity,
+    PsycopgAdminAuthService,
+    TotpEnrollment,
+    TotpVerificationError,
+)
 
 
 @dataclass
@@ -35,6 +42,17 @@ class FakeAuthService:
     )
     logout_calls: list[str | None] = field(default_factory=list)
     enrollment_confirmed: bool = False
+
+    def login_with_password(self, email: str, password: str) -> AdminAuthSession:
+        if email == "admin@example.com" and password == "correct horse":
+            return self.sessions["full-token"]
+        if email == "admin@example.com" and password == "needs-totp":
+            return self.sessions["pending-token"]
+        if email == "disabled@example.com":
+            raise ValueError("This admin account is disabled.")
+        if email == "student@example.com":
+            raise ValueError("Admin access is limited to local admin users.")
+        raise ValueError("Invalid email or password.")
 
     def create_oidc_flow(self) -> tuple[str, str]:
         return (
@@ -118,6 +136,166 @@ def test_login_microsoft_redirects_to_provider(monkeypatch) -> None:
 
     assert response.status_code == 302
     assert response.headers["location"].startswith("https://login.microsoftonline.com/mock/authorize")
+
+
+def test_local_login_returns_authenticated_session_for_active_admin(monkeypatch) -> None:
+    client, _ = build_client(monkeypatch)
+
+    response = client.post(
+        "/admin/auth/login",
+        json={"email": "admin@example.com", "password": "correct horse"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "state": "authenticated_admin",
+        "token": "full-token",
+        "user": {
+            "email": "admin@example.com",
+            "userId": "admin-1",
+            "role": "admin",
+            "totpEnabled": False,
+        },
+        "pendingExpiresAt": None,
+    }
+
+
+def test_local_login_creates_pending_totp_session_when_enabled(monkeypatch) -> None:
+    client, _ = build_client(monkeypatch)
+
+    response = client.post(
+        "/admin/auth/login",
+        json={"email": "admin@example.com", "password": "needs-totp"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "state": "pending_tfa",
+        "token": "pending-token",
+        "user": {
+            "email": "admin@example.com",
+            "userId": "admin-1",
+            "role": "admin",
+            "totpEnabled": True,
+        },
+        "pendingExpiresAt": "2026-03-10T10:05:00Z",
+    }
+
+
+def test_local_login_rejects_invalid_password(monkeypatch) -> None:
+    client, _ = build_client(monkeypatch)
+
+    response = client.post(
+        "/admin/auth/login",
+        json={"email": "admin@example.com", "password": "wrong"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid email or password."}
+
+
+def test_local_login_rejects_disabled_user(monkeypatch) -> None:
+    client, _ = build_client(monkeypatch)
+
+    response = client.post(
+        "/admin/auth/login",
+        json={"email": "disabled@example.com", "password": "correct horse"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "This admin account is disabled."}
+
+
+def test_local_login_rejects_non_admin_user(monkeypatch) -> None:
+    client, _ = build_client(monkeypatch)
+
+    response = client.post(
+        "/admin/auth/login",
+        json={"email": "student@example.com", "password": "correct horse"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Admin access is limited to local admin users."}
+
+
+def test_oidc_email_fallback_relinks_existing_provider_mapping_for_same_user(monkeypatch) -> None:
+    executed: list[str] = []
+    rows = iter(
+        [
+            None,
+            {
+                "user_id": "admin-quickstart",
+                "email": "fresh-admin@example.com",
+                "display_name": "Fresh Admin",
+                "role": "admin",
+                "status": "active",
+                "totp_enabled": True,
+            },
+        ]
+    )
+
+    class FakeCursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        def execute(self, sql: str, params=None) -> None:
+            executed.append(sql)
+
+        def fetchone(self):
+            return next(rows, None)
+
+    class FakeConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        def cursor(self):
+            return FakeCursor()
+
+        def commit(self) -> None:
+            return None
+
+    monkeypatch.setattr(admin_auth.psycopg, "connect", lambda *args, **kwargs: FakeConnection())
+    service = PsycopgAdminAuthService(
+        database_url="postgresql://oj:oj@127.0.0.1:5432/oj",
+        settings=AdminAuthSettings(
+            session_secret="local-admin-session-secret",
+            web_base_url="http://127.0.0.1:5173",
+            microsoft_client_id="local-microsoft-client",
+            microsoft_client_secret=None,
+            microsoft_redirect_uri="http://127.0.0.1:8200/admin/auth/callback/microsoft",
+            microsoft_tenant_id="common",
+            microsoft_oidc_mode="mock",
+            microsoft_mock_email="fresh-admin@example.com",
+            microsoft_mock_subject="fresh-admin-microsoft-subject",
+            totp_issuer="OJ Admin Web",
+            session_ttl_seconds=3600,
+            pending_tfa_ttl_seconds=600,
+        ),
+        oidc_service=object(),
+    )
+
+    user = service._resolve_local_user(
+        ExternalAdminIdentity(
+            provider="microsoft",
+            issuer="https://login.microsoftonline.com/common/v2.0",
+            subject="fresh-admin-microsoft-subject",
+            email="fresh-admin@example.com",
+            display_name="Fresh Admin",
+        )
+    )
+
+    assert user.user_id == "admin-quickstart"
+    assert any(
+        "ON CONFLICT (user_id, provider)" in sql
+        for sql in executed
+        if "admin_identity_mappings" in sql
+    )
 
 
 def test_callback_redirects_authenticated_admin_to_web(monkeypatch) -> None:

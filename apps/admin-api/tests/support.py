@@ -12,6 +12,9 @@ class FakeProtectedAdminAuthService:
     user_id: str = "admin-1"
     totp_enabled: bool = False
 
+    def login_with_password(self, email: str, password: str) -> AdminAuthSession:
+        raise ValueError("Local login is not implemented in this helper.")
+
     def create_oidc_flow(self) -> tuple[str, str]:
         return ("fake-flow", "http://example.com/fake-login")
 

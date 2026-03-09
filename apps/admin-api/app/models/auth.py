@@ -20,6 +20,11 @@ class MeResponse(BaseModel):
     pendingExpiresAt: str | None = None
 
 
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=3)
+    password: str = Field(min_length=1)
+
+
 class TotpVerifyRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6)
 

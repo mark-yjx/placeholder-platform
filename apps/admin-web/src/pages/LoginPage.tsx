@@ -1,9 +1,32 @@
-import { useSearchParams } from 'react-router-dom';
+import { FormEvent, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { microsoftLoginUrl } from '../auth/client';
 
 export function LoginPage() {
+  const navigate = useNavigate();
+  const { loginLocal } = useAuth();
   const [searchParams] = useSearchParams();
-  const error = searchParams.get('error');
+  const externalError = searchParams.get('error');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(externalError);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const nextStatus = await loginLocal(email, password);
+      navigate(nextStatus === 'pending_tfa' ? '/verify-totp' : '/', { replace: true });
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Admin login failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <main className="login-shell">
@@ -12,12 +35,12 @@ export function LoginPage() {
           <p className="eyebrow">OJ Admin Web</p>
           <h1>Admin Login</h1>
           <p className="message">
-            Sign in with Microsoft, then complete local admin verification before entering the
-            control surface.
+            Sign in with local admin credentials or Microsoft, then complete local admin
+            verification before entering the control surface.
           </p>
           <p className="hint">
-            Microsoft identity proves who authenticated. Local platform user mapping and TOTP still
-            control who may enter Admin Web.
+            Both local credentials and Microsoft identity still converge into the same local
+            admin authorization and TOTP policy.
           </p>
         </div>
 
@@ -25,17 +48,46 @@ export function LoginPage() {
           <div className="auth-card-header">
             <p className="detail-label">Secure Access</p>
             <p className="detail-value">
-              Admin Web requires Microsoft OIDC and local platform authorization.
+              Admin Web requires local admin authorization. Microsoft sign-in is optional, not a
+              bypass.
             </p>
           </div>
 
-          <div className="auth-form">
+          <form className="auth-form" onSubmit={handleSubmit}>
             {error ? <p className="error-message">{error}</p> : null}
+
+            <label className="field">
+              <span>Email</span>
+              <input
+                autoComplete="username"
+                name="email"
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                value={email}
+              />
+            </label>
+
+            <label className="field">
+              <span>Password</span>
+              <input
+                autoComplete="current-password"
+                name="password"
+                onChange={(event) => setPassword(event.target.value)}
+                type="password"
+                value={password}
+              />
+            </label>
+
+            <button className="primary-button" disabled={isSubmitting} type="submit">
+              {isSubmitting ? 'Signing in...' : 'Sign in'}
+            </button>
+
+            <p className="detail-label">or</p>
 
             <a className="primary-button" href={microsoftLoginUrl()}>
               Sign in with Microsoft
             </a>
-          </div>
+          </form>
         </section>
       </section>
     </main>

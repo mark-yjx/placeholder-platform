@@ -4,10 +4,12 @@ Minimal React + TypeScript + Vite scaffold for the admin-facing web UI.
 
 Current MVP auth flow:
 
-- `POST /admin/auth/login` against `admin-api`
+- local email/password form posts to `POST /admin/auth/login`
+- `Sign in with Microsoft` redirects through `GET /admin/auth/login/microsoft`
 - stores only the signed admin token in `localStorage`
 - restores the admin session by calling `GET /admin/auth/me`
 - redirects unauthenticated users to `/login`
+- redirects `pending_tfa` sessions to `/verify-totp`
 - loads the protected problems list from `GET /admin/problems`
 
 ## Run locally

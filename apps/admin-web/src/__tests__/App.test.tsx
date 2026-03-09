@@ -25,10 +25,13 @@ describe('admin auth flow', () => {
     window.localStorage.clear();
   });
 
-  it('renders the Microsoft sign-in page', () => {
+  it('renders the local login form and Microsoft sign-in option', () => {
     renderApp('/login');
 
     expect(screen.getByRole('heading', { name: 'Admin Login' })).toBeTruthy();
+    expect(screen.getByLabelText('Email')).toBeTruthy();
+    expect(screen.getByLabelText('Password')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Sign in with Microsoft' })).toBeTruthy();
   });
 
@@ -45,6 +48,106 @@ describe('admin auth flow', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Admin Login' })).toBeTruthy();
+    });
+  });
+
+  it('submits the local login form and reaches protected admin pages', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            state: 'unauthenticated',
+            user: null,
+            pendingExpiresAt: null
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            state: 'authenticated_admin',
+            token: 'full-token',
+            user: {
+              email: 'admin@example.com',
+              userId: 'admin-1',
+              role: 'admin',
+              totpEnabled: false
+            },
+            pendingExpiresAt: null
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+
+    renderApp('/login');
+
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'admin@example.com' }
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'correct horse' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Problems' })).toBeTruthy();
+    });
+
+    expect(window.localStorage.getItem('oj.admin.token')).toBe('full-token');
+  });
+
+  it('renders local login failures on the login page', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            state: 'unauthenticated',
+            user: null,
+            pendingExpiresAt: null
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            detail: 'Invalid email or password.'
+          }),
+          {
+            status: 401,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      );
+
+    renderApp('/login');
+
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'admin@example.com' }
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'wrong' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Invalid email or password.')).toBeTruthy();
     });
   });
 

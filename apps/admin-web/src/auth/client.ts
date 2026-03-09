@@ -42,6 +42,26 @@ export function microsoftLoginUrl(): string {
   return `${adminApiBaseUrl()}/admin/auth/login/microsoft`;
 }
 
+export async function loginAdminLocal(
+  email: string,
+  password: string
+): Promise<SessionResponse> {
+  const response = await fetch(`${adminApiBaseUrl()}/admin/auth/login`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ email, password })
+  });
+  const body = (await parseResponse(response)) as SessionResponse | { detail?: string } | null;
+
+  if (!response.ok) {
+    throw new Error(responseDetail(body, 'Admin login failed.'));
+  }
+
+  return body as SessionResponse;
+}
+
 export async function fetchCurrentAdmin(token?: string | null): Promise<AdminSessionState> {
   const response = await fetch(`${adminApiBaseUrl()}/admin/auth/me`, {
     headers: authHeaders(token)

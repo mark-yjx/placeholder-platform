@@ -24,6 +24,7 @@ Routes available in this MVP:
 
 ```text
 GET http://127.0.0.1:8200/healthz
+POST http://127.0.0.1:8200/admin/auth/login
 GET http://127.0.0.1:8200/admin/auth/login/microsoft
 GET http://127.0.0.1:8200/admin/auth/callback/microsoft
 GET http://127.0.0.1:8200/admin/auth/me
@@ -72,10 +73,11 @@ Local mock-provider additions:
 
 ## Admin auth behavior
 
+- `POST /admin/auth/login` verifies local admin email/password credentials.
 - Microsoft OIDC provides the external identity.
-- `admin-api` maps that identity to a local platform user.
-- Local admin admission still requires `role = admin` and `status = active`.
-- If the mapped admin has TOTP enabled, callback completion returns a `pending_tfa` session instead of a fully authenticated session.
+- `admin-api` maps Microsoft identity to the same local platform user model used by local login.
+- Local admin admission still requires `role = admin` and `status = active` for both login modes.
+- If the resolved admin has TOTP enabled, local login and Microsoft callback both return a `pending_tfa` session instead of a fully authenticated session.
 - Only a successful `/admin/auth/totp/verify` call upgrades the session to `authenticated_admin`.
 
 `GET /admin/problems` reads the shared Postgres problem tables directly for the

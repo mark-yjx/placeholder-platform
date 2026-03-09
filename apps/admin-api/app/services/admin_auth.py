@@ -29,6 +29,7 @@ from app.core.auth import (
     verify_oidc_flow_token,
     verify_session_token,
 )
+from app.services.users import verify_password
 
 DEFAULT_DATABASE_URL = "postgresql://oj:oj@127.0.0.1:5432/oj"
 
@@ -120,7 +121,22 @@ WHERE u.id = %(user_id)s
 LIMIT 1
 """
 
-UPSERT_MAPPING_SQL = """
+GET_ADMIN_AUTH_USER_BY_EMAIL_SQL = """
+SELECT
+  u.id AS user_id,
+  u.email,
+  u.display_name,
+  u.role,
+  u.status,
+  u.password_hash,
+  COALESCE(t.user_id IS NOT NULL, FALSE) AS totp_enabled
+FROM users u
+LEFT JOIN admin_totp_settings t ON t.user_id = u.id
+WHERE lower(u.email) = lower(%(email)s)
+LIMIT 1
+"""
+
+UPSERT_MAPPING_FOR_USER_SQL = """
 INSERT INTO admin_identity_mappings (
   provider,
   issuer,
@@ -139,8 +155,9 @@ VALUES (
   NOW(),
   NOW()
 )
-ON CONFLICT (provider, issuer, subject) DO UPDATE
-SET user_id = EXCLUDED.user_id,
+ON CONFLICT (user_id, provider) DO UPDATE
+SET issuer = EXCLUDED.issuer,
+    subject = EXCLUDED.subject,
     email = EXCLUDED.email,
     updated_at = NOW()
 """
@@ -282,6 +299,9 @@ class TotpEnrollment:
 
 
 class AdminAuthService(Protocol):
+    def login_with_password(self, email: str, password: str) -> AdminAuthSession:
+        ...
+
     def create_oidc_flow(self) -> tuple[str, str]:
         ...
 
@@ -312,6 +332,9 @@ class AdminAuthService(Protocol):
 @dataclass(frozen=True)
 class UnconfiguredAdminAuthService:
     detail: str
+
+    def login_with_password(self, email: str, password: str) -> AdminAuthSession:
+        raise AdminAuthConfigError(self.detail)
 
     def create_oidc_flow(self) -> tuple[str, str]:
         raise AdminAuthConfigError(self.detail)
@@ -510,6 +533,10 @@ class PsycopgAdminAuthService:
         )
         return flow_token, auth_url
 
+    def login_with_password(self, email: str, password: str) -> AdminAuthSession:
+        local_user = self._authenticate_local_user(email, password)
+        return self._create_login_session(local_user, provider="local")
+
     def complete_oidc_callback(
         self, *, provider: str, code: str, flow_token: str
     ) -> AdminAuthSession:
@@ -526,6 +553,9 @@ class PsycopgAdminAuthService:
             raise AdminOidcError("Microsoft login failed.")
 
         local_user = self._resolve_local_user(external_identity)
+        return self._create_login_session(local_user, provider=provider)
+
+    def _create_login_session(self, local_user: LocalAdminUser, *, provider: str) -> AdminAuthSession:
         session_state = "pending_tfa" if local_user.totp_enabled else "authenticated_admin"
         session = self._create_session(local_user, provider, session_state)
 
@@ -691,6 +721,25 @@ class PsycopgAdminAuthService:
             return
         self._revoke_session(session_token.session_id)
 
+    def _authenticate_local_user(self, email: str, password: str) -> LocalAdminUser:
+        normalized_email = email.strip().lower()
+
+        with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(GET_ADMIN_AUTH_USER_BY_EMAIL_SQL, {"email": normalized_email})
+                row = cursor.fetchone()
+
+        if row is None:
+            raise LocalUserMappingError("Invalid email or password.")
+        if row["role"] != "admin":
+            raise LocalUserMappingError("Admin access is limited to local admin users.")
+        if row["status"] != "active":
+            raise LocalUserMappingError("This admin account is disabled.")
+        if not verify_password(password, str(row["password_hash"])):
+            raise LocalUserMappingError("Invalid email or password.")
+
+        return _row_to_local_admin_user(row)
+
     def _resolve_local_user(self, identity: ExternalAdminIdentity) -> LocalAdminUser:
         with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
             with connection.cursor() as cursor:
@@ -711,7 +760,7 @@ class PsycopgAdminAuthService:
                     user = _row_to_local_admin_user(email_row) if email_row else None
                     if user is not None:
                         cursor.execute(
-                            UPSERT_MAPPING_SQL,
+                            UPSERT_MAPPING_FOR_USER_SQL,
                             {
                                 "provider": identity.provider,
                                 "issuer": identity.issuer,
