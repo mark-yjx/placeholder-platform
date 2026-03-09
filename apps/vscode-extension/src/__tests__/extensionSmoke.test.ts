@@ -465,7 +465,7 @@ test('startup restores per-problem local state and drops missing file paths', as
         {
           id: 'problem-1',
           label: 'Two Sum',
-          description: 'problem-1',
+          description: 'problem-1 • selected',
           detail: '# Two Sum\n\n- Problem ID: problem-1\n\n## Statement\n\nSolve it\n'
         }
       ]

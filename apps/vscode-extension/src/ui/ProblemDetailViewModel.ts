@@ -1,6 +1,7 @@
 import path from 'node:path';
-import { ProblemDetail } from '../api/PracticeApiClient';
+import { ProblemDetail, type PublicProblemTestCase } from '../api/PracticeApiClient';
 import { resolveProblemStatementMarkdown } from './PracticeViewState';
+import { createWebviewStyles, escapeHtml, formatCaseValue } from './WebviewTheme';
 
 export type ProblemDetailViewModel = {
   title: string;
@@ -9,6 +10,8 @@ export type ProblemDetailViewModel = {
   entryFunction: string;
   language: string | null;
   starterFilePath: string | null;
+  examples: readonly PublicProblemTestCase[];
+  publicTests: readonly PublicProblemTestCase[];
   isEmpty: boolean;
 };
 
@@ -24,6 +27,8 @@ export function createProblemDetailViewModel(
       entryFunction: 'No problem selected yet.',
       language: null,
       starterFilePath: null,
+      examples: [],
+      publicTests: [],
       isEmpty: true
     };
   }
@@ -43,15 +48,60 @@ export function createProblemDetailViewModel(
     entryFunction,
     language,
     starterFilePath: starterFileLabel,
+    examples: problem.examples ?? [],
+    publicTests: problem.publicTests ?? [],
     isEmpty: false
   };
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
+type StatementSections = {
+  description: string;
+  input: string;
+  output: string;
+  examples: string;
+};
+
+function normalizeHeadingLabel(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function splitStatementSections(markdown: string): StatementSections {
+  const sections: StatementSections = {
+    description: '',
+    input: '',
+    output: '',
+    examples: ''
+  };
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+  let currentSection: keyof StatementSections = 'description';
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      const headingLabel = normalizeHeadingLabel(headingMatch[2]);
+
+      if (
+        headingLabel === 'description' ||
+        headingLabel === 'input' ||
+        headingLabel === 'output' ||
+        headingLabel === 'example' ||
+        headingLabel === 'examples'
+      ) {
+        currentSection =
+          headingLabel === 'example' || headingLabel === 'examples' ? 'examples' : headingLabel;
+        continue;
+      }
+    }
+
+    sections[currentSection] += `${line}\n`;
+  }
+
+  return {
+    description: sections.description.trim(),
+    input: sections.input.trim(),
+    output: sections.output.trim(),
+    examples: sections.examples.trim()
+  };
 }
 
 function renderInlineMarkdown(markdown: string): string {
@@ -142,6 +192,53 @@ function renderMarkdownToHtml(markdown: string): string {
   return blocks.join('\n');
 }
 
+function renderSectionContent(markdown: string, emptyMessage: string): string {
+  const trimmed = markdown.trim();
+  if (!trimmed) {
+    return `<p class="muted">${escapeHtml(emptyMessage)}</p>`;
+  }
+
+  return `<div class="markdown-content">${renderMarkdownToHtml(trimmed)}</div>`;
+}
+
+function renderExamples(
+  examples: readonly PublicProblemTestCase[],
+  examplesMarkdown: string,
+  isEmpty: boolean
+): string {
+  if (isEmpty) {
+    return '<p class="muted">Examples will appear after you select a problem.</p>';
+  }
+
+  if (examples.length > 0) {
+    return `
+      <div class="case-grid">
+        ${examples
+          .map(
+            (example, index) => `
+              <article class="case-card">
+                <p class="field-label">Example ${index + 1}</p>
+                <div class="case-stack">
+                  <div>
+                    <p class="field-label">Input</p>
+                    <pre class="case-value">${escapeHtml(formatCaseValue(example.input))}</pre>
+                  </div>
+                  <div>
+                    <p class="field-label">Output</p>
+                    <pre class="case-value">${escapeHtml(formatCaseValue(example.output))}</pre>
+                  </div>
+                </div>
+              </article>
+            `
+          )
+          .join('')}
+      </div>
+    `;
+  }
+
+  return renderSectionContent(examplesMarkdown, 'No examples provided yet.');
+}
+
 export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   const title = escapeHtml(input.title);
   const problemId = escapeHtml(input.problemId);
@@ -154,9 +251,23 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   const submitAttributes = input.isEmpty
     ? ' data-command="submitCurrentFile" disabled'
     : ' data-command="submitCurrentFile"';
+  const statementSections = splitStatementSections(input.statement);
   const statementBody = input.isEmpty
-    ? `<p role="status">${statement}</p>`
-    : renderMarkdownToHtml(input.statement);
+    ? `<p role="status" class="muted">${statement}</p>`
+    : renderSectionContent(statementSections.description || input.statement, 'No description available yet.');
+  const inputSection = renderSectionContent(
+    statementSections.input,
+    'No input format is documented yet.'
+  );
+  const outputSection = renderSectionContent(
+    statementSections.output,
+    'No output format is documented yet.'
+  );
+  const examplesSection = renderExamples(
+    input.examples.length > 0 ? input.examples : input.publicTests,
+    statementSections.examples,
+    input.isEmpty
+  );
   const toolkitScript = 'https://unpkg.com/@vscode/webview-ui-toolkit@1.4.0/dist/toolkit.min.js';
 
   return `<!doctype html>
@@ -165,53 +276,60 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     <meta charset="UTF-8" />
     <script type="module" src="${toolkitScript}"></script>
     <style>
-      body {
-        font-family: var(--vscode-font-family);
-        color: var(--vscode-foreground);
-        padding: 0 8px 16px;
-      }
-
-      a {
-        color: var(--vscode-textLink-foreground);
-      }
-
-      code {
-        font-family: var(--vscode-editor-font-family, monospace);
-        background: var(--vscode-textCodeBlock-background);
-        border-radius: 4px;
-        padding: 0.1rem 0.3rem;
-      }
-
-      pre {
-        background: var(--vscode-textCodeBlock-background);
-        border-radius: 6px;
-        overflow-x: auto;
-        padding: 12px;
-        white-space: pre-wrap;
-      }
-
-      pre code {
-        background: transparent;
-        padding: 0;
-      }
-
-      p, li {
-        line-height: 1.5;
-      }
+      ${createWebviewStyles()}
     </style>
   </head>
   <body>
-    <h2>${title}</h2>
-    <p><strong>Problem ID:</strong> <code>${problemId}</code></p>
-    <p><strong>Starter File:</strong> <code>${starterFilePath}</code></p>
-    <div>
-      <vscode-button${openStarterAttributes}>Open Coding File</vscode-button>
-      <vscode-button${runPublicTestsAttributes}>Run Public Tests</vscode-button>
-      <vscode-button appearance="primary"${submitAttributes}>Submit</vscode-button>
-    </div>
-    <hr />
-    <h3>Statement</h3>
-    ${statementBody}
+    <main class="webview-shell section-stack">
+      <section class="hero-card">
+        <p class="eyebrow">Problem Detail</p>
+        <h2>${title}</h2>
+        <p class="hero-copy">Open the starter file, run public tests locally, and submit from one focused view.</p>
+        <div class="inline-meta">
+          <p><strong>Problem ID:</strong> <code>${problemId}</code></p>
+          <p><strong>Starter File:</strong> <code>${starterFilePath}</code></p>
+        </div>
+        <div class="action-row">
+          <vscode-button${openStarterAttributes}>Open Coding File</vscode-button>
+          <vscode-button${runPublicTestsAttributes}>Run Public Tests</vscode-button>
+          <vscode-button appearance="primary"${submitAttributes}>Submit</vscode-button>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-header">
+          <p class="section-kicker">Description</p>
+          <h3>What the problem is asking</h3>
+        </div>
+        ${statementBody}
+      </section>
+
+      <div class="field-grid">
+        <section class="section-card">
+          <div class="section-header">
+            <p class="section-kicker">Input</p>
+            <h3>Expected input format</h3>
+          </div>
+          ${inputSection}
+        </section>
+
+        <section class="section-card">
+          <div class="section-header">
+            <p class="section-kicker">Output</p>
+            <h3>Expected output format</h3>
+          </div>
+          ${outputSection}
+        </section>
+      </div>
+
+      <section class="section-card">
+        <div class="section-header">
+          <p class="section-kicker">Examples</p>
+          <h3>Student-visible examples</h3>
+        </div>
+        ${examplesSection}
+      </section>
+    </main>
     <script>
       const vscodeApi = acquireVsCodeApi();
       for (const button of document.querySelectorAll('vscode-button[data-command]')) {

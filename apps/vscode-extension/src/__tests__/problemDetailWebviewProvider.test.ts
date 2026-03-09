@@ -18,6 +18,10 @@ test('fetched problem detail renders expected fields', () => {
   assert.equal(viewModel.entryFunction, 'collapse');
   assert.match(html, /<h2>Collapse Identical Digits<\/h2>/);
   assert.match(html, /Problem ID:<\/strong> <code>collapse<\/code>/);
+  assert.match(html, /What the problem is asking/);
+  assert.match(html, /Expected input format/);
+  assert.match(html, /Expected output format/);
+  assert.match(html, /Student-visible examples/);
   assert.doesNotMatch(html, /Entry Function:/);
   assert.doesNotMatch(html, /Language:/);
   assert.match(html, /<h1>Collapse Identical Digits<\/h1>/);
@@ -41,6 +45,7 @@ test('empty state shows friendly placeholder instead of blank panel', () => {
   assert.match(html, /<strong>Problem ID:<\/strong> <code>No problem selected yet\.<\/code>/);
   assert.match(html, /No problem selected yet\./);
   assert.match(html, /<strong>Starter File:<\/strong> <code>No problem selected yet\.<\/code>/);
+  assert.match(html, /Examples will appear after you select a problem\./);
   assert.match(html, /<vscode-button data-command="openStarter" disabled>Open Coding File<\/vscode-button>/);
   assert.match(html, /<vscode-button data-command="runPublicTests" disabled>Run Public Tests<\/vscode-button>/);
   assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile" disabled>Submit<\/vscode-button>/);
@@ -78,4 +83,27 @@ test('problem detail renders fenced code blocks as HTML code blocks', () => {
   const html = createProblemDetailHtml(viewModel);
 
   assert.match(html, /<pre><code class="language-python">def collapse\(number\):\n    return number<\/code><\/pre>/);
+});
+
+test('problem detail renders manifest examples as structured cards', () => {
+  const html = createProblemDetailHtml(
+    createProblemDetailViewModel(
+      {
+        problemId: 'collapse',
+        versionId: 'collapse-v1',
+        title: 'Collapse Identical Digits',
+        statementMarkdown: 'Collapse duplicate digits.',
+        entryFunction: 'collapse',
+        language: 'python',
+        starterCode: 'def collapse(number):\n    raise NotImplementedError\n',
+        examples: [{ input: 112233, output: 123 }]
+      },
+      '/home/mark/src/oj-vscode/.oj/problems/collapse.py'
+    )
+  );
+
+  assert.match(html, /Example 1/);
+  assert.match(html, /<p class="field-label">Input<\/p>/);
+  assert.match(html, /112233/);
+  assert.match(html, /123/);
 });

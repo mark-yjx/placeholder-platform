@@ -1,4 +1,5 @@
 import { SubmissionResult } from '../api/PracticeApiClient';
+import { createWebviewStyles, escapeHtml } from './WebviewTheme';
 
 export type SubmissionDetailViewModel = {
   submissionId: string;
@@ -8,6 +9,13 @@ export type SubmissionDetailViewModel = {
   memory: string;
   failureInfo: string | null;
   detail: string;
+  publicFailure: {
+    input?: string;
+    expected?: string;
+    actual?: string;
+    diff?: string;
+  } | null;
+  hiddenFailureMessage: string | null;
   isEmpty: boolean;
 };
 
@@ -18,6 +26,35 @@ function normalizeSubmissionText(value?: string): string | null {
 
 function formatMemoryMetric(memoryKb?: number): string {
   return memoryKb !== undefined && memoryKb > 0 ? `${memoryKb}KB` : 'N/A';
+}
+
+function extractPipeValue(source: string, key: string): string | null {
+  const match = source.match(new RegExp(`(?:^|\\|)\\s*${key}=([^|]+)`));
+  const value = match?.[1]?.trim() ?? '';
+  return value ? value : null;
+}
+
+function parsePublicFailureDetail(detail: string): {
+  input?: string;
+  expected?: string;
+  actual?: string;
+  diff?: string;
+} | null {
+  const input = extractPipeValue(detail, 'input');
+  const expected = extractPipeValue(detail, 'expected');
+  const actual = extractPipeValue(detail, 'actual');
+  const diff = extractPipeValue(detail, 'diff');
+
+  if (!input && !expected && !actual && !diff) {
+    return null;
+  }
+
+  return {
+    input: input ?? undefined,
+    expected: expected ?? undefined,
+    actual: actual ?? undefined,
+    diff: diff ?? undefined
+  };
 }
 
 function buildSubmissionDetailText(input: {
@@ -71,12 +108,19 @@ export function createSubmissionDetailViewModel(input: {
       memory: 'Not available',
       failureInfo: null,
       detail: 'No submission details available yet.',
+      publicFailure: null,
+      hiddenFailureMessage: null,
       isEmpty: true
     };
   }
 
   const failureInfo = normalizeSubmissionText(input.failureInfo);
   const detail = buildSubmissionDetailText(input);
+  const publicFailure = parsePublicFailureDetail(`${input.detail} | ${input.failureInfo ?? ''}`);
+  const hiddenFailureMessage =
+    input.status === 'finished' && input.verdict === 'WA' && !publicFailure
+      ? 'A hidden judge case failed. Private test details are intentionally not shown.'
+      : null;
 
   return {
     submissionId: input.submissionId,
@@ -86,15 +130,10 @@ export function createSubmissionDetailViewModel(input: {
     memory: formatMemoryMetric(input.memoryKb),
     failureInfo,
     detail,
+    publicFailure,
+    hiddenFailureMessage,
     isEmpty: false
   };
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
 }
 
 export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): string {
@@ -109,21 +148,103 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
     ? '<p>Selecting a submission will load its status, verdict, timing, memory, and failure info here.</p>'
     : '';
   const failureInfoSection = failureInfo
-    ? `<p><strong>Failure Info:</strong> ${failureInfo}</p>`
+    ? `<div class="alert-card"><p><strong>Failure Info:</strong> ${failureInfo}</p></div>`
+    : '';
+  const publicFailureSection = input.publicFailure
+    ? `
+      <section class="section-card">
+        <div class="section-header">
+          <p class="section-kicker">Failure</p>
+          <h3>Public case details</h3>
+          <p class="section-copy">This failing case is safe to show because it comes from a public test.</p>
+        </div>
+        <div class="case-grid">
+          ${
+            input.publicFailure.input
+              ? `<article class="case-card"><p class="field-label">Input</p><pre class="case-value">${escapeHtml(input.publicFailure.input)}</pre></article>`
+              : ''
+          }
+          ${
+            input.publicFailure.expected
+              ? `<article class="case-card"><p class="field-label">Expected Output</p><pre class="case-value">${escapeHtml(input.publicFailure.expected)}</pre></article>`
+              : ''
+          }
+          ${
+            input.publicFailure.actual
+              ? `<article class="case-card"><p class="field-label">Actual Output</p><pre class="case-value">${escapeHtml(input.publicFailure.actual)}</pre></article>`
+              : ''
+          }
+          ${
+            input.publicFailure.diff
+              ? `<article class="case-card"><p class="field-label">Diff</p><pre class="case-value">${escapeHtml(input.publicFailure.diff)}</pre></article>`
+              : ''
+          }
+        </div>
+      </section>
+    `
+    : '';
+  const hiddenFailureSection = input.hiddenFailureMessage
+    ? `
+      <section class="section-card">
+        <div class="section-header">
+          <p class="section-kicker">Failure</p>
+          <h3>Hidden judge result</h3>
+        </div>
+        <div class="alert-card">
+          <p>${escapeHtml(input.hiddenFailureMessage)}</p>
+        </div>
+      </section>
+    `
     : '';
 
   return `<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      ${createWebviewStyles()}
+    </style>
+  </head>
   <body>
-    <h2>${submissionId}</h2>
-    ${emptyState}
-    <p><strong>Status:</strong> ${status}</p>
-    <p><strong>Verdict:</strong> ${verdict}</p>
-    <p><strong>Time:</strong> ${time}</p>
-    <p><strong>Memory:</strong> ${memory}</p>
-    ${failureInfoSection}
-    <hr />
-    <pre style="white-space: pre-wrap;">${detail}</pre>
+    <main class="webview-shell section-stack">
+      <section class="hero-card">
+        <p class="eyebrow">Submission Detail</p>
+        <h2>${submissionId}</h2>
+        ${emptyState}
+        <p class="hero-copy">Review verdict, timing, memory, and any student-visible failure details in one place.</p>
+      </section>
+
+      <section class="metric-grid">
+        <article class="metric-card">
+          <p class="field-label">Status</p>
+          <p class="metric-value"><strong>Status:</strong> ${status}</p>
+        </article>
+        <article class="metric-card">
+          <p class="field-label">Verdict</p>
+          <p class="metric-value"><strong>Verdict:</strong> ${verdict}</p>
+        </article>
+        <article class="metric-card">
+          <p class="field-label">Time</p>
+          <p class="metric-value"><strong>Time:</strong> ${time}</p>
+        </article>
+        <article class="metric-card">
+          <p class="field-label">Memory</p>
+          <p class="metric-value"><strong>Memory:</strong> ${memory}</p>
+        </article>
+      </section>
+
+      ${failureInfoSection}
+      ${publicFailureSection}
+      ${hiddenFailureSection}
+
+      <section class="section-card">
+        <div class="section-header">
+          <p class="section-kicker">Judge Detail</p>
+          <h3>Raw result summary</h3>
+        </div>
+        <pre>${detail}</pre>
+      </section>
+    </main>
   </body>
 </html>`;
 }

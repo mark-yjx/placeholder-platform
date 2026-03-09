@@ -211,7 +211,10 @@ export class PracticeViewState {
     return this.problems.map((problem) => ({
       id: problem.problemId,
       label: problem.title,
-      description: problem.problemId,
+      description:
+        this.selectedProblemId === problem.problemId
+          ? `${problem.problemId} • selected`
+          : problem.problemId,
       detail: formatProblemDetail(problem)
     }));
   }

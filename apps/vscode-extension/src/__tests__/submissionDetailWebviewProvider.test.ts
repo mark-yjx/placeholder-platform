@@ -19,6 +19,7 @@ test('submission detail renders expected fields for finished judged result', () 
   assert.match(html, /<strong>Verdict:<\/strong> AC/);
   assert.match(html, /<strong>Time:<\/strong> 120ms/);
   assert.match(html, /<strong>Memory:<\/strong> 2048KB/);
+  assert.match(html, /Raw result summary/);
   assert.doesNotMatch(html, /<strong>Failure Info:<\/strong>/);
 });
 
@@ -110,4 +111,38 @@ test('submission detail hides failure info for finished non-AC verdicts without 
   assert.match(html, /<strong>Memory:<\/strong> 22KB/);
   assert.doesNotMatch(html, /<strong>Failure Info:<\/strong>/);
   assert.match(html, /verdict=CE, time=11ms, memory=22KB/);
+});
+
+test('submission detail keeps hidden wrong-answer feedback generic when no public case detail is available', () => {
+  const html = createSubmissionDetailHtml(
+    createSubmissionDetailViewModel({
+      submissionId: 'submission-hidden-wa-1',
+      status: 'finished',
+      verdict: 'WA',
+      timeMs: 17,
+      memoryKb: 88,
+      detail: 'verdict=WA, time=17ms, memory=88KB'
+    })
+  );
+
+  assert.match(html, /Hidden judge result/);
+  assert.match(html, /Private test details are intentionally not shown\./);
+});
+
+test('submission detail renders structured public failure details when present', () => {
+  const html = createSubmissionDetailHtml(
+    createSubmissionDetailViewModel({
+      submissionId: 'submission-public-wa-1',
+      status: 'finished',
+      verdict: 'WA',
+      timeMs: 9,
+      memoryKb: 64,
+      detail: 'Case 1 failed | input=[1,2] | expected=[3] | actual=[4] | diff=-3 +4'
+    })
+  );
+
+  assert.match(html, /Public case details/);
+  assert.match(html, /Expected Output/);
+  assert.match(html, /Actual Output/);
+  assert.match(html, /-3 \+4/);
 });

@@ -71,6 +71,7 @@ test('account panel renders unauthenticated login form', () => {
   assert.doesNotMatch(html, /Administrators must use Web Admin/);
   assert.match(html, /<vscode-text-field id="oj-account-email" type="email">/);
   assert.match(html, /<vscode-text-field id="oj-account-password" type="password">/);
+  assert.match(html, /<vscode-checkbox id="oj-account-remember-me">Remember me<\/vscode-checkbox>/);
   assert.match(html, /<vscode-button appearance="primary" data-command="login">Login<\/vscode-button>/);
   assert.doesNotMatch(html, /data-command="fetchProblems"/);
   assert.match(html, /data-command="login"/);

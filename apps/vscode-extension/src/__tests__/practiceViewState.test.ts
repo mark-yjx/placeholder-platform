@@ -80,6 +80,7 @@ test('selected problem is tracked only for loaded problems', () => {
 
   state.setSelectedProblem('problem-2');
   assert.equal(state.getSelectedProblemId(), 'problem-2');
+  assert.equal(state.getProblemNodes()[1]?.description, 'problem-2 • selected');
 
   state.setProblems([{ problemId: 'problem-1', title: 'Two Sum' }]);
   assert.equal(state.getSelectedProblemId(), null);
