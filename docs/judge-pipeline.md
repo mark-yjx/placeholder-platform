@@ -4,6 +4,10 @@ The judge pipeline turns a submitted solution into a persisted result that the e
 
 ## Submission Lifecycle
 
+The submission lifecycle is:
+
+`queued -> running -> finished | failed`
+
 ### `queued`
 
 The API has accepted the submission, stored it in Postgres, and inserted a judge job.
@@ -14,7 +18,7 @@ The judge worker has claimed the job and started processing it.
 
 ### `finished`
 
-The worker completed judging and persisted a verdict with execution metrics.
+The worker completed judging and persisted a verdict with any runtime metrics that were actually available for that judged run.
 
 ### `failed`
 
@@ -59,6 +63,26 @@ Hidden tests are part of the real judge path:
 
 This means a submission can satisfy visible examples and still receive `WA` on hidden coverage.
 
+## Runtime Metrics
+
+The judge pipeline tracks two runtime metrics for normal judged outcomes:
+
+- `time`
+- `memory`
+
+`time` is the execution time recorded for the judged run.
+
+`memory` is the memory usage recorded for the judged run when the sandbox can measure it.
+
+These metrics are not placeholders. They only represent measured runtime data when the runtime actually produced that data.
+
+If a metric is unavailable, the system keeps it unavailable instead of converting it to `0`. That distinction matters:
+
+- `0` means the metric value is explicitly zero
+- unavailable means the metric was not measured or could not be reported
+
+Student-facing and extension-facing displays should therefore show unavailable metrics as unavailable, not as `0`.
+
 ## Execution Flow
 
 1. The extension sends a submission to the API.
@@ -68,7 +92,7 @@ This means a submission can satisfy visible examples and still receive `WA` on h
 5. The worker loads the problem version, entry function, and public/hidden tests.
 6. The worker prepares judged Python code for the configured entry function.
 7. The worker runs that code inside a sandbox.
-8. The worker persists the verdict, time, and memory for normal judged outcomes.
+8. The worker persists the verdict, time, and memory for normal judged outcomes when those metrics are available.
 9. The worker persists `failed` plus a failure reason for non-verdict failures.
 10. The extension polls the API and renders the result.
 
@@ -92,5 +116,7 @@ Postgres stores:
 - imported public and hidden tests
 - terminal judge results
 - failure reasons when the submission ends in `failed`
+
+Persisted judge results keep the distinction between measured metrics and unavailable metrics. An unavailable memory reading is not stored or documented as `0`.
 
 That persisted state is what allows the extension to restore and poll recent results across reloads.
