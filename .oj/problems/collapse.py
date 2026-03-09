@@ -20,12 +20,7 @@ def collapse(number):
     -9012127394030
     """
     # YOUR CODE HERE
-    number=str(number)
-    solution=[number[0]]
-    for i in number:
-        if i!=solution[-1]:
-            solution.append(i)
-    return int(''.join(solution))
+    raise NotImplementedError
 
 
 if __name__ == "__main__":
