@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchAdminProblems, type AdminProblemListItem } from '../api/problems';
 import { useAuth } from '../auth/AuthContext';
 import { readStoredAdminToken } from '../auth/storage';
@@ -102,8 +103,16 @@ export function ProblemsListPage() {
               <tbody>
                 {problems.map((problem) => (
                   <tr key={problem.problemId}>
-                    <td>{problem.problemId}</td>
-                    <td>{problem.title}</td>
+                    <td>
+                      <Link className="problem-link" to={`/problems/${problem.problemId}`}>
+                        {problem.problemId}
+                      </Link>
+                    </td>
+                    <td>
+                      <Link className="problem-link" to={`/problems/${problem.problemId}`}>
+                        {problem.title}
+                      </Link>
+                    </td>
                     <td>{problem.visibility}</td>
                     <td>{formatTimestamp(problem.updatedAt)}</td>
                   </tr>

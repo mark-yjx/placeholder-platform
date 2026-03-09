@@ -1,18 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import { AuthProvider } from '../auth/AuthContext';
 import { ProblemsListPage } from '../pages/ProblemsListPage';
 
 function renderProblemsPage() {
   return render(
-    <AuthProvider
-      initialSession={{
-        status: 'authenticated',
-        user: { email: 'admin@example.com', role: 'admin' }
-      }}
-    >
-      <ProblemsListPage />
-    </AuthProvider>
+    <MemoryRouter>
+      <AuthProvider
+        initialSession={{
+          status: 'authenticated',
+          user: { email: 'admin@example.com', role: 'admin' }
+        }}
+      >
+        <ProblemsListPage />
+      </AuthProvider>
+    </MemoryRouter>
   );
 }
 
