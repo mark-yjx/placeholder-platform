@@ -106,6 +106,25 @@ test('auth password migration stores password hashes for local login verificatio
 
   assert.match(migration, /ALTER TABLE users\s+ADD COLUMN IF NOT EXISTS password_hash TEXT/i);
   assert.match(migration, /ALTER TABLE users\s+ALTER COLUMN password_hash SET NOT NULL/i);
-  assert.match(seed, /INSERT INTO users \(id, email, role, password_hash\)/i);
+  assert.match(seed, /INSERT INTO users \(\s*id,\s*email,\s*(display_name,\s*)?role,\s*(status,\s*)?password_hash,/i);
   assert.match(seed, /password_hash = EXCLUDED\.password_hash/i);
+});
+
+test('user management migration defines platform user profile and status fields', () => {
+  const migration = readFromRoot('deploy', 'local', 'sql', 'migrations', '011_user_management.sql');
+  const seed = readFromRoot('deploy', 'local', 'sql', 'seeds', '001_mvp_seed.sql');
+
+  assert.match(migration, /ALTER TABLE users\s+ADD COLUMN IF NOT EXISTS display_name TEXT/i);
+  assert.match(migration, /ALTER TABLE users\s+ALTER COLUMN display_name SET NOT NULL/i);
+  assert.match(
+    migration,
+    /ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'\s+CHECK \(status IN \('active', 'disabled'\)\)/i
+  );
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW\(\)/i);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ/i);
+
+  assert.match(seed, /INSERT INTO users \(\s*id,\s*email,\s*display_name,\s*role,\s*status,\s*password_hash,/i);
+  assert.match(seed, /display_name = EXCLUDED\.display_name/i);
+  assert.match(seed, /status = EXCLUDED\.status/i);
+  assert.match(seed, /last_login_at = EXCLUDED\.last_login_at/i);
 });

@@ -1,14 +1,58 @@
 BEGIN;
 
-INSERT INTO users (id, email, role, password_hash)
+INSERT INTO users (
+  id,
+  email,
+  display_name,
+  role,
+  status,
+  password_hash,
+  created_at,
+  updated_at,
+  last_login_at
+)
 VALUES
-  ('admin-1', 'admin@example.com', 'admin', 'scrypt$oj-local-salt$5d579cb40595a26640cd9afa26ca4311172b9046e465a8a6d79f70a42a43571e690e040047100632901310f4cc9229ee32cbd0edd8205a87554b8ed4ae58be4e'),
-  ('student-1', 'student1@example.com', 'student', 'scrypt$oj-local-salt$3e8da74f3ca963c36be4bf3b076b1dc336d1b3f0a608e8696cd949d48f77cac8d46e74a6ed22a3df7675ed2e5877908f02fa0bccc4fcba301c41cf827f02a4e0'),
-  ('student-2', 'student2@example.com', 'student', 'scrypt$oj-local-salt$3e8da74f3ca963c36be4bf3b076b1dc336d1b3f0a608e8696cd949d48f77cac8d46e74a6ed22a3df7675ed2e5877908f02fa0bccc4fcba301c41cf827f02a4e0')
+  (
+    'admin-1',
+    'admin@example.com',
+    'Platform Admin',
+    'admin',
+    'active',
+    'scrypt$oj-local-salt$5d579cb40595a26640cd9afa26ca4311172b9046e465a8a6d79f70a42a43571e690e040047100632901310f4cc9229ee32cbd0edd8205a87554b8ed4ae58be4e',
+    TIMESTAMPTZ '2026-03-01T09:00:00Z',
+    TIMESTAMPTZ '2026-03-01T09:00:00Z',
+    TIMESTAMPTZ '2026-03-09T12:00:00Z'
+  ),
+  (
+    'student-1',
+    'student1@example.com',
+    'Student One',
+    'student',
+    'active',
+    'scrypt$oj-local-salt$3e8da74f3ca963c36be4bf3b076b1dc336d1b3f0a608e8696cd949d48f77cac8d46e74a6ed22a3df7675ed2e5877908f02fa0bccc4fcba301c41cf827f02a4e0',
+    TIMESTAMPTZ '2026-03-02T09:00:00Z',
+    TIMESTAMPTZ '2026-03-02T09:00:00Z',
+    NULL
+  ),
+  (
+    'student-2',
+    'student2@example.com',
+    'Student Two',
+    'student',
+    'disabled',
+    'scrypt$oj-local-salt$3e8da74f3ca963c36be4bf3b076b1dc336d1b3f0a608e8696cd949d48f77cac8d46e74a6ed22a3df7675ed2e5877908f02fa0bccc4fcba301c41cf827f02a4e0',
+    TIMESTAMPTZ '2026-03-03T09:00:00Z',
+    TIMESTAMPTZ '2026-03-05T11:30:00Z',
+    NULL
+  )
 ON CONFLICT (id) DO UPDATE
 SET email = EXCLUDED.email,
+    display_name = EXCLUDED.display_name,
     role = EXCLUDED.role,
-    password_hash = EXCLUDED.password_hash;
+    status = EXCLUDED.status,
+    password_hash = EXCLUDED.password_hash,
+    updated_at = EXCLUDED.updated_at,
+    last_login_at = EXCLUDED.last_login_at;
 
 INSERT INTO problems (id, title, publication_state)
 VALUES

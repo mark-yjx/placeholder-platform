@@ -9,6 +9,8 @@ import { ProblemsListPage } from '../pages/ProblemsListPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { SubmissionDetailPage } from '../pages/SubmissionDetailPage';
 import { SubmissionsListPage } from '../pages/SubmissionsListPage';
+import { UserDetailPage } from '../pages/UserDetailPage';
+import { UsersListPage } from '../pages/UsersListPage';
 import { ProtectedRoute } from './ProtectedRoute';
 
 function LoginRoute() {
@@ -32,6 +34,8 @@ export function AppRoutes() {
         <Route path="/admin/problems/:problemId" element={<ProblemEditPage />} />
         <Route path="/admin/problems/:problemId/preview" element={<ProblemPreviewPage />} />
         <Route path="/admin/problems/:problemId/tests" element={<ProblemTestsPage />} />
+        <Route path="/admin/users" element={<UsersListPage />} />
+        <Route path="/admin/users/:userId" element={<UserDetailPage />} />
         <Route path="/problems/:problemId" element={<ProblemEditPage />} />
         <Route path="/problems/:problemId/tests" element={<ProblemTestsPage />} />
         <Route path="/settings" element={<SettingsPage />} />

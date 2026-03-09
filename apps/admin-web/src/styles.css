@@ -513,7 +513,9 @@ textarea {
 
 .status-pill.published,
 .status-pill.public,
-.status-pill.finished {
+.status-pill.finished,
+.status-pill.active,
+.status-pill.admin {
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -526,7 +528,8 @@ textarea {
 
 .status-pill.archived,
 .status-pill.private,
-.status-pill.failed {
+.status-pill.failed,
+.status-pill.disabled {
   background: rgba(197, 57, 41, 0.1);
   color: var(--error);
 }

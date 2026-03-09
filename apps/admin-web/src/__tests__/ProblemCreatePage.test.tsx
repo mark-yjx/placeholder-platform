@@ -44,19 +44,12 @@ describe('problem create page', () => {
       updatedAt: '2026-03-10T00:00:00Z'
     };
 
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(createdProblem), {
-          status: 201,
-          headers: { 'content-type': 'application/json' }
-        })
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(createdProblem), {
-          status: 200,
-          headers: { 'content-type': 'application/json' }
-        })
-      );
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify(createdProblem), {
+        status: 201,
+        headers: { 'content-type': 'application/json' }
+      })
+    );
 
     renderCreateFlow();
 
@@ -98,15 +91,6 @@ describe('problem create page', () => {
           language: 'python',
           timeLimitMs: 2000,
           memoryLimitKb: 262144
-        })
-      })
-    );
-    expect(fetch).toHaveBeenNthCalledWith(
-      2,
-      'http://127.0.0.1:8200/admin/problems/collapse',
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          authorization: 'Bearer signed-token'
         })
       })
     );

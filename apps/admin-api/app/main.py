@@ -9,13 +9,16 @@ from app.api.routes import (
     problems_router,
     submissions_router,
     tests_router,
+    users_router,
 )
 from app.services import (
     AdminProblemService,
     AdminProblemTestService,
     AdminSubmissionService,
+    AdminUserService,
     PsycopgAdminProblemTestService,
     PsycopgAdminSubmissionService,
+    PsycopgAdminUserService,
     PsycopgProblemListService,
 )
 
@@ -32,6 +35,7 @@ def create_app(
     problem_list_service: AdminProblemService | None = None,
     problem_test_service: AdminProblemTestService | None = None,
     submission_service: AdminSubmissionService | None = None,
+    user_service: AdminUserService | None = None,
 ) -> FastAPI:
     app = FastAPI(title="admin-api", version="0.1.0")
     app.add_middleware(
@@ -45,11 +49,13 @@ def create_app(
         problem_test_service or PsycopgAdminProblemTestService.from_env()
     )
     app.state.submission_service = submission_service or PsycopgAdminSubmissionService.from_env()
+    app.state.user_service = user_service or PsycopgAdminUserService.from_env()
     app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(problems_router)
     app.include_router(submissions_router)
     app.include_router(tests_router)
+    app.include_router(users_router)
     return app
 
 

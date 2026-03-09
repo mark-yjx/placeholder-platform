@@ -10,6 +10,7 @@ class LoginRequest(BaseModel):
 
 class AdminUserView(BaseModel):
     email: str
+    userId: str | None = None
     role: Literal["admin"] = "admin"
 
 

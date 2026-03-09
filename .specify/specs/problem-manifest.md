@@ -40,6 +40,7 @@ problems/
 
 ## `manifest.json` Optional Fields
 
+- `examples`
 - `difficulty`
 - `tags`
 - `version`
@@ -63,6 +64,7 @@ Canonical logical fields:
 - `entryFunction`
 - `language`
 - `starterCode`
+- `examples`
 - `publicTests`
 - `hiddenTests`
 - `timeLimitMs`
@@ -85,6 +87,12 @@ Canonical logical fields:
   "timeLimitMs": 2000,
   "memoryLimitKb": 262144,
   "visibility": "public",
+  "examples": [
+    {
+      "input": 111122223333,
+      "output": 123
+    }
+  ],
   "difficulty": "easy",
   "tags": ["digits", "iteration"],
   "version": "1.0.0",
@@ -117,6 +125,12 @@ Canonical logical fields:
   "timeLimitMs": 2000,
   "memoryLimitKb": 262144,
   "visibility": "public",
+  "examples": [
+    {
+      "input": 111122223333,
+      "output": 123
+    }
+  ],
   "difficulty": "easy",
   "tags": ["digits", "iteration"],
   "version": "1.0.0",

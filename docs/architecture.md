@@ -82,6 +82,7 @@ Responsibilities:
 - consume the FastAPI `admin-api`
 - keep admin-only data such as hidden tests out of student-facing UI surfaces
 - own admin workflows that no longer belong in the VS Code extension
+- own admin-only user management pages
 
 Admin Web exists because problem editing, admin-only tests management, cross-user submission inspection, and future operator controls are different workflows from student practice.
 
@@ -94,7 +95,8 @@ Responsibilities:
 - authenticate admin sessions for Admin Web
 - serve admin-only problem management routes
 - serve admin-only tests management and submission inspection routes
-- expand later toward user management and 2FA-related admin controls
+- serve admin-only user management routes
+- keep room for future 2FA-related admin controls without implementing them yet
 
 The admin API is a separate operational surface. It does not replace the student-facing Node/TypeScript API.
 
@@ -131,7 +133,7 @@ Location: `packages/infrastructure`
 Responsibilities:
 
 - implement Postgres-backed repositories
-- persist users, submissions, judge jobs, judge results, and imported problems
+- persist platform users, submissions, judge jobs, judge results, and imported problems
 - enforce persistence-side contracts such as immutable terminal results
 - map nullable runtime metrics to optional application fields
 
@@ -199,3 +201,31 @@ The importer converts repository content into runtime data used by the API and w
 - The importer owns the bridge from repository-authored problem files to runtime problem versions.
 
 That separation matters because student UX, admin UX, judge behavior, storage, and content authoring can evolve independently without redesigning the whole pipeline.
+
+## Platform User Management
+
+The shared `users` table is now the platform user store for both student and admin accounts.
+
+Minimum persisted user fields:
+
+- `id`
+- `email`
+- `display_name`
+- `role`
+- `status`
+- `password_hash`
+- `created_at`
+- `updated_at`
+- `last_login_at`
+
+Role values:
+
+- `student`
+- `admin`
+
+Status values:
+
+- `active`
+- `disabled`
+
+Admin Web and `admin-api` own user-management operations. The student-facing VS Code extension does not expose admin user-management workflows.

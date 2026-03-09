@@ -95,6 +95,36 @@ npm run worker:start
 
 Use them only when you intentionally want a non-compose debugging session. Avoid running a second worker beside the compose-managed worker.
 
+## Admin API Development
+
+Create the local admin-api environment in `/tmp`:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv venv --clear /tmp/oj-admin-api-venv
+UV_CACHE_DIR=/tmp/uv-cache uv pip install --python /tmp/oj-admin-api-venv/bin/python -r apps/admin-api/requirements.txt
+```
+
+Run the admin API:
+
+```bash
+ADMIN_EMAIL=admin@example.com \
+ADMIN_PASSWORD='correct horse' \
+ADMIN_TOKEN_SECRET='local-admin-secret' \
+DATABASE_URL='postgresql://oj:oj@127.0.0.1:5432/oj' \
+/tmp/oj-admin-api-venv/bin/python -m uvicorn app.main:app --app-dir apps/admin-api --reload --port 8200
+```
+
+Run the admin-api tests:
+
+```bash
+PYTHONPATH=apps/admin-api PYTHONDONTWRITEBYTECODE=1 /tmp/oj-admin-api-venv/bin/python -m pytest -p no:cacheprovider apps/admin-api/tests
+```
+
+Admin Web user-management pages are available at:
+
+- `http://127.0.0.1:5173/admin/users`
+- `http://127.0.0.1:5173/admin/users/<userId>`
+
 ## Extension Development
 
 Package the extension:

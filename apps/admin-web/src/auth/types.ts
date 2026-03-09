@@ -1,5 +1,6 @@
 export type AdminUser = {
   email: string;
+  userId?: string | null;
   role: 'admin';
 };
 

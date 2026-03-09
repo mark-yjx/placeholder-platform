@@ -21,7 +21,7 @@ def test_login_returns_token_for_valid_credentials(monkeypatch) -> None:
     assert response.status_code == 200
     body = response.json()
     assert isinstance(body["token"], str)
-    assert body["user"] == {"email": "admin@example.com", "role": "admin"}
+    assert body["user"] == {"userId": None, "email": "admin@example.com", "role": "admin"}
 
 
 def test_login_rejects_invalid_credentials(monkeypatch) -> None:
@@ -47,7 +47,9 @@ def test_me_returns_identity_for_valid_token(monkeypatch) -> None:
     response = client.get("/admin/auth/me", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 200
-    assert response.json() == {"user": {"email": "admin@example.com", "role": "admin"}}
+    assert response.json() == {
+        "user": {"userId": None, "email": "admin@example.com", "role": "admin"}
+    }
 
 
 def test_me_rejects_missing_token(monkeypatch) -> None:

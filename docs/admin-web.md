@@ -66,10 +66,9 @@ Implementation status at the time of this document:
 - implemented: admin login
 - implemented: problems list
 - implemented: problem detail/edit
-- planned within the same MVP scope: tests management
-- planned within the same MVP scope: submissions list/detail
-
-This means the MVP scope is finalized even though not every slice is complete yet.
+- implemented: tests management
+- implemented: submissions list/detail
+- implemented: platform user management
 
 ### Student-Facing vs Admin-Facing Operations
 
@@ -85,6 +84,7 @@ Admin-facing operations:
 - inspect and edit problem metadata and content
 - inspect and edit admin-visible public and hidden tests
 - inspect submissions across users for operational review
+- manage platform users, including role, status, and password reset
 
 Hidden tests must remain admin-only. They may influence verdicts, but their raw inputs and expected outputs must not appear in student-facing routes, extension payloads, or student-focused documentation.
 
@@ -93,7 +93,6 @@ Hidden tests must remain admin-only. They may influence verdicts, but their raw 
 The Admin Web MVP does not include:
 
 - analytics dashboard
-- user management
 - 2FA or authenticator flows
 - contest features
 - broad replacement of the student-facing Node/TypeScript API
@@ -105,7 +104,6 @@ It also does not change the judge pipeline, submission-state model, or the role 
 Likely future admin-facing expansions include:
 
 - richer submissions operations such as rejudge actions
-- user and role management
 - 2FA / authenticator-based admin hardening
 - richer dashboard and analytics views
 - stronger deployment and operational hardening
