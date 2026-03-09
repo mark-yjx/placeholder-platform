@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchAdminProblems, type AdminProblemListItem } from '../api/problems';
+import { fetchAdminSubmissions, type AdminSubmissionListItem } from '../api/submissions';
 import { useAuth } from '../auth/AuthContext';
 import { readStoredAdminToken } from '../auth/storage';
 
@@ -22,17 +22,21 @@ function formatTimestamp(value: string): string {
   });
 }
 
-export function ProblemsListPage() {
+function formatMetric(value: number | null, unit: string): string {
+  return value === null ? 'N/A' : `${value} ${unit}`;
+}
+
+export function SubmissionsListPage() {
   const { logout, user } = useAuth();
-  const [problems, setProblems] = useState<AdminProblemListItem[]>([]);
+  const [submissions, setSubmissions] = useState<AdminSubmissionListItem[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  async function loadProblems() {
+  async function loadSubmissions() {
     const token = readStoredAdminToken();
     if (!token) {
-      setProblems([]);
+      setSubmissions([]);
       setState('error');
       setError('Admin session is missing.');
       return;
@@ -43,20 +47,20 @@ export function ProblemsListPage() {
     setIsRefreshing(true);
 
     try {
-      const items = await fetchAdminProblems(token);
-      setProblems(items);
+      const items = await fetchAdminSubmissions(token);
+      setSubmissions(items);
       setState('ready');
     } catch (loadError) {
-      setProblems([]);
+      setSubmissions([]);
       setState('error');
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load problems.');
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load submissions.');
     } finally {
       setIsRefreshing(false);
     }
   }
 
   useEffect(() => {
-    void loadProblems();
+    void loadSubmissions();
   }, []);
 
   return (
@@ -65,15 +69,16 @@ export function ProblemsListPage() {
         <div className="page-header">
           <div>
             <p className="eyebrow">OJ Admin Web</p>
-            <h1>Problems</h1>
-            <p className="message">Signed in as {user?.email ?? 'admin'}.</p>
+            <h1>Submissions</h1>
+            <p className="message">Inspect submissions across admin-visible users.</p>
+            <p className="hint">Signed in as {user?.email ?? 'admin'}.</p>
           </div>
 
           <div className="header-actions">
-            <Link className="secondary-button link-button" to="/submissions">
-              Submissions
+            <Link className="secondary-button link-button" to="/">
+              Problems
             </Link>
-            <button className="secondary-button" onClick={() => void loadProblems()} type="button">
+            <button className="secondary-button" onClick={() => void loadSubmissions()} type="button">
               {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </button>
             <button className="secondary-button" onClick={logout} type="button">
@@ -82,42 +87,42 @@ export function ProblemsListPage() {
           </div>
         </div>
 
-        {state === 'loading' ? (
-          <p className="hint">Loading problems...</p>
-        ) : null}
-
+        {state === 'loading' ? <p className="hint">Loading submissions...</p> : null}
         {state === 'error' && error ? <p className="error-message">{error}</p> : null}
-
-        {state === 'ready' && problems.length === 0 ? (
-          <p className="hint">No problems are available yet.</p>
+        {state === 'ready' && submissions.length === 0 ? (
+          <p className="hint">No submissions are available yet.</p>
         ) : null}
 
-        {state === 'ready' && problems.length > 0 ? (
+        {state === 'ready' && submissions.length > 0 ? (
           <div className="table-wrap">
             <table className="problems-table">
               <thead>
                 <tr>
-                  <th>Problem ID</th>
-                  <th>Title</th>
-                  <th>Visibility</th>
-                  <th>Updated At</th>
+                  <th>Submission ID</th>
+                  <th>User</th>
+                  <th>Problem</th>
+                  <th>Status</th>
+                  <th>Verdict</th>
+                  <th>Time</th>
+                  <th>Memory</th>
+                  <th>Submitted At</th>
                 </tr>
               </thead>
               <tbody>
-                {problems.map((problem) => (
-                  <tr key={problem.problemId}>
+                {submissions.map((submission) => (
+                  <tr key={submission.submissionId}>
                     <td>
-                      <Link className="problem-link" to={`/problems/${problem.problemId}`}>
-                        {problem.problemId}
+                      <Link className="problem-link" to={`/submissions/${submission.submissionId}`}>
+                        {submission.submissionId}
                       </Link>
                     </td>
-                    <td>
-                      <Link className="problem-link" to={`/problems/${problem.problemId}`}>
-                        {problem.title}
-                      </Link>
-                    </td>
-                    <td>{problem.visibility}</td>
-                    <td>{formatTimestamp(problem.updatedAt)}</td>
+                    <td>{submission.ownerUserId}</td>
+                    <td>{submission.problemId}</td>
+                    <td>{submission.status}</td>
+                    <td>{submission.verdict ?? 'N/A'}</td>
+                    <td>{formatMetric(submission.timeMs, 'ms')}</td>
+                    <td>{formatMetric(submission.memoryKb, 'KB')}</td>
+                    <td>{formatTimestamp(submission.submittedAt)}</td>
                   </tr>
                 ))}
               </tbody>

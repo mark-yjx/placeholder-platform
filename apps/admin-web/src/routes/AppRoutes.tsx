@@ -3,6 +3,8 @@ import { useAuth } from '../auth/AuthContext';
 import { LoginPage } from '../pages/LoginPage';
 import { ProblemEditPage } from '../pages/ProblemEditPage';
 import { ProblemsListPage } from '../pages/ProblemsListPage';
+import { SubmissionDetailPage } from '../pages/SubmissionDetailPage';
+import { SubmissionsListPage } from '../pages/SubmissionsListPage';
 import { ProtectedRoute } from './ProtectedRoute';
 
 function LoginRoute() {
@@ -22,6 +24,8 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<ProblemsListPage />} />
         <Route path="/problems/:problemId" element={<ProblemEditPage />} />
+        <Route path="/submissions" element={<SubmissionsListPage />} />
+        <Route path="/submissions/:submissionId" element={<SubmissionDetailPage />} />
       </Route>
     </Routes>
   );

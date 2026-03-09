@@ -104,6 +104,9 @@ export function ProblemEditPage() {
           </div>
 
           <div className="header-actions">
+            <Link className="secondary-button link-button" to="/submissions">
+              Submissions
+            </Link>
             <Link className="secondary-button link-button" to="/">
               Back to Problems
             </Link>

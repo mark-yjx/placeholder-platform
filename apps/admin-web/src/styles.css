@@ -246,6 +246,37 @@ body {
   flex-wrap: wrap;
 }
 
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.detail-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #59667f;
+}
+
+.detail-value {
+  margin: 0;
+  word-break: break-word;
+}
+
+.code-block {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+  border-radius: 14px;
+  background: #fffdf8;
+  border: 1px solid rgba(20, 33, 61, 0.12);
+  font-family: "SFMono-Regular", "Consolas", monospace;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 720px) {
   .page-header {
     flex-direction: column;
