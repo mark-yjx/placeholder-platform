@@ -1,6 +1,6 @@
 # Local Development
 
-This repository is designed to run locally with Docker, Postgres, a real API process, and a real judge worker.
+This repository is designed to run locally with Docker, Postgres, the real API, the real judge worker, and the VS Code extension.
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ This repository is designed to run locally with Docker, Postgres, a real API pro
 - Docker Engine
 - Docker Compose plugin
 - VS Code
-- `code` CLI if you want to install the VSIX from the terminal
+- optional `code` CLI if you want to install the VSIX from the terminal
 
 ## Install Dependencies
 
@@ -16,7 +16,7 @@ This repository is designed to run locally with Docker, Postgres, a real API pro
 npm install
 ```
 
-## Run the Stack with Docker
+## Start The Local Stack
 
 Preferred command:
 
@@ -24,63 +24,78 @@ Preferred command:
 npm run local:up
 ```
 
-Equivalent Docker command:
+Direct Compose equivalent:
 
 ```bash
 docker compose -f deploy/local/docker-compose.yml up -d --wait
 ```
 
-This starts:
+The local stack starts:
 
-- `postgres` on `localhost:5432`
-- `api` on `http://localhost:3100`
-- `worker` as the background judge consumer
+- Postgres
+- the HTTP API server on `http://localhost:3100`
+- the judge worker
 
-## Initialize Database State
+For normal local verification, the compose-managed `api` and `worker` services are the supported runtime.
 
-Apply migrations and seed data:
+## Database Setup
+
+Apply migrations and seed the local baseline:
 
 ```bash
 npm run local:db:setup
 ```
 
-Import problems from the repository:
+Equivalent split commands:
+
+```bash
+npm run local:db:migrate
+npm run local:db:seed
+```
+
+## Import Problems
+
+Import repository-managed problem content:
 
 ```bash
 npm run import:problems -- --dir problems
 ```
 
-## Verify Local Health
+This loads the manifest-based folders under `problems/` into Postgres.
+
+## Runtime Verification
+
+Check the compose services:
 
 ```bash
-npm run local:ps
+docker compose -f deploy/local/docker-compose.yml ps
+```
+
+Check the API:
+
+```bash
 curl http://localhost:3100/healthz
 curl http://localhost:3100/readyz
 ```
 
-Expected responses:
+Helper command:
 
-- `healthz`: `{"status":"ok"}`
-- `readyz`: `{"status":"ready", ...}`
+```bash
+npm run local:ps
+```
 
-## Running API and Worker
+## API And Worker Development
 
-For normal development, use the compose-managed services above.
-
-Direct host commands exist mainly for debugging:
+The normal integration path uses Docker Compose, but host-side entrypoints exist for debugging:
 
 ```bash
 npm run api:start
 npm run worker:start
 ```
 
-Normal local workflow guidance:
+Use them only when you intentionally want a non-compose debugging session. Avoid running a second worker beside the compose-managed worker.
 
-- Prefer the compose `api` service for the real extension integration path
-- Prefer the compose `worker` service as the only active judge worker
-- Do not run an extra host-side worker against the same queue unless you are intentionally debugging concurrent consumers
-
-## Install the VS Code Extension
+## Extension Development
 
 Package the extension:
 
@@ -88,15 +103,13 @@ Package the extension:
 npm run extension:package
 ```
 
-Install the generated VSIX:
+Install the VSIX:
 
 ```bash
 code --install-extension dist/oj-vscode.vsix
 ```
 
-## Configure the Extension
-
-Open VS Code settings JSON and set:
+Configure VS Code:
 
 ```json
 {
@@ -105,39 +118,54 @@ Open VS Code settings JSON and set:
 }
 ```
 
-## End-to-End Developer Flow
+Current UI architecture:
+
+- Sidebar: problem navigation
+- Editor: problem detail and coding file
+- Panel: submissions and submission detail
+- Status bar: account icon and login entry point
+
+## End-To-End Workflow
 
 1. Start the local stack.
-2. Seed the database.
-3. Import the problems.
-4. Install the VSIX.
-5. Open the OJ sidebar in VS Code.
-6. Login from the `Account` panel.
-7. Fetch problems.
-8. Select a problem.
-9. Edit the generated file under `.oj/problems/`.
-10. Submit the current file.
-11. Watch the submission progress from `queued` to `running` to `finished` or `failed`.
+2. Run `npm run local:db:setup`.
+3. Run `npm run import:problems -- --dir problems`.
+4. Package and install the extension.
+5. Open a workspace in VS Code.
+6. Click the account icon in the status bar and log in.
+7. Open `Problems` and refresh the list.
+8. Select a problem to load its detail.
+9. Open or create `.oj/problems/<problemId>.py`.
+10. Submit from the editor workflow.
+11. Inspect results in the panel.
 
-## Smoke Test
+## Testing Workflow
 
-Run the supported end-to-end smoke test:
+Useful quality commands:
+
+```bash
+npm run typecheck
+npm run -ws --if-present test
+npm run -ws --if-present build
+```
+
+Smoke test:
 
 ```bash
 npm run smoke:local
 ```
 
-The smoke flow boots the stack, verifies readiness, exercises the extension HTTP client path, submits a real solution, and confirms that the worker produces a terminal result.
+The smoke script validates the real local stack, the login path, problem import, starter-file workflow, submission lifecycle, worker execution, and result recovery.
 
-## Useful Reset Commands
+## Reset And Cleanup
 
-Stop containers and remove local volumes:
+Stop the stack:
 
 ```bash
 npm run local:down
 ```
 
-Full reset:
+Reset local data:
 
 ```bash
 npm run local:reset
@@ -145,7 +173,7 @@ npm run local:reset
 
 ## Troubleshooting
 
-- If `3100` is busy, the local API container cannot bind successfully.
-- If `5432` is busy, the Postgres container cannot start.
-- If login or polling fails, verify `oj.apiBaseUrl` points to `http://localhost:3100`.
-- If submissions stay `queued`, check the worker container health and logs.
+- If the extension cannot connect, verify `oj.apiBaseUrl` is `http://localhost:3100`.
+- If submissions remain `queued`, inspect the worker container and worker logs.
+- If the API is healthy but not ready, check Postgres availability and migration state.
+- If ports such as `3100` or `5432` are busy, the compose stack will not bind correctly.

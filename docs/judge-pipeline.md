@@ -1,106 +1,96 @@
 # Judge Pipeline
 
-The judge pipeline turns a submitted Python source file into a persisted terminal result.
+The judge pipeline turns a submitted solution into a persisted result that the extension can display.
 
-## Submission Lifecycle States
+## Submission Lifecycle
 
 ### `queued`
 
-The API accepted the submission, stored it in Postgres, and inserted a judge job into the queue table.
+The API has accepted the submission, stored it in Postgres, and inserted a judge job.
 
 ### `running`
 
-The worker claimed the job and started processing it. At this point the worker has loaded the problem's judge configuration and is executing the extracted Python entry function against the problem tests.
+The judge worker has claimed the job and started processing it.
 
 ### `finished`
 
-The worker completed execution and persisted a terminal verdict and resource usage.
+The worker completed judging and persisted a verdict with execution metrics.
 
 ### `failed`
 
-The worker encountered a non-recoverable processing failure outside the normal verdict path, such as missing judge configuration or another execution pipeline failure, and persisted a failure reason.
+The submission could not complete the normal judge path because of a non-verdict processing failure, such as missing judge configuration or another worker-side failure.
 
 ## Verdicts
 
-### `AC` — Accepted
+### `AC`
 
-The submission produced the expected output for all tests.
+Accepted. All tests matched the expected outputs.
 
-### `WA` — Wrong Answer
+### `WA`
 
-The submission executed successfully but produced incorrect output for at least one test case.
+Wrong Answer. The program ran, but at least one test output did not match the expected result.
 
-### `CE` — Compile Error
+### `CE`
 
-The judged Python source could not be prepared into a runnable form, or the judge configuration was invalid for execution.
+Compile Error. The judged Python payload could not be prepared into runnable judged code.
 
-### `RE` — Runtime Error
+### `RE`
 
-The code ran but exited abnormally or produced runtime failures during test execution.
+Runtime Error. The program started but crashed during execution.
 
-### `TLE` — Time Limit Exceeded
+### `TLE`
 
-This is the standard online-judge verdict for submissions that exceed the configured time limit. The repository models `TLE` in its verdict set, even though the current local Python execution path primarily emits `AC`, `WA`, `CE`, and `RE`.
-
-### `MLE` — Memory Limit Exceeded
-
-This is the standard online-judge verdict for submissions that exceed the configured memory limit. The current local runtime documents memory limits and records memory usage, but the present worker path does not yet emit a dedicated `MLE` verdict.
+Time Limit Exceeded. The execution exceeded the configured time budget.
 
 ## Hidden Tests
 
-Each problem version contains two categories of tests:
+Each imported problem version stores:
 
-- `public` tests
-- `hidden` tests
+- `public.json` for visible example-style tests
+- `hidden.json` for judge-only validation
 
-Hidden tests are:
+Hidden tests are part of the real judge path:
 
-- stored in Postgres
-- loaded by the judge worker
-- executed as part of the real verdict
-- never returned by student-facing API responses
-- never rendered in the VS Code extension
+- they are imported into Postgres with the problem version
+- they are executed by the worker during judging
+- they affect the final verdict
+- they are not returned to student-facing problem APIs
+- they are not shown in the extension UI
 
-This prevents students from seeing the full judge oracle while still allowing the system to validate correctness beyond the visible examples.
+This means a submission can satisfy visible examples and still receive `WA` on hidden coverage.
 
-## Runtime Flow
+## Execution Flow
 
-1. The extension sends `POST /submissions`.
+1. The extension sends a submission to the API.
 2. The API stores the submission as `queued`.
-3. The API inserts a judge job into `judge_jobs`.
-4. The worker claims the job.
-5. The worker updates the submission to `running`.
-6. The worker loads:
-   - the problem version
-   - the configured `entryFunction`
-   - public tests
-   - hidden tests
-7. The worker extracts runnable judged Python source.
-8. The worker executes the code in Docker.
-9. The worker persists:
-   - terminal submission state
-   - verdict
-   - timing
-   - memory
-10. The extension polls `/submissions/:submissionId` and shows the terminal result.
+3. The API inserts a judge job into Postgres.
+4. The worker claims the job and marks the submission `running`.
+5. The worker loads the problem version, entry function, and public/hidden tests.
+6. The worker prepares judged Python code for the configured entry function.
+7. The worker runs that code inside a sandbox.
+8. The worker persists the verdict, time, and memory for normal judged outcomes.
+9. The worker persists `failed` plus a failure reason for non-verdict failures.
+10. The extension polls the API and renders the result.
 
-## Execution Model
+## Sandbox Execution
 
-The worker uses a Docker-backed sandbox and Python runner plugin. The current problem contract is driven by the problem manifest's `entryFunction`, not by a hardcoded `solve()` assumption.
+The worker runs student code in a Docker-backed sandbox. The sandbox exists to provide:
 
-That means the judged source is built from:
+- isolated execution
+- controlled runtime behavior
+- resource limits
+- a real backend judge path instead of a client-only simulation
 
-- the student's submitted file
-- the configured top-level entry function
-- only the helper code needed to execute that entry function safely
+The worker uses the problem manifest’s configured `entryFunction` and the imported tests for the specific problem version being judged.
 
 ## Persistence Model
 
 Postgres stores:
 
-- the submission row and lifecycle state
-- the judge job queue row
-- the persisted terminal result
-- the imported problem tests and judge metadata
+- submission rows and lifecycle state
+- queue rows for pending judge work
+- imported public and hidden tests
+- terminal judge results
+- failure reasons when the submission ends in `failed`
 
-This allows the extension to reconnect, poll again, and recover the latest persisted state after reloads or process restarts.
+That persisted state is what allows the extension to restore and poll recent results across reloads.

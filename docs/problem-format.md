@@ -1,8 +1,8 @@
 # Problem Format
 
-Problems are stored on disk as manifest-based folders under `problems/`.
+Problems are authored in the repository under `problems/` using a manifest-based directory layout.
 
-## Folder Structure
+## Directory Layout
 
 ```text
 problems/
@@ -14,11 +14,15 @@ problems/
     hidden.json
 ```
 
-## File Purposes
+Each problem folder is the source-controlled definition for an importable problem version.
+
+## Files
 
 ### `manifest.json`
 
-Defines the problem metadata used by the importer and runtime:
+The metadata file for the problem. It defines the identity and runtime contract used by the importer, API, extension, and worker.
+
+Typical fields include:
 
 - `problemId`
 - `title`
@@ -28,28 +32,23 @@ Defines the problem metadata used by the importer and runtime:
 - `memoryLimitKb`
 - `visibility`
 
-Optional metadata may include:
-
-- `difficulty`
-- `tags`
-- `version`
-- `author`
+Additional metadata may include fields such as difficulty, tags, version, and author.
 
 ### `statement.md`
 
-Student-facing problem statement shown in the VS Code extension.
+The Markdown problem statement shown in the extension’s problem detail view.
 
 ### `starter.py`
 
-The editable starter file materialized into `.oj/problems/<problemId>.py` for the student workflow.
+The starter file that the extension materializes into `.oj/problems/<problemId>.py`. This file should contain the function shape the student is expected to implement.
 
 ### `public.json`
 
-Visible example tests used by the judge configuration and documentation-oriented validation.
+Visible test cases. These are suitable for examples and transparent checks.
 
 ### `hidden.json`
 
-Private judge-only tests. These are stored and executed by the worker but must not be exposed to students through the API or extension UI.
+Judge-only test cases. These are imported and executed by the worker, but they must never be exposed to student-facing APIs or UI surfaces.
 
 ## Example `manifest.json`
 
@@ -69,9 +68,9 @@ Private judge-only tests. These are stored and executed by the worker but must n
 }
 ```
 
-## Test File Format
+## Example Test Payload
 
-Both `public.json` and `hidden.json` are JSON arrays of test case objects:
+Both `public.json` and `hidden.json` are JSON arrays of test cases. A simplified shape is:
 
 ```json
 [
@@ -80,30 +79,23 @@ Both `public.json` and `hidden.json` are JSON arrays of test case objects:
 ]
 ```
 
-The importer converts these files into persisted judge test rows associated with a problem version.
+The importer validates the layout and persists the statement, starter code, metadata, and tests into Postgres.
 
-## Validation Rules
+## Import Expectations
 
-The importer enforces:
+The importer expects the problem folder to be complete:
 
-- `problemId` must be a non-empty string
-- `title` must be a non-empty string
-- `entryFunction` must be a non-empty valid Python identifier
-- `language` must currently be `python`
-- `visibility` must be `public` or `private`
-- `timeLimitMs` must be positive
-- `memoryLimitKb` must be positive
-- all required sibling files must exist
-- `public.json` and `hidden.json` must contain valid JSON arrays of test cases
+1. read `manifest.json`
+2. load `statement.md`
+3. load `starter.py`
+4. parse `public.json`
+5. parse `hidden.json`
+6. compute content/version data
+7. persist the assets and tests into Postgres
 
-## Import Flow
+## Authoring Guidelines
 
-The importer:
-
-1. Reads `manifest.json`
-2. Loads `statement.md`, `starter.py`, `public.json`, and `hidden.json`
-3. Computes a content digest
-4. Inserts or appends a problem version in Postgres
-5. Stores judge assets and both public and hidden tests
-
-The source of truth for runtime problem content is therefore the versioned filesystem problem folder plus the imported Postgres representation derived from it.
+- Keep `entryFunction` aligned with the function expected in `starter.py`.
+- Keep `statement.md` student-facing and free of hidden test content.
+- Use `hidden.json` for judge-only coverage.
+- Keep the problem self-contained so it can be imported without manual database edits.
