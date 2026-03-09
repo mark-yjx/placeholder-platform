@@ -116,7 +116,7 @@ async function executeDockerCommand(command: {
   command: string;
   args: readonly string[];
   stdin: string;
-}): Promise<{ stdout: string; stderr: string; exitCode: number; timeMs: number; memoryKb: number }> {
+}): Promise<{ stdout: string; stderr: string; exitCode: number; timeMs: number; memoryKb?: number }> {
   const image = resolveDockerRunImage(command.args);
   const imageIndex = command.args.indexOf(image);
   const prefixArgs = command.args.slice(0, imageIndex);
@@ -146,13 +146,24 @@ async function executeDockerCommand(command: {
         stdout,
         stderr,
         exitCode: code ?? 1,
-        timeMs: Math.max(Date.now() - startedAt, 0),
-        memoryKb: 0
+        timeMs: Math.max(Date.now() - startedAt, 0)
       });
     });
     child.stdin.write(command.stdin);
     child.stdin.end();
   });
+}
+
+function toLegacyPersistedMetrics(metrics: { timeMs?: number; memoryKb?: number }): {
+  timeMs: number;
+  memoryKb: number;
+} {
+  // Storage still requires numeric columns, so unavailable metrics are bridged
+  // explicitly here rather than being hidden inside the worker execution types.
+  return {
+    timeMs: metrics.timeMs ?? 0,
+    memoryKb: metrics.memoryKb ?? 0
+  };
 }
 
 export function createLocalWorkerTick(): () => Promise<void> {
@@ -263,12 +274,13 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
         entryFunction: judgeConfig.entryFunction,
         tests: judgeConfig.tests
       });
+      const persistedMetrics = toLegacyPersistedMetrics(result);
 
       await dependencies.results.save({
         submissionId: job.submissionId,
         verdict: result.verdict as Verdict,
-        timeMs: result.timeMs,
-        memoryKb: result.memoryKb
+        timeMs: persistedMetrics.timeMs,
+        memoryKb: persistedMetrics.memoryKb
       });
       await dependencies.submissions.save({
         ...submission,

@@ -276,10 +276,34 @@ test('missing solve and missing configured entryFunction result in CE without in
   assert.deepEqual(result, {
     status: 'finished',
     verdict: 'CE',
-    timeMs: 0,
-    memoryKb: 0
+    timeMs: undefined,
+    memoryKb: undefined
   });
   assert.equal(called, false);
+});
+
+test('unavailable sandbox memory stays unavailable in the judge result contract', async () => {
+  const sandbox = new DockerSandboxAdapter(async () => ({
+    stdout: '42\n',
+    stderr: '',
+    exitCode: 0,
+    timeMs: 85
+  }));
+
+  const result = await runPythonJudgeExecution({
+    sandbox,
+    runners: createRegistry(),
+    image: 'python:3.12-alpine',
+    sourceCode: 'def solve(value):\n    return 42\n',
+    tests: [{ testType: 'public', position: 1, inputJson: 'null', expectedJson: '42' }]
+  });
+
+  assert.deepEqual(result, {
+    status: 'finished',
+    verdict: 'AC',
+    timeMs: 85,
+    memoryKb: undefined
+  });
 });
 
 test('submission passing public tests but failing hidden tests returns WA without hidden detail leakage', async () => {

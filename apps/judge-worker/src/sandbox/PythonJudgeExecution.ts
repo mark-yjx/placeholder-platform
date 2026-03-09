@@ -19,8 +19,8 @@ export type PythonJudgeExecutionInput = {
 export type PythonJudgeExecutionResult = {
   status: 'finished';
   verdict: PythonJudgeVerdict;
-  timeMs: number;
-  memoryKb: number;
+  timeMs?: number;
+  memoryKb?: number;
 };
 
 export async function runPythonJudgeExecution(
@@ -32,12 +32,13 @@ export async function runPythonJudgeExecution(
     return {
       status: 'finished',
       verdict: 'CE',
-      timeMs: 0,
-      memoryKb: 0
+      timeMs: undefined,
+      memoryKb: undefined
     };
   }
   let totalTimeMs = 0;
-  let maxMemoryKb = 0;
+  let maxMemoryKb: number | undefined;
+  let hasUnavailableMemory = false;
 
   for (const testCase of input.tests) {
     let judgedSourceCode: string;
@@ -51,8 +52,8 @@ export async function runPythonJudgeExecution(
       return {
         status: 'finished',
         verdict: 'CE',
-        timeMs: 0,
-        memoryKb: 0
+        timeMs: undefined,
+        memoryKb: undefined
       };
     }
 
@@ -63,14 +64,20 @@ export async function runPythonJudgeExecution(
       runArgs: runner.runArgs
     });
     totalTimeMs += execution.timeMs;
-    maxMemoryKb = Math.max(maxMemoryKb, execution.memoryKb);
+    if (typeof execution.memoryKb === 'number') {
+      maxMemoryKb = maxMemoryKb === undefined ? execution.memoryKb : Math.max(maxMemoryKb, execution.memoryKb);
+    } else {
+      hasUnavailableMemory = true;
+    }
+
+    const memoryKb = hasUnavailableMemory ? undefined : maxMemoryKb;
 
     if (execution.exitCode !== 0 || execution.stderr.trim().length > 0) {
       return {
         status: 'finished',
         verdict: 'RE',
         timeMs: totalTimeMs,
-        memoryKb: maxMemoryKb
+        memoryKb
       };
     }
 
@@ -80,7 +87,7 @@ export async function runPythonJudgeExecution(
         status: 'finished',
         verdict: 'WA',
         timeMs: totalTimeMs,
-        memoryKb: maxMemoryKb
+        memoryKb
       };
     }
   }
@@ -89,6 +96,6 @@ export async function runPythonJudgeExecution(
     status: 'finished',
     verdict: 'AC',
     timeMs: totalTimeMs,
-    memoryKb: maxMemoryKb
+    memoryKb: hasUnavailableMemory ? undefined : maxMemoryKb
   };
 }

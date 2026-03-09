@@ -33,3 +33,26 @@ test('docker sandbox command enforces network-disabled and isolation flags', asy
   assert.equal(run.args.includes('--tmpfs'), true);
   assert.equal(run.stdin, 'print("hello")');
 });
+
+test('docker sandbox execution leaves memory undefined when the executor does not report it', async () => {
+  const adapter = new DockerSandboxAdapter(async () => ({
+    stdout: 'ok',
+    stderr: '',
+    exitCode: 0,
+    timeMs: 37
+  }));
+
+  const execution = await adapter.execute({
+    image: 'python:3.12-alpine',
+    limits: { cpuCores: 1, memoryMb: 256, timeMs: 2000 },
+    sourceCode: 'print("hello")'
+  });
+
+  assert.deepEqual(execution, {
+    stdout: 'ok',
+    stderr: '',
+    exitCode: 0,
+    timeMs: 37,
+    memoryKb: undefined
+  });
+});
