@@ -5,6 +5,17 @@ export type AdminProblemListItem = {
   updatedAt: string;
 };
 
+export type AdminProblemVisibility = 'draft' | 'public' | 'private';
+
+export type AdminProblemCreateRequest = {
+  problemId: string;
+  title: string;
+  entryFunction: string;
+  language: 'python';
+  timeLimitMs: number;
+  memoryLimitKb: number;
+};
+
 export type AdminProblemDetail = {
   problemId: string;
   title: string;
@@ -12,7 +23,7 @@ export type AdminProblemDetail = {
   language: 'python';
   timeLimitMs: number;
   memoryLimitKb: number;
-  visibility: 'public' | 'private';
+  visibility: AdminProblemVisibility;
   statementMarkdown: string;
   starterCode: string;
   updatedAt: string;
@@ -74,6 +85,27 @@ export async function fetchAdminProblem(
 
   if (!response.ok) {
     throw new Error(responseDetail(body) ?? 'Admin problem detail is unavailable.');
+  }
+
+  return body as AdminProblemDetail;
+}
+
+export async function createAdminProblem(
+  token: string,
+  payload: AdminProblemCreateRequest
+): Promise<AdminProblemDetail> {
+  const response = await fetch(`${adminApiBaseUrl()}/admin/problems`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+  const body = (await parseResponse(response)) as AdminProblemDetail | { detail?: string } | null;
+
+  if (!response.ok) {
+    throw new Error(responseDetail(body) ?? 'Admin problem creation is unavailable.');
   }
 
   return body as AdminProblemDetail;

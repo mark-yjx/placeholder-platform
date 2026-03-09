@@ -70,6 +70,9 @@ export function ProblemsListPage() {
           </div>
 
           <div className="header-actions">
+            <Link className="primary-button link-button" to="/admin/problems/create">
+              Create Problem
+            </Link>
             <Link className="secondary-button link-button" to="/submissions">
               Submissions
             </Link>
@@ -107,12 +110,12 @@ export function ProblemsListPage() {
                 {problems.map((problem) => (
                   <tr key={problem.problemId}>
                     <td>
-                      <Link className="problem-link" to={`/problems/${problem.problemId}`}>
+                      <Link className="problem-link" to={`/admin/problems/${problem.problemId}`}>
                         {problem.problemId}
                       </Link>
                     </td>
                     <td>
-                      <Link className="problem-link" to={`/problems/${problem.problemId}`}>
+                      <Link className="problem-link" to={`/admin/problems/${problem.problemId}`}>
                         {problem.title}
                       </Link>
                     </td>

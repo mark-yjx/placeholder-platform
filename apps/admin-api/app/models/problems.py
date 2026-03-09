@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, field_validator
 
+PROBLEM_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 PYTHON_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -17,6 +18,15 @@ def _validate_entry_function(value: str) -> str:
     trimmed = _validate_non_empty(value, "entryFunction")
     if not PYTHON_IDENTIFIER_PATTERN.match(trimmed):
         raise ValueError("entryFunction must be a valid Python identifier.")
+    return trimmed
+
+
+def _validate_problem_id(value: str) -> str:
+    trimmed = _validate_non_empty(value, "problemId")
+    if not PROBLEM_ID_PATTERN.match(trimmed):
+        raise ValueError(
+            "problemId must use lowercase letters, numbers, underscores, or hyphens."
+        )
     return trimmed
 
 
@@ -47,10 +57,41 @@ class AdminProblemDetail(BaseModel):
     language: Literal["python"]
     timeLimitMs: int
     memoryLimitKb: int
-    visibility: Literal["public", "private"]
+    visibility: Literal["draft", "public", "private"]
     statementMarkdown: str
     starterCode: str
     updatedAt: str
+
+
+class AdminProblemCreateRequest(BaseModel):
+    problemId: str
+    title: str
+    entryFunction: str
+    language: Literal["python"]
+    timeLimitMs: int
+    memoryLimitKb: int
+
+    @field_validator("problemId", mode="after")
+    @classmethod
+    def validate_problem_id(cls, value: str) -> str:
+        return _validate_problem_id(value)
+
+    @field_validator("title", mode="after")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        return _validate_non_empty(value, "title")
+
+    @field_validator("entryFunction", mode="after")
+    @classmethod
+    def validate_entry_function(cls, value: str) -> str:
+        return _validate_entry_function(value)
+
+    @field_validator("timeLimitMs", "memoryLimitKb", mode="after")
+    @classmethod
+    def validate_positive_limits(cls, value: int, info) -> int:
+        if value <= 0:
+            raise ValueError(f"{info.field_name} must be greater than zero.")
+        return value
 
 
 class AdminProblemUpdateRequest(BaseModel):
@@ -60,11 +101,16 @@ class AdminProblemUpdateRequest(BaseModel):
     language: Literal["python"]
     timeLimitMs: int
     memoryLimitKb: int
-    visibility: Literal["public", "private"]
+    visibility: Literal["draft", "public", "private"]
     statementMarkdown: str
     starterCode: str
 
-    @field_validator("problemId", "title", mode="after")
+    @field_validator("problemId", mode="after")
+    @classmethod
+    def validate_problem_id(cls, value: str) -> str:
+        return _validate_problem_id(value)
+
+    @field_validator("title", mode="after")
     @classmethod
     def validate_required_text(cls, value: str, info) -> str:
         return _validate_non_empty(value, info.field_name)

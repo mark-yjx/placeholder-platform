@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import {
   fetchAdminProblem,
   updateAdminProblem,
@@ -12,8 +12,15 @@ type SaveState = 'idle' | 'saving' | 'success' | 'error';
 
 export function ProblemEditPage() {
   const { problemId } = useParams<{ problemId: string }>();
-  const [form, setForm] = useState<AdminProblemDetail | null>(null);
-  const [loadState, setLoadState] = useState<LoadState>('loading');
+  const location = useLocation();
+  const initialProblem =
+    (location.state as { initialProblem?: AdminProblemDetail } | null)?.initialProblem ?? null;
+  const [form, setForm] = useState<AdminProblemDetail | null>(
+    initialProblem && initialProblem.problemId === problemId ? initialProblem : null
+  );
+  const [loadState, setLoadState] = useState<LoadState>(
+    initialProblem && initialProblem.problemId === problemId ? 'ready' : 'loading'
+  );
   const [error, setError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -106,14 +113,14 @@ export function ProblemEditPage() {
           <div className="header-actions">
             <Link
               className="secondary-button link-button"
-              to={problemId ? `/problems/${problemId}/tests` : '/'}
+              to={problemId ? `/admin/problems/${problemId}/tests` : '/admin/problems'}
             >
               Tests
             </Link>
             <Link className="secondary-button link-button" to="/submissions">
               Submissions
             </Link>
-            <Link className="secondary-button link-button" to="/">
+            <Link className="secondary-button link-button" to="/admin/problems">
               Back to Problems
             </Link>
           </div>
@@ -176,6 +183,7 @@ export function ProblemEditPage() {
                     }
                     value={form.visibility}
                   >
+                    {form.visibility === 'draft' ? <option value="draft">draft</option> : null}
                     <option value="public">public</option>
                     <option value="private">private</option>
                   </select>

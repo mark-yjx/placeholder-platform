@@ -5,14 +5,22 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
+from shutil import rmtree
 from typing import Protocol
 
 import psycopg
 from psycopg.rows import dict_row
 
-from app.models.problems import AdminProblemDetail, AdminProblemListItem, AdminProblemUpdateRequest
+from app.models.problems import (
+    AdminProblemCreateRequest,
+    AdminProblemDetail,
+    AdminProblemListItem,
+    AdminProblemUpdateRequest,
+)
 
 DEFAULT_DATABASE_URL = "postgresql://oj:oj@127.0.0.1:5432/oj"
+DEFAULT_PROBLEMS_ROOT = Path(__file__).resolve().parents[4] / "problems"
 
 LIST_ADMIN_PROBLEMS_SQL = """
 SELECT
@@ -169,6 +177,13 @@ VALUES (
 )
 """
 
+PROBLEM_EXISTS_SQL = """
+SELECT 1
+FROM problems
+WHERE id = %(problem_id)s
+LIMIT 1
+"""
+
 
 class AdminProblemListService(Protocol):
     def list_problems(self) -> list[AdminProblemListItem]:
@@ -176,6 +191,9 @@ class AdminProblemListService(Protocol):
 
 
 class AdminProblemService(AdminProblemListService, Protocol):
+    def create_problem(self, payload: AdminProblemCreateRequest) -> AdminProblemDetail:
+        ...
+
     def get_problem(self, problem_id: str) -> AdminProblemDetail | None:
         ...
 
@@ -183,110 +201,227 @@ class AdminProblemService(AdminProblemListService, Protocol):
         self, problem_id: str, payload: AdminProblemUpdateRequest
     ) -> AdminProblemDetail | None:
         ...
+
+
+class ProblemAlreadyExistsError(ValueError):
+    """Raised when a problem create request collides with an existing problem."""
+
+
+class ProblemOperationValidationError(ValueError):
+    """Raised when an admin problem operation violates the current contract."""
 
 
 @dataclass(frozen=True)
 class PsycopgProblemListService:
     database_url: str
+    problems_root: Path = DEFAULT_PROBLEMS_ROOT
 
     @classmethod
     def from_env(cls) -> "PsycopgProblemListService":
-        return cls(database_url=os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL))
+        return cls(
+            database_url=os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL),
+            problems_root=Path(os.getenv("PROBLEMS_ROOT", str(DEFAULT_PROBLEMS_ROOT))),
+        )
 
     def list_problems(self) -> list[AdminProblemListItem]:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(LIST_ADMIN_PROBLEMS_SQL)
-                rows = cursor.fetchall()
+        items_by_id: dict[str, AdminProblemListItem] = {}
 
-        return [
-            AdminProblemListItem(
-                problemId=str(row["problem_id"]),
+        try:
+            with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(LIST_ADMIN_PROBLEMS_SQL)
+                    rows = cursor.fetchall()
+        except psycopg.Error:
+            rows = []
+
+        for row in rows:
+            problem_id = str(row["problem_id"])
+            items_by_id[problem_id] = AdminProblemListItem(
+                problemId=problem_id,
                 title=str(row["title"]),
                 # Fallback to publication_state only when a manifest visibility row is absent.
                 visibility=str(row["visibility"]),
                 updatedAt=_format_timestamp(row["updated_at"]),
             )
-            for row in rows
-        ]
+
+        for detail in _list_file_problem_details(self.problems_root):
+            items_by_id.setdefault(
+                detail.problemId,
+                AdminProblemListItem(
+                    problemId=detail.problemId,
+                    title=detail.title,
+                    visibility=detail.visibility,
+                    updatedAt=detail.updatedAt,
+                ),
+            )
+
+        return sorted(items_by_id.values(), key=lambda item: item.problemId)
+
+    def create_problem(self, payload: AdminProblemCreateRequest) -> AdminProblemDetail:
+        if self._problem_exists_in_database(payload.problemId):
+            raise ProblemAlreadyExistsError("Problem ID already exists.")
+
+        problem_dir = self.problems_root / payload.problemId
+        if problem_dir.exists():
+            raise ProblemAlreadyExistsError("Problem ID already exists.")
+
+        detail = _build_created_problem_detail(payload)
+        problem_dir.mkdir(parents=True, exist_ok=False)
+        try:
+            _write_problem_files(problem_dir, detail, include_hidden=True)
+        except Exception:
+            rmtree(problem_dir, ignore_errors=True)
+            raise
+
+        return detail
 
     def get_problem(self, problem_id: str) -> AdminProblemDetail | None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(ADMIN_PROBLEM_DETAIL_SQL, {"problem_id": problem_id})
-                row = cursor.fetchone()
+        try:
+            with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(ADMIN_PROBLEM_DETAIL_SQL, {"problem_id": problem_id})
+                    row = cursor.fetchone()
+        except psycopg.Error:
+            row = None
 
-        return _row_to_problem_detail(row) if row else None
+        if row:
+            return _row_to_problem_detail(row)
+
+        return _read_file_problem_detail(self.problems_root / problem_id)
 
     def update_problem(
         self, problem_id: str, payload: AdminProblemUpdateRequest
     ) -> AdminProblemDetail | None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
-            with connection.transaction():
+        try:
+            with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
+                with connection.transaction():
+                    with connection.cursor() as cursor:
+                        cursor.execute(ADMIN_PROBLEM_DETAIL_SQL, {"problem_id": problem_id})
+                        existing = cursor.fetchone()
+                        if existing is None:
+                            return self._update_file_problem(problem_id, payload)
+
+                        if payload.visibility == "draft":
+                            raise ProblemOperationValidationError(
+                                "Draft visibility is only available for file-backed problems."
+                            )
+
+                        cursor.execute(PROBLEM_VERSION_NUMBER_SQL, {"problem_id": problem_id})
+                        version_row = cursor.fetchone()
+                        next_version_number = int(version_row["latest_version_number"]) + 1
+                        version_id = f"{problem_id}-v{next_version_number}"
+
+                        publication_state = str(existing["publication_state"])
+                        tags = existing["tags"]
+                        content_digest = _build_content_digest(payload)
+                        params = {
+                            "problem_id": problem_id,
+                            "version_id": version_id,
+                            "version_number": next_version_number,
+                            "title": payload.title,
+                            "statement_markdown": payload.statementMarkdown,
+                            "publication_state": publication_state,
+                            "entry_function": payload.entryFunction,
+                            "language": payload.language,
+                            "visibility": payload.visibility,
+                            "time_limit_ms": payload.timeLimitMs,
+                            "memory_limit_kb": payload.memoryLimitKb,
+                            "difficulty": existing["difficulty"],
+                            "tags": json.dumps(tags) if tags is not None else None,
+                            "manifest_version": existing["manifest_version"],
+                            "author": existing["author"],
+                            "starter_code": payload.starterCode,
+                            "content_digest": content_digest,
+                        }
+
+                        cursor.execute(UPSERT_PROBLEM_SQL, params)
+                        cursor.execute(INSERT_PROBLEM_VERSION_SQL, params)
+                        cursor.execute(INSERT_PROBLEM_VERSION_ASSETS_SQL, params)
+                        cursor.execute(
+                            LIST_PROBLEM_VERSION_TESTS_SQL,
+                            {"version_id": existing["version_id"]},
+                        )
+                        for test_row in cursor.fetchall():
+                            cursor.execute(
+                                INSERT_PROBLEM_VERSION_TEST_SQL,
+                                {
+                                    "problem_version_id": version_id,
+                                    "test_type": test_row["test_type"],
+                                    "position": int(test_row["position"]),
+                                    "input_json": test_row["input_json"],
+                                    "output_json": test_row["output_json"],
+                                },
+                            )
+
                 with connection.cursor() as cursor:
                     cursor.execute(ADMIN_PROBLEM_DETAIL_SQL, {"problem_id": problem_id})
-                    existing = cursor.fetchone()
-                    if existing is None:
-                        return None
+                    updated = cursor.fetchone()
 
-                    cursor.execute(PROBLEM_VERSION_NUMBER_SQL, {"problem_id": problem_id})
-                    version_row = cursor.fetchone()
-                    next_version_number = int(version_row["latest_version_number"]) + 1
-                    version_id = f"{problem_id}-v{next_version_number}"
+            return _row_to_problem_detail(updated) if updated else None
+        except psycopg.Error:
+            return self._update_file_problem(problem_id, payload)
 
-                    publication_state = str(existing["publication_state"])
-                    tags = existing["tags"]
-                    content_digest = _build_content_digest(payload)
-                    params = {
-                        "problem_id": problem_id,
-                        "version_id": version_id,
-                        "version_number": next_version_number,
-                        "title": payload.title,
-                        "statement_markdown": payload.statementMarkdown,
-                        "publication_state": publication_state,
-                        "entry_function": payload.entryFunction,
-                        "language": payload.language,
-                        "visibility": payload.visibility,
-                        "time_limit_ms": payload.timeLimitMs,
-                        "memory_limit_kb": payload.memoryLimitKb,
-                        "difficulty": existing["difficulty"],
-                        "tags": json.dumps(tags) if tags is not None else None,
-                        "manifest_version": existing["manifest_version"],
-                        "author": existing["author"],
-                        "starter_code": payload.starterCode,
-                        "content_digest": content_digest,
-                    }
+    def _problem_exists_in_database(self, problem_id: str) -> bool:
+        try:
+            with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(PROBLEM_EXISTS_SQL, {"problem_id": problem_id})
+                    return cursor.fetchone() is not None
+        except psycopg.Error:
+            return False
 
-                    cursor.execute(UPSERT_PROBLEM_SQL, params)
-                    cursor.execute(INSERT_PROBLEM_VERSION_SQL, params)
-                    cursor.execute(INSERT_PROBLEM_VERSION_ASSETS_SQL, params)
-                    cursor.execute(
-                        LIST_PROBLEM_VERSION_TESTS_SQL,
-                        {"version_id": existing["version_id"]},
-                    )
-                    for test_row in cursor.fetchall():
-                        cursor.execute(
-                            INSERT_PROBLEM_VERSION_TEST_SQL,
-                            {
-                                "problem_version_id": version_id,
-                                "test_type": test_row["test_type"],
-                                "position": int(test_row["position"]),
-                                "input_json": test_row["input_json"],
-                                "output_json": test_row["output_json"],
-                            },
-                        )
+    def _update_file_problem(
+        self, problem_id: str, payload: AdminProblemUpdateRequest
+    ) -> AdminProblemDetail | None:
+        problem_dir = self.problems_root / problem_id
+        if not problem_dir.is_dir():
+            return None
 
-            with connection.cursor() as cursor:
-                cursor.execute(ADMIN_PROBLEM_DETAIL_SQL, {"problem_id": problem_id})
-                updated = cursor.fetchone()
-
-        return _row_to_problem_detail(updated) if updated else None
+        detail = AdminProblemDetail(
+            problemId=payload.problemId,
+            title=payload.title,
+            entryFunction=payload.entryFunction,
+            language=payload.language,
+            timeLimitMs=payload.timeLimitMs,
+            memoryLimitKb=payload.memoryLimitKb,
+            visibility=payload.visibility,
+            statementMarkdown=payload.statementMarkdown,
+            starterCode=payload.starterCode,
+            updatedAt=_format_timestamp(datetime.now(timezone.utc)),
+        )
+        _write_problem_files(problem_dir, detail, include_hidden=False)
+        return _read_file_problem_detail(problem_dir)
 
 
 def _format_timestamp(value: datetime | str) -> str:
     if isinstance(value, datetime):
         return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
     return str(value)
+
+
+def _build_created_problem_detail(payload: AdminProblemCreateRequest) -> AdminProblemDetail:
+    return AdminProblemDetail(
+        problemId=payload.problemId,
+        title=payload.title,
+        entryFunction=payload.entryFunction,
+        language=payload.language,
+        timeLimitMs=payload.timeLimitMs,
+        memoryLimitKb=payload.memoryLimitKb,
+        visibility="draft",
+        statementMarkdown=f"# {payload.title}\n\nProblem statement not written yet.\n",
+        starterCode=_build_starter_code(payload.entryFunction),
+        updatedAt=_format_timestamp(datetime.now(timezone.utc)),
+    )
+
+
+def _build_starter_code(entry_function: str) -> str:
+    return (
+        f"def {entry_function}(number: int) -> int:\n"
+        '    """\n'
+        "    Write your solution here.\n"
+        '    """\n'
+        "    pass\n"
+    )
 
 
 def _row_to_problem_detail(row: dict | None) -> AdminProblemDetail | None:
@@ -307,6 +442,78 @@ def _row_to_problem_detail(row: dict | None) -> AdminProblemDetail | None:
         starterCode=str(row["starter_code"]),
         updatedAt=_format_timestamp(row["updated_at"]),
     )
+
+
+def _list_file_problem_details(problems_root: Path) -> list[AdminProblemDetail]:
+    if not problems_root.exists():
+        return []
+
+    details: list[AdminProblemDetail] = []
+    for candidate in sorted(problems_root.iterdir(), key=lambda path: path.name):
+        if not candidate.is_dir():
+            continue
+
+        detail = _read_file_problem_detail(candidate)
+        if detail is not None:
+            details.append(detail)
+
+    return details
+
+
+def _read_file_problem_detail(problem_dir: Path) -> AdminProblemDetail | None:
+    manifest_path = problem_dir / "manifest.json"
+    statement_path = problem_dir / "statement.md"
+    starter_path = problem_dir / "starter.py"
+    hidden_path = problem_dir / "hidden.json"
+
+    if not all(path.exists() for path in (manifest_path, statement_path, starter_path, hidden_path)):
+        return None
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    updated_at = _format_timestamp(
+        datetime.fromtimestamp(
+            max(
+                path.stat().st_mtime
+                for path in (manifest_path, statement_path, starter_path, hidden_path)
+            ),
+            tz=timezone.utc,
+        )
+    )
+
+    return AdminProblemDetail(
+        problemId=str(manifest["problemId"]),
+        title=str(manifest["title"]),
+        entryFunction=str(manifest["entryFunction"]),
+        language=str(manifest["language"]),
+        timeLimitMs=int(manifest["timeLimitMs"]),
+        memoryLimitKb=int(manifest["memoryLimitKb"]),
+        visibility=str(manifest["visibility"]),
+        statementMarkdown=statement_path.read_text(encoding="utf-8"),
+        starterCode=starter_path.read_text(encoding="utf-8"),
+        updatedAt=updated_at,
+    )
+
+
+def _write_problem_files(problem_dir: Path, detail: AdminProblemDetail, include_hidden: bool) -> None:
+    manifest = {
+        "problemId": detail.problemId,
+        "title": detail.title,
+        "language": detail.language,
+        "entryFunction": detail.entryFunction,
+        "timeLimitMs": detail.timeLimitMs,
+        "memoryLimitKb": detail.memoryLimitKb,
+        "visibility": detail.visibility,
+        "examples": [],
+        "publicTests": [],
+    }
+    (problem_dir / "manifest.json").write_text(
+        f"{json.dumps(manifest, indent=2)}\n",
+        encoding="utf-8",
+    )
+    (problem_dir / "statement.md").write_text(detail.statementMarkdown, encoding="utf-8")
+    (problem_dir / "starter.py").write_text(detail.starterCode, encoding="utf-8")
+    if include_hidden:
+        (problem_dir / "hidden.json").write_text("[]\n", encoding="utf-8")
 
 
 def _build_content_digest(payload: AdminProblemUpdateRequest) -> str:
