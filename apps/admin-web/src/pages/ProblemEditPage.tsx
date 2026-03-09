@@ -104,6 +104,12 @@ export function ProblemEditPage() {
           </div>
 
           <div className="header-actions">
+            <Link
+              className="secondary-button link-button"
+              to={problemId ? `/problems/${problemId}/tests` : '/'}
+            >
+              Tests
+            </Link>
             <Link className="secondary-button link-button" to="/submissions">
               Submissions
             </Link>

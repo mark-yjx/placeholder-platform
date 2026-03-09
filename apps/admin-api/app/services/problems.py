@@ -139,6 +139,36 @@ VALUES (
 )
 """
 
+LIST_PROBLEM_VERSION_TESTS_SQL = """
+SELECT
+  test_type,
+  position,
+  input::text AS input_json,
+  expected::text AS output_json
+FROM problem_version_tests
+WHERE problem_version_id = %(version_id)s
+ORDER BY
+  CASE test_type WHEN 'public' THEN 0 ELSE 1 END ASC,
+  position ASC
+"""
+
+INSERT_PROBLEM_VERSION_TEST_SQL = """
+INSERT INTO problem_version_tests (
+  problem_version_id,
+  test_type,
+  position,
+  input,
+  expected
+)
+VALUES (
+  %(problem_version_id)s,
+  %(test_type)s,
+  %(position)s,
+  %(input_json)s::jsonb,
+  %(output_json)s::jsonb
+)
+"""
+
 
 class AdminProblemListService(Protocol):
     def list_problems(self) -> list[AdminProblemListItem]:
@@ -230,6 +260,21 @@ class PsycopgProblemListService:
                     cursor.execute(UPSERT_PROBLEM_SQL, params)
                     cursor.execute(INSERT_PROBLEM_VERSION_SQL, params)
                     cursor.execute(INSERT_PROBLEM_VERSION_ASSETS_SQL, params)
+                    cursor.execute(
+                        LIST_PROBLEM_VERSION_TESTS_SQL,
+                        {"version_id": existing["version_id"]},
+                    )
+                    for test_row in cursor.fetchall():
+                        cursor.execute(
+                            INSERT_PROBLEM_VERSION_TEST_SQL,
+                            {
+                                "problem_version_id": version_id,
+                                "test_type": test_row["test_type"],
+                                "position": int(test_row["position"]),
+                                "input_json": test_row["input_json"],
+                                "output_json": test_row["output_json"],
+                            },
+                        )
 
             with connection.cursor() as cursor:
                 cursor.execute(ADMIN_PROBLEM_DETAIL_SQL, {"problem_id": problem_id})

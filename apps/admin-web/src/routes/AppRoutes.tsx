@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { LoginPage } from '../pages/LoginPage';
 import { ProblemEditPage } from '../pages/ProblemEditPage';
+import { ProblemTestsPage } from '../pages/ProblemTestsPage';
 import { ProblemsListPage } from '../pages/ProblemsListPage';
 import { SubmissionDetailPage } from '../pages/SubmissionDetailPage';
 import { SubmissionsListPage } from '../pages/SubmissionsListPage';
@@ -24,6 +25,7 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<ProblemsListPage />} />
         <Route path="/problems/:problemId" element={<ProblemEditPage />} />
+        <Route path="/problems/:problemId/tests" element={<ProblemTestsPage />} />
         <Route path="/submissions" element={<SubmissionsListPage />} />
         <Route path="/submissions/:submissionId" element={<SubmissionDetailPage />} />
       </Route>

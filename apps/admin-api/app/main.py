@@ -3,10 +3,18 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth_router, health_router, problems_router, submissions_router
+from app.api.routes import (
+    auth_router,
+    health_router,
+    problems_router,
+    submissions_router,
+    tests_router,
+)
 from app.services import (
     AdminProblemService,
+    AdminProblemTestService,
     AdminSubmissionService,
+    PsycopgAdminProblemTestService,
     PsycopgAdminSubmissionService,
     PsycopgProblemListService,
 )
@@ -22,6 +30,7 @@ def _load_admin_web_origins() -> list[str]:
 
 def create_app(
     problem_list_service: AdminProblemService | None = None,
+    problem_test_service: AdminProblemTestService | None = None,
     submission_service: AdminSubmissionService | None = None,
 ) -> FastAPI:
     app = FastAPI(title="admin-api", version="0.1.0")
@@ -32,11 +41,15 @@ def create_app(
         allow_headers=["*"],
     )
     app.state.problem_service = problem_list_service or PsycopgProblemListService.from_env()
+    app.state.problem_test_service = (
+        problem_test_service or PsycopgAdminProblemTestService.from_env()
+    )
     app.state.submission_service = submission_service or PsycopgAdminSubmissionService.from_env()
     app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(problems_router)
     app.include_router(submissions_router)
+    app.include_router(tests_router)
     return app
 
 
