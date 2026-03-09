@@ -8,6 +8,7 @@ from app.models.tests import (
     AdminProblemTestsDetail,
     AdminProblemTestsUpdateRequest,
 )
+from .support import AUTHENTICATED_ADMIN_TOKEN, FakeProtectedAdminAuthService
 
 
 @dataclass
@@ -36,18 +37,14 @@ class FakeProblemTestService:
 
 
 def build_client(monkeypatch, service: FakeProblemTestService) -> TestClient:
-    monkeypatch.setenv("ADMIN_EMAIL", "admin@example.com")
-    monkeypatch.setenv("ADMIN_PASSWORD", "correct horse")
-    monkeypatch.setenv("ADMIN_TOKEN_SECRET", "local-admin-secret")
-    return TestClient(create_app(problem_test_service=service))
-
-
-def issue_token(client: TestClient) -> str:
-    response = client.post(
-        "/admin/auth/login",
-        json={"email": "admin@example.com", "password": "correct horse"},
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "local-admin-session-secret")
+    monkeypatch.setenv("ADMIN_MICROSOFT_CLIENT_ID", "local-microsoft-client")
+    return TestClient(
+        create_app(
+            problem_test_service=service,
+            auth_service=FakeProtectedAdminAuthService(),
+        )
     )
-    return response.json()["token"]
 
 
 def test_admin_problem_tests_returns_separate_public_and_hidden_rows(monkeypatch) -> None:
@@ -66,7 +63,7 @@ def test_admin_problem_tests_returns_separate_public_and_hidden_rows(monkeypatch
         }
     )
     client = build_client(monkeypatch, service)
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
 
     response = client.get(
         "/admin/problems/collapse/tests",
@@ -106,7 +103,7 @@ def test_admin_problem_tests_update_persists_for_valid_token(monkeypatch) -> Non
         }
     )
     client = build_client(monkeypatch, service)
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
 
     response = client.put(
         "/admin/problems/collapse/tests",
@@ -140,7 +137,7 @@ def test_admin_problem_tests_update_persists_for_valid_token(monkeypatch) -> Non
 def test_admin_problem_tests_update_rejects_invalid_payload(monkeypatch) -> None:
     service = FakeProblemTestService()
     client = build_client(monkeypatch, service)
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
 
     response = client.put(
         "/admin/problems/collapse/tests",

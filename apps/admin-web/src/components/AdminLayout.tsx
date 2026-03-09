@@ -56,7 +56,11 @@ export function AdminLayout({
             <p className="detail-label">Signed in</p>
             <p className="detail-value">{user?.email ?? 'admin'}</p>
           </div>
-          <button className="secondary-button subtle-button" onClick={logout} type="button">
+          <button
+            className="secondary-button subtle-button"
+            onClick={() => void logout()}
+            type="button"
+          >
             Logout
           </button>
         </div>

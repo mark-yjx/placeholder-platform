@@ -285,3 +285,49 @@ Acceptance checks:
 - Worker/runtime code can express whether memory and time were measured or unavailable.
 - The API propagates runtime metrics faithfully without hidden zero-filling.
 - Documentation explains exactly what runtime metrics mean and when they may be unavailable.
+
+### Phase 13: Admin Identity Hardening
+
+Goals:
+- Harden the Admin Web login path with OpenID Connect, local platform-user mapping, and TOTP-based second-factor verification.
+- Keep the admin authentication model provider-aware without making provider claims the source of truth for platform authorization.
+- Preserve the existing platform-level user model so admin access remains controlled by local `role` and `status`.
+- Keep the student-facing VS Code extension and student-facing Node/TypeScript API unchanged in this phase.
+
+Why OIDC is used instead of plain OAuth terminology:
+- The requirement is admin login and identity verification, not delegated API access on behalf of a third-party client.
+- OIDC defines the identity layer needed here: ID token semantics, issuer validation, nonce handling, discovery metadata, and a standard callback/login model.
+- Saying only "OAuth" would be too imprecise because OAuth is the broader authorization framework and does not, by itself, define the full authentication contract the admin stack needs.
+
+Why local user mapping is required:
+- A successful OIDC login proves the user authenticated with an external identity provider, but it does not by itself decide whether that identity is allowed into this platform.
+- The platform must map the external identity to a local platform user so that platform-owned properties such as `role`, `status`, and future recovery/reset controls remain authoritative.
+- Local mapping also keeps the design provider-agnostic so Microsoft can be first and Google can be added later without redefining platform authorization rules.
+
+Why admin role enforcement must remain local:
+- Admin admission is a platform authorization decision, not a trust delegation to Microsoft or any later identity provider.
+- The platform must remain able to deny access for `disabled` users, remove admin rights quickly, and keep behavior stable even if external group/tenant claims change unexpectedly.
+- Therefore, Admin Web entry must still require a mapped local user with `role = admin` and `status = active`.
+
+Why TOTP is added after OIDC identity verification:
+- The first step is to establish who the external identity is and which local platform user it maps to.
+- Only after that mapping succeeds should the platform challenge for a TOTP code, because the TOTP secret belongs to the local platform account rather than the raw provider identity.
+- This ordering keeps TOTP enrollment, recovery, and enforcement attached to the platform user while still using OIDC as the primary identity proof.
+
+Why student flows remain unchanged in this phase:
+- The hardening work applies only to Admin Web and `admin-api`.
+- The student-facing VS Code extension remains student-only and out of scope.
+- No student auth redesign, no judge lifecycle change, and no extension admin workflow should be introduced as part of this phase.
+
+Non-goals:
+- No redesign of the student-facing auth system.
+- No judge worker or submission lifecycle change.
+- No course-specific identity assumptions such as roster, zid, lecturer, tutor, or tutorial group mapping.
+- No implementation of Google login yet, beyond leaving room for a later provider addition.
+
+Acceptance checks:
+- Microsoft OIDC is documented as the primary provider for the first hardened admin login phase.
+- The planned login sequence is explicit: `OIDC -> callback -> local user mapping -> TOTP -> admin session`.
+- Admin entry is specified to require a mapped local user with `role = admin` and `status = active`.
+- Failure states are explicitly documented for unknown user, disabled user, non-admin user, and invalid TOTP.
+- Architecture and admin docs remain explicit that the VS Code extension is still student-only.

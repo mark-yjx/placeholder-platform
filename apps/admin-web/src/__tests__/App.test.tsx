@@ -21,24 +21,94 @@ describe('admin auth flow', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    window.localStorage.clear();
   });
 
-  it('renders the login form', () => {
+  it('renders the Microsoft sign-in page', () => {
     renderApp('/login');
 
     expect(screen.getByRole('heading', { name: 'Admin Login' })).toBeTruthy();
-    expect(screen.getByLabelText('Email')).toBeTruthy();
-    expect(screen.getByLabelText('Password')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Login' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Sign in with Microsoft' })).toBeTruthy();
   });
 
-  it('stores the token and navigates after a successful login', async () => {
+  it('renders the Microsoft login link', () => {
+    renderApp('/login');
+
+    expect(
+      screen.getByRole('link', { name: 'Sign in with Microsoft' }).getAttribute('href')
+    ).toBe('http://127.0.0.1:8200/admin/auth/login/microsoft');
+  });
+
+  it('redirects protected routes to login when no session is available', async () => {
+    renderApp('/');
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Admin Login' })).toBeTruthy();
+    });
+  });
+
+  it('redirects pending TOTP sessions to the verification page', async () => {
+    window.localStorage.setItem('oj.admin.token', 'pending-token');
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          state: 'pending_tfa',
+          user: {
+            email: 'admin@example.com',
+            userId: 'admin-1',
+            role: 'admin',
+            totpEnabled: true
+          },
+          pendingExpiresAt: '2026-03-10T10:05:00Z'
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        }
+      )
+    );
+
+    renderApp('/');
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'TOTP Verification' })).toBeTruthy();
+    });
+  });
+
+  it('submits the TOTP page and upgrades the session', async () => {
+    window.localStorage.setItem('oj.admin.token', 'pending-token');
     vi.mocked(fetch)
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            token: 'signed-token',
-            user: { email: 'admin@example.com', role: 'admin' }
+            state: 'pending_tfa',
+            user: {
+              email: 'admin@example.com',
+              userId: 'admin-1',
+              role: 'admin',
+              totpEnabled: true
+            },
+            pendingExpiresAt: '2026-03-10T10:05:00Z'
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            state: 'authenticated_admin',
+            token: 'full-token',
+            user: {
+              email: 'admin@example.com',
+              userId: 'admin-1',
+              role: 'admin',
+              totpEnabled: true
+            },
+            pendingExpiresAt: null
           }),
           {
             status: 200,
@@ -53,29 +123,62 @@ describe('admin auth flow', () => {
         })
       );
 
-    renderApp('/login');
+    renderApp('/verify-totp');
 
-    fireEvent.change(screen.getByLabelText('Email'), {
-      target: { value: 'admin@example.com' }
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'TOTP Verification' })).toBeTruthy();
     });
-    fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'correct horse' }
+
+    fireEvent.change(screen.getByLabelText('Authenticator Code'), {
+      target: { value: '123456' }
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Verify Code' }));
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Problems' })).toBeTruthy();
     });
 
-    expect(window.localStorage.getItem('oj.admin.token')).toBe('signed-token');
-    expect(screen.getByText('Signed in as admin@example.com.')).toBeTruthy();
+    expect(window.localStorage.getItem('oj.admin.token')).toBe('full-token');
   });
 
-  it('redirects protected routes to login when no token is available', async () => {
+  it('allows authenticated admins to reach protected pages', async () => {
+    window.localStorage.setItem('oj.admin.token', 'full-token');
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            state: 'authenticated_admin',
+            user: {
+              email: 'admin@example.com',
+              userId: 'admin-1',
+              role: 'admin',
+              totpEnabled: false
+            },
+            pendingExpiresAt: null
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+      );
+
     renderApp('/');
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Admin Login' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Problems' })).toBeTruthy();
     });
+  });
+
+  it('renders failure messages from the login page query string', () => {
+    renderApp('/login?error=Microsoft%20login%20failed.');
+
+    expect(screen.getByText('Microsoft login failed.')).toBeTruthy();
   });
 });

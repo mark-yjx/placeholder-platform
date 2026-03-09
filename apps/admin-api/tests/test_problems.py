@@ -16,6 +16,7 @@ from app.services.problems import (
     ProblemNotReadyError,
     PsycopgProblemListService,
 )
+from .support import AUTHENTICATED_ADMIN_TOKEN, FakeProtectedAdminAuthService
 
 
 @dataclass
@@ -119,18 +120,14 @@ class FakeProblemService:
 
 
 def build_client(monkeypatch, service: FakeProblemService) -> TestClient:
-    monkeypatch.setenv("ADMIN_EMAIL", "admin@example.com")
-    monkeypatch.setenv("ADMIN_PASSWORD", "correct horse")
-    monkeypatch.setenv("ADMIN_TOKEN_SECRET", "local-admin-secret")
-    return TestClient(create_app(problem_list_service=service))
-
-
-def issue_token(client: TestClient) -> str:
-    response = client.post(
-        "/admin/auth/login",
-        json={"email": "admin@example.com", "password": "correct horse"},
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "local-admin-session-secret")
+    monkeypatch.setenv("ADMIN_MICROSOFT_CLIENT_ID", "local-microsoft-client")
+    return TestClient(
+        create_app(
+            problem_list_service=service,
+            auth_service=FakeProtectedAdminAuthService(),
+        )
     )
-    return response.json()["token"]
 
 
 def test_admin_problems_returns_rows_for_valid_token(monkeypatch) -> None:
@@ -146,7 +143,7 @@ def test_admin_problems_returns_rows_for_valid_token(monkeypatch) -> None:
     )
     client = build_client(monkeypatch, service)
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
 
     response = client.get("/admin/problems", headers={"Authorization": f"Bearer {token}"})
 
@@ -181,7 +178,7 @@ def test_admin_problem_detail_returns_problem_for_valid_token(monkeypatch) -> No
     )
     client = build_client(monkeypatch, service)
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
 
     response = client.get(
         "/admin/problems/collapse",
@@ -217,7 +214,7 @@ def test_admin_problem_preview_returns_student_visible_fields(monkeypatch) -> No
     )
     client = build_client(monkeypatch, service)
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
     response = client.get(
         "/admin/problems/collapse/preview",
         headers={"Authorization": f"Bearer {token}"},
@@ -253,7 +250,7 @@ def test_admin_problem_publish_returns_published_problem(monkeypatch) -> None:
     )
     client = build_client(monkeypatch, service)
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
     response = client.post(
         "/admin/problems/collapse/publish",
         headers={"Authorization": f"Bearer {token}"},
@@ -267,7 +264,7 @@ def test_admin_problem_publish_returns_published_problem(monkeypatch) -> None:
 def test_admin_problem_publish_returns_problem_not_ready_shape(monkeypatch) -> None:
     client = build_client(monkeypatch, FakeProblemService(items=[]))
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
     response = client.post(
         "/admin/problems/not-ready/publish",
         headers={"Authorization": f"Bearer {token}"},
@@ -284,7 +281,7 @@ def test_admin_problem_create_returns_created_problem_for_valid_token(monkeypatc
     service = FakeProblemService(items=[], details={})
     client = build_client(monkeypatch, service)
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
     payload = {
         "problemId": "collapse",
         "title": "Collapse Identical Digits",
@@ -342,7 +339,7 @@ def test_admin_problem_create_rejects_duplicate_problem_id(monkeypatch) -> None:
     )
     client = build_client(monkeypatch, service)
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
     response = client.post(
         "/admin/problems",
         headers={"Authorization": f"Bearer {token}"},
@@ -363,7 +360,7 @@ def test_admin_problem_create_rejects_duplicate_problem_id(monkeypatch) -> None:
 def test_admin_problem_create_rejects_invalid_problem_id(monkeypatch) -> None:
     client = build_client(monkeypatch, FakeProblemService(items=[]))
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
     response = client.post(
         "/admin/problems",
         headers={"Authorization": f"Bearer {token}"},
@@ -403,7 +400,7 @@ def test_admin_problem_update_persists_for_valid_token(monkeypatch) -> None:
     )
     client = build_client(monkeypatch, service)
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
     payload = {
         "problemId": "collapse",
         "title": "Collapse Digits",
@@ -443,7 +440,7 @@ def test_admin_problem_update_rejects_invalid_payload(monkeypatch) -> None:
     service = FakeProblemService(items=[], details={})
     client = build_client(monkeypatch, service)
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
     response = client.put(
         "/admin/problems/collapse",
         headers={"Authorization": f"Bearer {token}"},
@@ -468,7 +465,7 @@ def test_admin_problem_update_rejects_problem_id_changes(monkeypatch) -> None:
     service = FakeProblemService(items=[], details={})
     client = build_client(monkeypatch, service)
 
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
     response = client.put(
         "/admin/problems/collapse",
         headers={"Authorization": f"Bearer {token}"},

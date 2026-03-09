@@ -6,12 +6,12 @@ import { AppRoutes } from '../routes/AppRoutes';
 
 function renderCreateFlow() {
   return render(
-    <AuthProvider
-      initialSession={{
-        status: 'authenticated',
-        user: { email: 'admin@example.com', role: 'admin' }
-      }}
-    >
+      <AuthProvider
+        initialSession={{
+        state: 'authenticated_admin',
+        user: { email: 'admin@example.com', role: 'admin', totpEnabled: false }
+        }}
+      >
       <MemoryRouter initialEntries={['/admin/problems/create']}>
         <AppRoutes />
       </MemoryRouter>

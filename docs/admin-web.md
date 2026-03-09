@@ -63,7 +63,7 @@ The Admin Web MVP is the first practical browser-based admin surface. Its scope 
 
 Implementation status at the time of this document:
 
-- implemented: admin login
+- implemented: Microsoft OIDC admin login with local user mapping and TOTP hardening
 - implemented: problems list
 - implemented: problem detail/edit
 - implemented: tests management
@@ -93,9 +93,10 @@ Hidden tests must remain admin-only. They may influence verdicts, but their raw 
 The Admin Web MVP does not include:
 
 - analytics dashboard
-- 2FA or authenticator flows
 - contest features
 - broad replacement of the student-facing Node/TypeScript API
+- Google OIDC provider support
+- recovery-code or helpdesk recovery workflows
 
 It also does not change the judge pipeline, submission-state model, or the role of the VS Code extension as the student-facing client.
 
@@ -109,3 +110,60 @@ Likely future admin-facing expansions include:
 - stronger deployment and operational hardening
 
 Those are later expansions, not guarantees of current implementation.
+
+## Admin Identity Hardening
+
+Admin Web now uses a hardened admin-only login model:
+
+- Microsoft OIDC is the primary external identity provider
+- `admin-api` handles login initiation, callback processing, and code exchange
+- the external identity must map to a local platform user
+- local access still requires `role = admin` and `status = active`
+- TOTP is enforced after local identity mapping, not before it
+
+The student-facing VS Code extension remains student-only and does not participate in this admin login flow.
+
+Current admin login sequence:
+
+`Microsoft OIDC -> callback -> local user mapping -> TOTP (if enabled) -> admin session`
+
+Current auth states exposed to Admin Web:
+
+- `unauthenticated`
+- `pending_tfa`
+- `authenticated_admin`
+
+Current denial states include:
+
+- Microsoft login failed
+- callback invalid or expired
+- external identity is not mapped to a local admin user
+- mapped local user is disabled
+- mapped local user is not an admin
+- invalid or expired TOTP verification
+
+## Local Mock OIDC Setup
+
+For local development, `admin-api` supports a mock Microsoft OIDC mode so the full admin flow can be exercised without a live provider tenant.
+
+Required `admin-api` env vars:
+
+- `ADMIN_SESSION_SECRET`
+- `ADMIN_WEB_BASE_URL`
+- `ADMIN_MICROSOFT_CLIENT_ID`
+- `ADMIN_MICROSOFT_REDIRECT_URI`
+- `ADMIN_MICROSOFT_OIDC_MODE`
+- `DATABASE_URL`
+
+Optional mock-mode env vars:
+
+- `ADMIN_MICROSOFT_MOCK_EMAIL`
+- `ADMIN_MICROSOFT_MOCK_SUBJECT`
+- `ADMIN_MICROSOFT_TENANT_ID`
+- `ADMIN_TOTP_ISSUER`
+
+Admin Web runtime env:
+
+- `VITE_ADMIN_API_BASE_URL`
+
+When `ADMIN_MICROSOFT_OIDC_MODE=mock`, the sign-in button still follows the full redirect/callback contract, but the provider exchange is resolved locally by `admin-api`.

@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.models.submissions import AdminSubmissionDetail, AdminSubmissionListItem
+from .support import AUTHENTICATED_ADMIN_TOKEN, FakeProtectedAdminAuthService
 
 
 @dataclass
@@ -19,18 +20,14 @@ class FakeSubmissionService:
 
 
 def build_client(monkeypatch, service: FakeSubmissionService) -> TestClient:
-    monkeypatch.setenv("ADMIN_EMAIL", "admin@example.com")
-    monkeypatch.setenv("ADMIN_PASSWORD", "correct horse")
-    monkeypatch.setenv("ADMIN_TOKEN_SECRET", "local-admin-secret")
-    return TestClient(create_app(submission_service=service))
-
-
-def issue_token(client: TestClient) -> str:
-    response = client.post(
-        "/admin/auth/login",
-        json={"email": "admin@example.com", "password": "correct horse"},
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "local-admin-session-secret")
+    monkeypatch.setenv("ADMIN_MICROSOFT_CLIENT_ID", "local-microsoft-client")
+    return TestClient(
+        create_app(
+            submission_service=service,
+            auth_service=FakeProtectedAdminAuthService(),
+        )
     )
-    return response.json()["token"]
 
 
 def test_admin_submissions_returns_rows_for_valid_token(monkeypatch) -> None:
@@ -59,7 +56,7 @@ def test_admin_submissions_returns_rows_for_valid_token(monkeypatch) -> None:
         ]
     )
     client = build_client(monkeypatch, service)
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
 
     response = client.get("/admin/submissions", headers={"Authorization": f"Bearer {token}"})
 
@@ -130,7 +127,7 @@ def test_admin_submission_detail_returns_finished_submission(monkeypatch) -> Non
         },
     )
     client = build_client(monkeypatch, service)
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
 
     finished_response = client.get(
         "/admin/submissions/sub-101",
@@ -167,7 +164,7 @@ def test_admin_submission_detail_returns_finished_submission(monkeypatch) -> Non
 
 def test_admin_submission_detail_returns_not_found(monkeypatch) -> None:
     client = build_client(monkeypatch, FakeSubmissionService(items=[], details={}))
-    token = issue_token(client)
+    token = AUTHENTICATED_ADMIN_TOKEN
 
     response = client.get(
         "/admin/submissions/unknown-submission",

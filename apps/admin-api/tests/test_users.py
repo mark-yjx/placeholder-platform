@@ -1,7 +1,3 @@
-import base64
-import hashlib
-import hmac
-import json
 from dataclasses import dataclass, field
 
 from fastapi.testclient import TestClient
@@ -13,11 +9,8 @@ from app.models.users import (
     AdminUserListItem,
     AdminUserUpdateRequest,
 )
-from app.services.users import (
-    UserAlreadyExistsError,
-    hash_password,
-    verify_password,
-)
+from app.services.users import UserAlreadyExistsError, hash_password, verify_password
+from .support import AUTHENTICATED_ADMIN_TOKEN, FakeProtectedAdminAuthService
 
 
 @dataclass
@@ -106,47 +99,18 @@ class FakeUserService:
         return updated
 
     def authenticate_admin(self, email: str, password: str) -> AdminUserDetail | None:
-        for user_id, user in self.users.items():
-            if user.email != email or user.role != "admin" or user.status != "active":
-                continue
-            stored_hash = self.password_hashes.get(user_id)
-            if stored_hash and verify_password(password, stored_hash):
-                updated = user.model_copy(update={"lastLoginAt": "2026-03-10T11:00:00Z"})
-                self.users[user_id] = updated
-                return updated
         return None
 
 
-def _encode_segment(raw: bytes) -> str:
-    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
-
-
-def build_non_admin_token(token_secret: str) -> str:
-    claims = {
-        "email": "student1@example.com",
-        "role": "student",
-        "exp": 4102444800,
-    }
-    payload = _encode_segment(json.dumps(claims, separators=(",", ":"), sort_keys=True).encode("utf-8"))
-    signature = _encode_segment(
-        hmac.new(token_secret.encode("utf-8"), payload.encode("ascii"), hashlib.sha256).digest()
-    )
-    return f"{payload}.{signature}"
-
-
 def build_client(monkeypatch, service: FakeUserService) -> TestClient:
-    monkeypatch.setenv("ADMIN_EMAIL", "admin@example.com")
-    monkeypatch.setenv("ADMIN_PASSWORD", "correct horse")
-    monkeypatch.setenv("ADMIN_TOKEN_SECRET", "local-admin-secret")
-    return TestClient(create_app(user_service=service))
-
-
-def issue_admin_token(client: TestClient) -> str:
-    response = client.post(
-        "/admin/auth/login",
-        json={"email": "admin@example.com", "password": "correct horse"},
+    monkeypatch.setenv("ADMIN_SESSION_SECRET", "local-admin-session-secret")
+    monkeypatch.setenv("ADMIN_MICROSOFT_CLIENT_ID", "local-microsoft-client")
+    return TestClient(
+        create_app(
+            user_service=service,
+            auth_service=FakeProtectedAdminAuthService(),
+        )
     )
-    return response.json()["token"]
 
 
 def build_service() -> FakeUserService:
@@ -188,36 +152,10 @@ def test_password_hashing_never_keeps_plaintext() -> None:
     assert verify_password("wrong horse battery", hashed) is False
 
 
-def test_admin_login_accepts_active_managed_admin(monkeypatch) -> None:
-    client = build_client(monkeypatch, build_service())
-
-    response = client.post(
-        "/admin/auth/login",
-        json={"email": "admin@example.com", "password": "correct horse"},
-    )
-
-    assert response.status_code == 200
-    assert response.json()["user"]["userId"] == "admin-1"
-    assert response.json()["user"]["role"] == "admin"
-
-
-def test_admin_login_rejects_student_credentials(monkeypatch) -> None:
-    client = build_client(monkeypatch, build_service())
-
-    response = client.post(
-        "/admin/auth/login",
-        json={"email": "student1@example.com", "password": "student secret"},
-    )
-
-    assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid admin credentials."}
-
-
 def test_admin_users_list_requires_admin_token(monkeypatch) -> None:
     client = build_client(monkeypatch, build_service())
-    token = build_non_admin_token("local-admin-secret")
 
-    response = client.get("/admin/users", headers={"Authorization": f"Bearer {token}"})
+    response = client.get("/admin/users", headers={"Authorization": "Bearer invalid-token"})
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Invalid admin token."}
@@ -225,9 +163,11 @@ def test_admin_users_list_requires_admin_token(monkeypatch) -> None:
 
 def test_admin_users_list_returns_users(monkeypatch) -> None:
     client = build_client(monkeypatch, build_service())
-    token = issue_admin_token(client)
 
-    response = client.get("/admin/users", headers={"Authorization": f"Bearer {token}"})
+    response = client.get(
+        "/admin/users",
+        headers={"Authorization": f"Bearer {AUTHENTICATED_ADMIN_TOKEN}"},
+    )
 
     assert response.status_code == 200
     assert len(response.json()) == 2
@@ -236,9 +176,11 @@ def test_admin_users_list_returns_users(monkeypatch) -> None:
 
 def test_admin_user_detail_returns_selected_user(monkeypatch) -> None:
     client = build_client(monkeypatch, build_service())
-    token = issue_admin_token(client)
 
-    response = client.get("/admin/users/student-1", headers={"Authorization": f"Bearer {token}"})
+    response = client.get(
+        "/admin/users/student-1",
+        headers={"Authorization": f"Bearer {AUTHENTICATED_ADMIN_TOKEN}"},
+    )
 
     assert response.status_code == 200
     assert response.json()["email"] == "student1@example.com"
@@ -248,11 +190,10 @@ def test_admin_user_detail_returns_selected_user(monkeypatch) -> None:
 def test_admin_user_create_updates_enable_disable_and_password(monkeypatch) -> None:
     service = build_service()
     client = build_client(monkeypatch, service)
-    token = issue_admin_token(client)
 
     create_response = client.post(
         "/admin/users",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {AUTHENTICATED_ADMIN_TOKEN}"},
         json={
             "email": "new@example.com",
             "displayName": "New User",
@@ -266,7 +207,7 @@ def test_admin_user_create_updates_enable_disable_and_password(monkeypatch) -> N
 
     update_response = client.put(
         "/admin/users/student-1",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {AUTHENTICATED_ADMIN_TOKEN}"},
         json={
             "displayName": "Student One Prime",
             "role": "admin",
@@ -279,23 +220,22 @@ def test_admin_user_create_updates_enable_disable_and_password(monkeypatch) -> N
 
     disable_response = client.post(
         "/admin/users/admin-1/disable",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {AUTHENTICATED_ADMIN_TOKEN}"},
     )
     assert disable_response.status_code == 200
     assert disable_response.json()["status"] == "disabled"
 
     enable_response = client.post(
         "/admin/users/admin-1/enable",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {AUTHENTICATED_ADMIN_TOKEN}"},
     )
     assert enable_response.status_code == 200
     assert enable_response.json()["status"] == "active"
 
     password_response = client.post(
         "/admin/users/student-1/password",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {AUTHENTICATED_ADMIN_TOKEN}"},
         json={"password": "new student pass"},
     )
     assert password_response.status_code == 200
     assert service.password_calls[-1] == ("student-1", "new student pass")
-

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { LoginPage } from '../pages/LoginPage';
 import { ProblemCreatePage } from '../pages/ProblemCreatePage';
 import { ProblemEditPage } from '../pages/ProblemEditPage';
@@ -9,6 +10,7 @@ import { ProblemsListPage } from '../pages/ProblemsListPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { SubmissionDetailPage } from '../pages/SubmissionDetailPage';
 import { SubmissionsListPage } from '../pages/SubmissionsListPage';
+import { TotpVerifyPage } from '../pages/TotpVerifyPage';
 import { UserDetailPage } from '../pages/UserDetailPage';
 import { UsersListPage } from '../pages/UsersListPage';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -16,17 +18,37 @@ import { ProtectedRoute } from './ProtectedRoute';
 function LoginRoute() {
   const { status } = useAuth();
 
-  if (status === 'authenticated') {
+  if (status === 'authenticated_admin') {
     return <Navigate to="/" replace />;
   }
 
+  if (status === 'pending_tfa') {
+    return <Navigate to="/verify-totp" replace />;
+  }
+
   return <LoginPage />;
+}
+
+function TotpRoute() {
+  const { status } = useAuth();
+
+  if (status === 'authenticated_admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  if (status === 'unauthenticated') {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <TotpVerifyPage />;
 }
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/verify-totp" element={<TotpRoute />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<ProblemsListPage />} />
         <Route path="/admin/problems" element={<ProblemsListPage />} />

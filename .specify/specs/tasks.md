@@ -1305,3 +1305,91 @@ IN:
 OUT:
 - code changes
 - backend behavior changes
+
+# Phase 16 – Admin Identity Hardening
+
+Goal:
+Define the next admin-auth security phase for Admin Web and `admin-api` using OpenID Connect, local platform-user mapping, and TOTP-based second-factor verification without changing student-facing flows.
+
+## 114. Task A — OIDC provider integration planning
+
+Acceptance checks:
+- Microsoft OIDC is defined as the primary provider.
+- The callback flow is specified.
+- Required scopes and claims are documented.
+- No student/plugin changes are included.
+
+Scope:
+IN:
+- admin OIDC login planning
+- provider selection and callback contract
+- scope and claim documentation
+OUT:
+- student-facing auth redesign
+- VS Code extension changes
+- provider implementation code
+
+## 115. Task B — Local user mapping contract
+
+Acceptance checks:
+- External identity is mapped to a local platform user.
+- Local role/status enforcement is specified.
+- Admin access requires `role = admin` and `status = active`.
+
+Scope:
+IN:
+- external-to-local identity mapping rules
+- local platform-user authorization contract
+OUT:
+- course-specific identity rules
+- provider-managed admin authorization as the source of truth
+
+## 116. Task C — TOTP 2FA contract
+
+Acceptance checks:
+- TOTP enrollment flow is defined.
+- TOTP verification flow is defined.
+- Backup/recovery policy is at least minimally documented.
+- TOTP is enforced only after successful identity mapping.
+
+Scope:
+IN:
+- admin second-factor planning
+- enrollment and verification contract
+- minimal recovery/reset policy
+OUT:
+- SMS/email OTP
+- full recovery implementation
+- student MFA changes
+
+## 117. Task D — Admin session flow
+
+Acceptance checks:
+- The full login sequence is specified as `OIDC -> callback -> local user mapping -> TOTP -> session`.
+- Failure states are documented for:
+  - unknown user
+  - disabled user
+  - non-admin user
+  - invalid TOTP
+
+Scope:
+IN:
+- admin login sequence planning
+- explicit admin failure-state definitions
+OUT:
+- session implementation code
+- student session changes
+
+## 118. Task E — Docs
+
+Acceptance checks:
+- `docs/admin-web.md` and/or `docs/architecture.md` explain the new admin auth model.
+- The extension remains clearly student-only.
+
+Scope:
+IN:
+- architecture and admin-surface planning docs
+- roadmap-level security direction updates
+OUT:
+- code changes
+- judge lifecycle changes

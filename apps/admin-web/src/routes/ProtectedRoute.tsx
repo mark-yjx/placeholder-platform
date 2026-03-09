@@ -20,5 +20,9 @@ export function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
+  if (status === 'pending_tfa') {
+    return <Navigate to="/verify-totp" replace />;
+  }
+
   return <Outlet />;
 }

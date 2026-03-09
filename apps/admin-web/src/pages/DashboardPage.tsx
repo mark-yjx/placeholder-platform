@@ -10,7 +10,7 @@ export function DashboardPage() {
         <h1>Admin Dashboard</h1>
         <p className="message">Admin frontend scaffold is ready.</p>
         <p className="hint">Signed in as {user?.email ?? 'admin'}.</p>
-        <button className="secondary-button" onClick={logout} type="button">
+        <button className="secondary-button" onClick={() => void logout()} type="button">
           Logout
         </button>
       </section>

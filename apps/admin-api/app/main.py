@@ -12,15 +12,20 @@ from app.api.routes import (
     users_router,
 )
 from app.services import (
+    AdminAuthService,
     AdminProblemService,
     AdminProblemTestService,
     AdminSubmissionService,
     AdminUserService,
+    MicrosoftOidcService,
+    PsycopgAdminAuthService,
     PsycopgAdminProblemTestService,
     PsycopgAdminSubmissionService,
     PsycopgAdminUserService,
     PsycopgProblemListService,
+    UnconfiguredAdminAuthService,
 )
+from app.core.auth import AdminAuthConfigError
 
 
 def _load_admin_web_origins() -> list[str]:
@@ -32,6 +37,8 @@ def _load_admin_web_origins() -> list[str]:
 
 
 def create_app(
+    auth_service: AdminAuthService | None = None,
+    oidc_service: MicrosoftOidcService | None = None,
     problem_list_service: AdminProblemService | None = None,
     problem_test_service: AdminProblemTestService | None = None,
     submission_service: AdminSubmissionService | None = None,
@@ -41,6 +48,7 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_load_admin_web_origins(),
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -50,6 +58,13 @@ def create_app(
     )
     app.state.submission_service = submission_service or PsycopgAdminSubmissionService.from_env()
     app.state.user_service = user_service or PsycopgAdminUserService.from_env()
+    if auth_service is not None:
+        app.state.auth_service = auth_service
+    else:
+        try:
+            app.state.auth_service = PsycopgAdminAuthService.from_env(oidc_service)
+        except AdminAuthConfigError as exc:
+            app.state.auth_service = UnconfiguredAdminAuthService(str(exc))
     app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(problems_router)

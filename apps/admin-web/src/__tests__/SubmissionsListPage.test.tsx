@@ -9,8 +9,8 @@ function renderSubmissionsPage() {
     <MemoryRouter>
       <AuthProvider
         initialSession={{
-          status: 'authenticated',
-          user: { email: 'admin@example.com', role: 'admin' }
+          state: 'authenticated_admin',
+          user: { email: 'admin@example.com', role: 'admin', totpEnabled: false }
         }}
       >
         <SubmissionsListPage />

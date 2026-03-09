@@ -229,3 +229,35 @@ Status values:
 - `disabled`
 
 Admin Web and `admin-api` own user-management operations. The student-facing VS Code extension does not expose admin user-management workflows.
+
+## Admin Identity Hardening
+
+The admin stack now uses:
+
+- Microsoft OIDC for primary external identity
+- local mapping from external identity to the shared platform user model
+- local enforcement of admin `role` and `status`
+- TOTP after successful identity mapping
+
+The critical architectural boundary remains:
+
+- provider authentication answers who authenticated with Microsoft
+- local platform authorization answers whether that identity may enter Admin Web
+
+This means a successful Microsoft login alone is never enough for admin access. `admin-api` must still resolve the provider identity to a local user and confirm:
+
+- `role = admin`
+- `status = active`
+
+If the mapped admin has TOTP enabled, the session remains `pending_tfa` until a valid code upgrades it to `authenticated_admin`.
+
+This keeps Admin Web admission locally revocable and provider-agnostic while leaving room for later providers such as Google without redesigning the platform user model.
+
+This implementation does not change:
+
+- the student-facing VS Code extension
+- the student-facing Node/TypeScript API
+- the judge worker
+- the submission lifecycle
+
+The extension remains student-only after admin auth hardening.

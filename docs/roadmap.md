@@ -57,16 +57,27 @@ The extension workflow is now structurally in place. Near-term polish can focus 
 
 ## Security and Identity Direction
 
-### 2FA Later: TOTP / Authenticator
+### Admin Identity Hardening
 
-Password login exists today for local use, but future identity work may include:
+The next identity-security phase is focused on the admin stack, not the student stack.
 
-- TOTP-based two-factor authentication
-- authenticator-app enrollment
-- recovery and reset flows
-- admin policies for who must enable 2FA
+Planned direction:
 
-This is a later-phase hardening item, not an immediate local MVP requirement.
+- OIDC login for Admin Web
+- Microsoft as the first provider
+- local mapping from external identity to a platform user
+- local enforcement of `role = admin` and `status = active`
+- TOTP as a second factor after successful identity mapping
+
+This phase is intentionally scoped so that:
+
+- the VS Code extension remains student-only
+- the student-facing Node/TypeScript API is not redesigned
+- judge behavior remains unchanged
+
+### TOTP / Authenticator
+
+TOTP remains part of the planned admin hardening direction, but it is tied to the admin-only OIDC-plus-local-mapping flow rather than becoming a platform-wide auth rewrite in the same phase.
 
 ## Future Deployment Direction
 
