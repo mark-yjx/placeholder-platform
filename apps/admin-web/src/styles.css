@@ -1,0 +1,65 @@
+:root {
+  color: #14213d;
+  background:
+    radial-gradient(circle at top, rgba(252, 163, 17, 0.18), transparent 32%),
+    linear-gradient(180deg, #f7f3e8 0%, #ede4d3 100%);
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.card {
+  width: min(100%, 720px);
+  padding: 2.5rem;
+  border: 1px solid rgba(20, 33, 61, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 252, 245, 0.9);
+  box-shadow: 0 20px 60px rgba(20, 33, 61, 0.12);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8d5b00;
+}
+
+.card h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 1;
+}
+
+.message {
+  margin: 1rem 0 0;
+  font-size: 1.1rem;
+}
+
+.hint {
+  margin: 1.25rem 0 0;
+  max-width: 48ch;
+  color: #44516b;
+}
