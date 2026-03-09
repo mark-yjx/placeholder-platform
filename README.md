@@ -142,14 +142,16 @@ npm run local:reset
 npm run smoke:local
 ```
 
-Normal local verification should use the compose-managed `api` and `worker` services. For debugging, host-side runtimes also exist:
+For normal local verification, the compose `api` service is the real API runtime and the compose `worker` service is the only supported judge worker path. `npm run smoke:local` is the supported one-command local demo: it builds and exercises the extension HTTP client path, imports sample problems from `problems`, verifies the extension `entryFunction` submit contract, and checks the full `queued -> running -> finished|failed` flow.
+
+Host-side runtimes still exist for focused debugging:
 
 ```bash
 npm run api:start
 npm run worker:start
 ```
 
-Use those only when you intentionally want to debug outside the standard Compose path.
+do not start an extra host-side `npm run api:start` or `npm run worker:start` during normal local verification. Use them only when you intentionally want to debug outside the standard Compose path.
 
 ## Extension Usage
 
@@ -170,3 +172,7 @@ Once the stack is running and the VSIX is installed:
 - [Judge Pipeline](./docs/judge-pipeline.md)
 - [Problem Format](./docs/problem-format.md)
 - [Local Development](./docs/local-development.md)
+- [OJ VSCode Demo Checklist](./docs/extension-demo-checklist.md)
+- [Release Runbook](./docs/release-runbook.md)
+
+Release troubleshooting checks are collected in the demo checklist and release runbook.
