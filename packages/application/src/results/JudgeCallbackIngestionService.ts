@@ -5,15 +5,15 @@ import { SubmissionRecord } from '../submission/CreateSubmissionUseCase';
 export type JudgeCallback = {
   submissionId: string;
   verdict: Verdict;
-  timeMs: number;
-  memoryKb: number;
+  timeMs?: number;
+  memoryKb?: number;
 };
 
 export type PersistedJudgeResult = {
   submissionId: string;
   verdict: Verdict;
-  timeMs: number;
-  memoryKb: number;
+  timeMs?: number;
+  memoryKb?: number;
 };
 
 export interface SubmissionStateRepository {

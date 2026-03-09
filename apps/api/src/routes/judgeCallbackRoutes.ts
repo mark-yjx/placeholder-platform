@@ -4,8 +4,8 @@ import { Verdict } from '@packages/domain/src/judge';
 type JudgeCallbackRequest = {
   submissionId: string;
   verdict: Verdict;
-  timeMs: number;
-  memoryKb: number;
+  timeMs?: number;
+  memoryKb?: number;
 };
 
 export function createJudgeCallbackRoutes(service: JudgeCallbackIngestionService) {
@@ -13,8 +13,8 @@ export function createJudgeCallbackRoutes(service: JudgeCallbackIngestionService
     async ingestJudgeCallback(request: JudgeCallbackRequest): Promise<{
       submissionId: string;
       verdict: Verdict;
-      timeMs: number;
-      memoryKb: number;
+      timeMs?: number;
+      memoryKb?: number;
     }> {
       return service.ingest(request);
     }

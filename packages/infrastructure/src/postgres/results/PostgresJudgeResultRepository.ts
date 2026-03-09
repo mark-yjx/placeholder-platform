@@ -12,8 +12,8 @@ export interface PostgresJudgeResultSqlClient {
 type JudgeResultRow = {
   submission_id: string;
   verdict: PersistedJudgeResult['verdict'];
-  time_ms: number;
-  memory_kb: number;
+  time_ms: number | null;
+  memory_kb: number | null;
 };
 
 const FIND_RESULT_BY_SUBMISSION_ID_SQL = `
@@ -40,8 +40,8 @@ function toPersistedJudgeResult(row: JudgeResultRow): PersistedJudgeResult {
   return {
     submissionId: row.submission_id,
     verdict: row.verdict,
-    timeMs: row.time_ms,
-    memoryKb: row.memory_kb
+    timeMs: row.time_ms ?? undefined,
+    memoryKb: row.memory_kb ?? undefined
   };
 }
 
@@ -73,8 +73,8 @@ export class PostgresJudgeResultRepository
     await this.client.execute(INSERT_RESULT_SQL, [
       result.submissionId,
       result.verdict,
-      result.timeMs,
-      result.memoryKb
+      result.timeMs ?? null,
+      result.memoryKb ?? null
     ]);
   }
 }

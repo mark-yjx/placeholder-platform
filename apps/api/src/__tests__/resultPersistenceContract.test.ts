@@ -117,7 +117,7 @@ class InMemorySubmissionStateRepository {
 class GuardedInMemoryJudgeResultRepository {
   private readonly results = new Map<
     string,
-    { submissionId: string; verdict: Verdict; timeMs: number; memoryKb: number }
+    { submissionId: string; verdict: Verdict; timeMs?: number; memoryKb?: number }
   >();
 
   async findBySubmissionId(submissionId: string) {
@@ -127,8 +127,8 @@ class GuardedInMemoryJudgeResultRepository {
   async save(result: {
     submissionId: string;
     verdict: Verdict;
-    timeMs: number;
-    memoryKb: number;
+    timeMs?: number;
+    memoryKb?: number;
   }) {
     const existing = this.results.get(result.submissionId);
     if (existing) {
@@ -294,4 +294,50 @@ test('conflicting duplicate judge callback is rejected and terminal result remai
     memoryKb: 2052
   });
   assert.equal((await submissions.findById('submission-2'))?.status, 'finished');
+});
+
+test('judge callback ingestion preserves unavailable runtime metrics instead of converting them to zero', async () => {
+  const { JudgeCallbackIngestionService, ResultQueryService } = loadModule<
+    typeof import('@packages/application/src/results')
+  >(['packages', 'application', 'src', 'results', 'index.ts']);
+  const submissions = new InMemorySubmissionStateRepository({
+    id: 'submission-3',
+    ownerUserId: 'student-1',
+    problemId: 'problem-1',
+    problemVersionId: 'problem-1-v1',
+    language: 'python',
+    sourceCode: 'print(42)',
+    status: 'running',
+    createdAt: '2026-02-26T00:00:00.000Z'
+  });
+  const results = new GuardedInMemoryJudgeResultRepository();
+  const ingestion = new JudgeCallbackIngestionService(submissions as never, results as never);
+
+  const persisted = await ingestion.ingest({
+    submissionId: 'submission-3',
+    verdict: 'CE' as Verdict,
+    timeMs: undefined,
+    memoryKb: undefined
+  });
+
+  assert.deepEqual(persisted, {
+    submissionId: 'submission-3',
+    verdict: 'CE',
+    timeMs: undefined,
+    memoryKb: undefined
+  });
+
+  const studentHistory = await new ResultQueryService(
+    submissions as never,
+    results as never
+  ).getStudentSubmissionHistory('student-1');
+
+  assert.deepEqual(studentHistory, [
+    {
+      submissionId: 'submission-3',
+      ownerUserId: 'student-1',
+      status: 'finished',
+      verdict: 'CE'
+    }
+  ]);
 });

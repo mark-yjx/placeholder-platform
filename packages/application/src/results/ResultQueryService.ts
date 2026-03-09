@@ -79,8 +79,12 @@ export class ResultQueryService {
         throw new Error('Result missing for finished submission');
       }
       view.verdict = result.verdict;
-      view.timeMs = result.timeMs;
-      view.memoryKb = result.memoryKb;
+      if (result.timeMs !== undefined) {
+        view.timeMs = result.timeMs;
+      }
+      if (result.memoryKb !== undefined) {
+        view.memoryKb = result.memoryKb;
+      }
     }
 
     return view;

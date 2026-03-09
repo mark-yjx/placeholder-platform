@@ -187,7 +187,7 @@ test('worker runtime resolves docker image after flags that include colon-valued
 
 test('worker tick uses problem tests and records AC for a correct submission', async () => {
   const { createWorkerTick } = loadWorkerRuntime();
-  const savedResults: Array<{ verdict: string; timeMs: number; memoryKb: number }> = [];
+  const savedResults: Array<{ verdict: string; timeMs?: number; memoryKb?: number }> = [];
   let acknowledgedSubmissionId = '';
   let currentStatus = 'queued';
 
@@ -472,7 +472,7 @@ test('worker tick returns WA when hidden tests fail and result does not leak hid
 test('worker tick marks submission failed with CE and acknowledges job when judge config is missing', async () => {
   const { createWorkerTick } = loadWorkerRuntime();
   const savedSubmissions: Array<{ status: string; failureReason?: string }> = [];
-  const savedResults: Array<{ submissionId: string; verdict: string; timeMs: number; memoryKb: number }> = [];
+  const savedResults: Array<{ submissionId: string; verdict: string; timeMs?: number; memoryKb?: number }> = [];
   let acknowledgedSubmissionId = '';
 
   const tick = createWorkerTick({
@@ -550,11 +550,92 @@ test('worker tick marks submission failed with CE and acknowledges job when judg
     {
       submissionId: 'submission-missing-config',
       verdict: 'CE',
-      timeMs: 0,
-      memoryKb: 0
+      timeMs: undefined,
+      memoryKb: undefined
     }
   ]);
   assert.equal(acknowledgedSubmissionId, 'submission-missing-config');
+});
+
+test('worker tick persists unavailable memory without coercing it to zero', async () => {
+  const { createWorkerTick } = loadWorkerRuntime();
+  const savedResults: Array<{ submissionId: string; verdict: string; timeMs?: number; memoryKb?: number }> = [];
+
+  const tick = createWorkerTick({
+    queue: {
+      async claimNext() {
+        return {
+          submissionId: 'submission-memory-unavailable',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v1',
+          language: 'python',
+          sourceCode: 'def collapse(number):\n    return number\n'
+        };
+      },
+      async acknowledge() {
+        return;
+      }
+    },
+    submissions: {
+      async findById() {
+        return {
+          id: 'submission-memory-unavailable',
+          ownerUserId: 'student-1',
+          problemId: 'collapse',
+          problemVersionId: 'collapse-v1',
+          language: 'python',
+          sourceCode: 'def collapse(number):\n    return number\n',
+          status: 'queued' as import('@packages/domain/src/submission').SubmissionStatus
+        };
+      },
+      async save() {
+        return;
+      }
+    },
+    results: {
+      async findBySubmissionId() {
+        return null;
+      },
+      async save(result) {
+        savedResults.push(result);
+      }
+    },
+    judgeConfigs: {
+      async findByProblemVersionId() {
+        return {
+          entryFunction: 'collapse',
+          tests: [{ testType: 'public', position: 1, inputJson: '5', expectedJson: '5' }]
+        };
+      }
+    },
+    sandbox: new DockerSandboxAdapter(async () => ({
+      stdout: '5\n',
+      stderr: '',
+      exitCode: 0,
+      timeMs: 12
+    })),
+    runners: new RunnerRegistry([
+      {
+        language: 'python',
+        resolve() {
+          return { language: 'python', runArgs: ['python', '/sandbox/main.py'] };
+        }
+      }
+    ]),
+    image: 'python:3.12-alpine'
+  });
+
+  await tick();
+
+  assert.deepEqual(savedResults, [
+    {
+      submissionId: 'submission-memory-unavailable',
+      verdict: 'AC',
+      timeMs: 12,
+      memoryKb: undefined
+    }
+  ]);
 });
 
 test('worker tick persists failure reason and acknowledges job when result ingestion fails', async () => {

@@ -1,0 +1,7 @@
+BEGIN;
+
+ALTER TABLE judge_results
+  ALTER COLUMN time_ms DROP NOT NULL,
+  ALTER COLUMN memory_kb DROP NOT NULL;
+
+COMMIT;

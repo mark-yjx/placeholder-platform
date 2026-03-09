@@ -42,7 +42,7 @@ function registerTsHook(): void {
 class FakePostgresJudgeResultSqlClient {
   private readonly rows = new Map<
     string,
-    { submission_id: string; verdict: string; time_ms: number; memory_kb: number }
+    { submission_id: string; verdict: string; time_ms: number | null; memory_kb: number | null }
   >();
 
   async query<T>(sql: string, params?: readonly unknown[]): Promise<readonly T[]> {
@@ -60,8 +60,8 @@ class FakePostgresJudgeResultSqlClient {
       this.rows.set(submissionId, {
         submission_id: submissionId,
         verdict: String(params?.[1] ?? ''),
-        time_ms: Number(params?.[2] ?? 0),
-        memory_kb: Number(params?.[3] ?? 0)
+        time_ms: params?.[2] == null ? null : Number(params[2]),
+        memory_kb: params?.[3] == null ? null : Number(params[3])
       });
       return;
     }
@@ -150,4 +150,24 @@ test('postgres judge result repository rejects conflicting overwrite of terminal
     }),
     /Judge result is immutable once persisted/
   );
+});
+
+test('postgres judge result repository preserves unavailable runtime metrics as null-backed fields', async () => {
+  const { PostgresJudgeResultRepository } = loadModule();
+  const repository = new PostgresJudgeResultRepository(new FakePostgresJudgeResultSqlClient());
+
+  await repository.save({
+    submissionId: 'submission-4',
+    verdict: 'CE' as Verdict,
+    timeMs: undefined,
+    memoryKb: undefined
+  });
+
+  const persisted = await repository.findBySubmissionId('submission-4');
+  assert.deepEqual(persisted, {
+    submissionId: 'submission-4',
+    verdict: 'CE',
+    timeMs: undefined,
+    memoryKb: undefined
+  });
 });

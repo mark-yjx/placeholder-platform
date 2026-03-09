@@ -56,3 +56,26 @@ test('docker sandbox execution leaves memory undefined when the executor does no
     memoryKb: undefined
   });
 });
+
+test('docker sandbox execution extracts measured memory from sandbox stderr metadata', async () => {
+  const adapter = new DockerSandboxAdapter(async () => ({
+    stdout: 'ok',
+    stderr: '__OJ_MEMORY_KB__=4096\n',
+    exitCode: 0,
+    timeMs: 41
+  }));
+
+  const execution = await adapter.execute({
+    image: 'python:3.12-alpine',
+    limits: { cpuCores: 1, memoryMb: 256, timeMs: 2000 },
+    sourceCode: 'print("hello")'
+  });
+
+  assert.deepEqual(execution, {
+    stdout: 'ok',
+    stderr: '',
+    exitCode: 0,
+    timeMs: 41,
+    memoryKb: 4096
+  });
+});

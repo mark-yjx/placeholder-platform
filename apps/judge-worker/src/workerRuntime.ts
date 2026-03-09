@@ -10,6 +10,8 @@ import { DockerSandboxAdapter } from './sandbox/DockerSandboxAdapter';
 import { runPythonJudgeExecution } from './sandbox/PythonJudgeExecution';
 import { PostgresProblemJudgeConfigRepository } from './sandbox/problemConfig';
 
+const MEMORY_METRIC_PREFIX = '__OJ_MEMORY_KB__=';
+
 export type WorkerRuntimeOptions = {
   pollIntervalMs?: number;
   onTick?: () => Promise<void> | void;
@@ -51,14 +53,14 @@ type WorkerTickDependencies = {
     findBySubmissionId: (submissionId: string) => Promise<{
       submissionId: string;
       verdict: Verdict;
-      timeMs: number;
-      memoryKb: number;
+      timeMs?: number;
+      memoryKb?: number;
     } | null>;
     save: (result: {
       submissionId: string;
       verdict: Verdict;
-      timeMs: number;
-      memoryKb: number;
+      timeMs?: number;
+      memoryKb?: number;
     }) => Promise<void>;
   };
   judgeConfigs: {
@@ -121,10 +123,26 @@ async function executeDockerCommand(command: {
   const imageIndex = command.args.indexOf(image);
   const prefixArgs = command.args.slice(0, imageIndex);
   const startedAt = Date.now();
+  const wrappedCommand = [
+    'cat >/tmp/main.py',
+    'python /tmp/main.py',
+    'exit_code=$?',
+    'for path in /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory.max_usage_in_bytes /sys/fs/cgroup/memory/memory.max_usage_in_bytes; do',
+    '  if [ -f "$path" ]; then',
+    '    value=$(cat "$path" 2>/dev/null || true)',
+    '    case "$value" in',
+    "      ''|max|*[!0-9]*) continue ;;",
+    '    esac',
+    `    echo "${MEMORY_METRIC_PREFIX}$(( (value + 1023) / 1024 ))" >&2`,
+    '    break',
+    '  fi',
+    'done',
+    'exit "$exit_code"'
+  ].join('; ');
   return new Promise((resolve, reject) => {
     const child = spawn(
       command.command,
-      [...prefixArgs, image, 'sh', '-lc', 'cat >/tmp/main.py && python /tmp/main.py'],
+      [...prefixArgs, image, 'sh', '-lc', wrappedCommand],
       {
         stdio: 'pipe'
       }
@@ -152,18 +170,6 @@ async function executeDockerCommand(command: {
     child.stdin.write(command.stdin);
     child.stdin.end();
   });
-}
-
-function toLegacyPersistedMetrics(metrics: { timeMs?: number; memoryKb?: number }): {
-  timeMs: number;
-  memoryKb: number;
-} {
-  // Storage still requires numeric columns, so unavailable metrics are bridged
-  // explicitly here rather than being hidden inside the worker execution types.
-  return {
-    timeMs: metrics.timeMs ?? 0,
-    memoryKb: metrics.memoryKb ?? 0
-  };
 }
 
 export function createLocalWorkerTick(): () => Promise<void> {
@@ -242,8 +248,8 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
       await dependencies.results.save({
         submissionId: job.submissionId,
         verdict: 'CE' as Verdict,
-        timeMs: 0,
-        memoryKb: 0
+        timeMs: undefined,
+        memoryKb: undefined
       });
       logger.info('worker.submission.completed', {
         submissionId: job.submissionId,
@@ -274,13 +280,12 @@ export function createWorkerTick(dependencies: WorkerTickDependencies): () => Pr
         entryFunction: judgeConfig.entryFunction,
         tests: judgeConfig.tests
       });
-      const persistedMetrics = toLegacyPersistedMetrics(result);
 
       await dependencies.results.save({
         submissionId: job.submissionId,
         verdict: result.verdict as Verdict,
-        timeMs: persistedMetrics.timeMs,
-        memoryKb: persistedMetrics.memoryKb
+        timeMs: result.timeMs,
+        memoryKb: result.memoryKb
       });
       await dependencies.submissions.save({
         ...submission,
