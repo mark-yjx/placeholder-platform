@@ -341,3 +341,67 @@ test('judge callback ingestion preserves unavailable runtime metrics instead of 
     }
   ]);
 });
+
+test('result query preserves explicit zero metrics while omitting unavailable ones', async () => {
+  const { ResultQueryService } = loadModule<typeof import('@packages/application/src/results')>([
+    'packages',
+    'application',
+    'src',
+    'results',
+    'index.ts'
+  ]);
+  const submissions = new InMemorySubmissionStateRepository({
+    id: 'submission-unavailable',
+    ownerUserId: 'student-1',
+    problemId: 'problem-1',
+    problemVersionId: 'problem-1-v1',
+    language: 'python',
+    sourceCode: 'print(0)',
+    status: 'finished',
+    createdAt: '2026-02-24T00:00:00.000Z'
+  });
+  await submissions.save({
+    id: 'submission-zero',
+    ownerUserId: 'student-1',
+    problemId: 'problem-1',
+    problemVersionId: 'problem-1-v1',
+    language: 'python',
+    sourceCode: 'print(0)',
+    status: 'finished',
+    createdAt: '2026-02-25T00:00:00.000Z'
+  });
+
+  const results = new GuardedInMemoryJudgeResultRepository();
+  await results.save({
+    submissionId: 'submission-unavailable',
+    verdict: 'RE' as Verdict,
+    timeMs: undefined,
+    memoryKb: undefined
+  });
+  await results.save({
+    submissionId: 'submission-zero',
+    verdict: 'AC' as Verdict,
+    timeMs: 0,
+    memoryKb: 0
+  });
+
+  const history = await new ResultQueryService(submissions as never, results as never)
+    .getStudentSubmissionHistory('student-1');
+
+  assert.deepEqual(history, [
+    {
+      submissionId: 'submission-zero',
+      ownerUserId: 'student-1',
+      status: 'finished',
+      verdict: 'AC',
+      timeMs: 0,
+      memoryKb: 0
+    },
+    {
+      submissionId: 'submission-unavailable',
+      ownerUserId: 'student-1',
+      status: 'finished',
+      verdict: 'RE'
+    }
+  ]);
+});

@@ -912,6 +912,164 @@ test('student submission detail returns failureReason for failed submissions', a
   });
 });
 
+test('student submission payloads omit unavailable metrics but preserve explicit zero values', async () => {
+  const runtime = {
+    ...createRuntime(),
+    persistence: {
+      ...createRuntime().persistence,
+      submissionResults: {
+        async listByActorUserId(actorUserId: string) {
+          return [
+            {
+              submissionId: 'submission-zero',
+              ownerUserId: actorUserId,
+              status: 'finished',
+              verdict: 'AC',
+              timeMs: 0,
+              memoryKb: 0
+            },
+            {
+              submissionId: 'submission-unavailable',
+              ownerUserId: actorUserId,
+              status: 'finished',
+              verdict: 'CE',
+              timeMs: undefined,
+              memoryKb: undefined
+            }
+          ];
+        },
+        async getBySubmissionId(submissionId: string) {
+          if (submissionId === 'submission-zero') {
+            return {
+              submissionId,
+              ownerUserId: 'student-1',
+              status: 'finished',
+              verdict: 'AC',
+              timeMs: 0,
+              memoryKb: 0
+            };
+          }
+
+          if (submissionId === 'submission-unavailable') {
+            return {
+              submissionId,
+              ownerUserId: 'student-1',
+              status: 'finished',
+              verdict: 'CE',
+              timeMs: undefined,
+              memoryKb: undefined
+            };
+          }
+
+          throw new Error('Submission not found');
+        }
+      }
+    }
+  };
+
+  const studentToken = await loginAs(runtime, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
+
+  const listResponse = await invoke({
+    path: '/submissions',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(listResponse.statusCode, 200);
+  assert.deepEqual(listResponse.body, {
+    submissions: [
+      {
+        submissionId: 'submission-zero',
+        ownerUserId: 'student-1',
+        status: 'finished',
+        verdict: 'AC',
+        timeMs: 0,
+        memoryKb: 0
+      },
+      {
+        submissionId: 'submission-unavailable',
+        ownerUserId: 'student-1',
+        status: 'finished',
+        verdict: 'CE'
+      }
+    ]
+  });
+
+  const unavailableDetail = await invoke({
+    path: '/submissions/submission-unavailable',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(unavailableDetail.statusCode, 200);
+  assert.deepEqual(unavailableDetail.body, {
+    submissionId: 'submission-unavailable',
+    ownerUserId: 'student-1',
+    status: 'finished',
+    verdict: 'CE'
+  });
+
+  const zeroDetail = await invoke({
+    path: '/submissions/submission-zero/result',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(zeroDetail.statusCode, 200);
+  assert.deepEqual(zeroDetail.body, {
+    submissionId: 'submission-zero',
+    ownerUserId: 'student-1',
+    status: 'finished',
+    verdict: 'AC',
+    timeMs: 0,
+    memoryKb: 0
+  });
+});
+
+test('admin submission lookup omits unavailable runtime metrics instead of converting them to zero', async () => {
+  const runtime = {
+    auth: createRuntime().auth,
+    persistence: {
+      ...createRuntime().persistence,
+      submissionResults: {
+        async listByActorUserId() {
+          return [];
+        },
+        async getBySubmissionId(submissionId: string) {
+          return {
+            submissionId,
+            ownerUserId: 'student-1',
+            status: 'finished',
+            verdict: 'RE',
+            timeMs: undefined,
+            memoryKb: undefined
+          };
+        }
+      }
+    }
+  };
+
+  const adminToken = await loginAs(runtime, {
+    email: 'admin@example.com',
+    password: 'ignored'
+  });
+
+  const response = await invoke({
+    path: '/admin/submissions/submission-1',
+    method: 'GET',
+    headers: { authorization: `Bearer ${adminToken}` },
+    runtime
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body, {
+    submissionId: 'submission-1',
+    ownerUserId: 'student-1',
+    status: 'finished',
+    verdict: 'RE'
+  });
+});
+
 test('admin API workflow supports create, update, publish, and submission lookup while rejecting student access', async () => {
   const calls: string[] = [];
   const runtime = {
