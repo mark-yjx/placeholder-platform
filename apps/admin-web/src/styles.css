@@ -38,6 +38,10 @@ body {
   box-shadow: 0 20px 60px rgba(20, 33, 61, 0.12);
 }
 
+.problems-card {
+  width: min(100%, 980px);
+}
+
 .eyebrow {
   margin: 0 0 0.75rem;
   font-size: 0.8rem;
@@ -62,6 +66,19 @@ body {
   margin: 1.25rem 0 0;
   max-width: 48ch;
   color: #44516b;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .auth-card {
@@ -118,8 +135,47 @@ body {
   color: #14213d;
 }
 
+.header-actions .secondary-button {
+  margin-top: 0;
+}
+
 .error-message {
   margin: 0;
   color: #a12c2c;
   font-weight: 600;
+}
+
+.table-wrap {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.problems-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.problems-table th,
+.problems-table td {
+  padding: 0.9rem 0.75rem;
+  border-bottom: 1px solid rgba(20, 33, 61, 0.12);
+  text-align: left;
+  vertical-align: top;
+}
+
+.problems-table th {
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #59667f;
+}
+
+@media (max-width: 720px) {
+  .page-header {
+    flex-direction: column;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
 }

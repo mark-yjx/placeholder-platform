@@ -18,15 +18,30 @@ type AuthContextValue = {
   logout: () => void;
 };
 
+type AuthProviderProps = PropsWithChildren<{
+  initialSession?: {
+    status: AuthStatus;
+    user: AdminUser | null;
+  };
+}>;
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: PropsWithChildren) {
-  const [status, setStatus] = useState<AuthStatus>(() =>
-    readStoredAdminToken() ? 'loading' : 'unauthenticated'
-  );
-  const [user, setUser] = useState<AdminUser | null>(null);
+export function AuthProvider({ children, initialSession }: AuthProviderProps) {
+  const [status, setStatus] = useState<AuthStatus>(() => {
+    if (initialSession) {
+      return initialSession.status;
+    }
+
+    return readStoredAdminToken() ? 'loading' : 'unauthenticated';
+  });
+  const [user, setUser] = useState<AdminUser | null>(initialSession?.user ?? null);
 
   useEffect(() => {
+    if (initialSession) {
+      return;
+    }
+
     const storedToken = readStoredAdminToken();
     if (!storedToken) {
       setStatus('unauthenticated');

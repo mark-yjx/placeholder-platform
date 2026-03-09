@@ -8,6 +8,7 @@ Current MVP auth flow:
 - stores only the signed admin token in `localStorage`
 - restores the admin session by calling `GET /admin/auth/me`
 - redirects unauthenticated users to `/login`
+- loads the protected problems list from `GET /admin/problems`
 
 ## Run locally
 
@@ -44,3 +45,12 @@ Token storage policy:
 - only the signed admin bearer token is stored in browser `localStorage`
 - plaintext credentials are never written to browser storage
 - the stored token is cleared on logout or when `/admin/auth/me` rejects the session
+
+The root protected page currently shows the admin problems list with:
+
+- `Problem ID`
+- `Title`
+- `Visibility`
+- `Updated At`
+
+The list includes a refresh action and simple loading, empty, and error states.

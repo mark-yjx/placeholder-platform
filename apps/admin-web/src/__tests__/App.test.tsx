@@ -33,18 +33,25 @@ describe('admin auth flow', () => {
   });
 
   it('stores the token and navigates after a successful login', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          token: 'signed-token',
-          user: { email: 'admin@example.com', role: 'admin' }
-        }),
-        {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            token: 'signed-token',
+            user: { email: 'admin@example.com', role: 'admin' }
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([]), {
           status: 200,
           headers: { 'content-type': 'application/json' }
-        }
-      )
-    );
+        })
+      );
 
     renderApp('/login');
 
@@ -57,7 +64,7 @@ describe('admin auth flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Login' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Admin Dashboard' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Problems' })).toBeTruthy();
     });
 
     expect(window.localStorage.getItem('oj.admin.token')).toBe('signed-token');

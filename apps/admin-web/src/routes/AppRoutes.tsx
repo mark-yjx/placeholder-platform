@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
+import { ProblemsListPage } from '../pages/ProblemsListPage';
 import { ProtectedRoute } from './ProtectedRoute';
 
 function LoginRoute() {
@@ -19,7 +19,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<DashboardPage />} />
+        <Route path="/" element={<ProblemsListPage />} />
       </Route>
     </Routes>
   );

@@ -22,6 +22,7 @@ Routes available in this MVP:
 GET http://127.0.0.1:8200/healthz
 POST http://127.0.0.1:8200/admin/auth/login
 GET http://127.0.0.1:8200/admin/auth/me
+GET http://127.0.0.1:8200/admin/problems
 ```
 
 Expected login request:
@@ -60,3 +61,8 @@ Admin auth is configured explicitly through:
 
 The API does not persist admin users yet. It validates against the configured
 admin credentials and returns a signed bearer token for the Admin Web MVP.
+
+`GET /admin/problems` reads the shared Postgres problem tables directly for the
+Admin Web. It returns the latest known title, a `visibility` field, and
+`updatedAt`. When a manifest-level visibility row is unavailable, the route
+falls back to the latest publication state string for that problem.
