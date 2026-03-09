@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchAdminSubmission, type AdminSubmissionDetail } from '../api/submissions';
+import { AdminLayout } from '../components/AdminLayout';
 import { readStoredAdminToken } from '../auth/storage';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -66,25 +67,22 @@ export function SubmissionDetailPage() {
   }, [submissionId]);
 
   return (
-    <main className="shell">
-      <section className="card problems-card">
-        <div className="page-header">
-          <div>
-            <p className="eyebrow">OJ Admin Web</p>
-            <h1>Submission Detail</h1>
-            <p className="message">Inspect admin-visible submission metadata and result state.</p>
-          </div>
-
-          <div className="header-actions">
-            <Link className="secondary-button link-button" to="/submissions">
-              Back to Submissions
-            </Link>
-            <Link className="secondary-button link-button" to="/">
-              Problems
-            </Link>
-          </div>
-        </div>
-
+    <AdminLayout
+      actions={
+        <>
+          <Link className="secondary-button link-button" to="/submissions">
+            Back to Submissions
+          </Link>
+          <Link className="secondary-button link-button" to="/admin/problems">
+            Problems
+          </Link>
+        </>
+      }
+      description="Inspect admin-visible submission metadata and result state."
+      meta={submission ? `Problem ${submission.problemId}` : null}
+      title="Submission Detail"
+    >
+      <section className="card content-card">
         {loadState === 'loading' ? <p className="hint">Loading submission details...</p> : null}
         {loadState === 'error' && error ? <p className="error-message">{error}</p> : null}
 
@@ -161,6 +159,6 @@ export function SubmissionDetailPage() {
           </div>
         ) : null}
       </section>
-    </main>
+    </AdminLayout>
   );
 }

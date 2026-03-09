@@ -5,6 +5,7 @@ import {
   type AdminProblemPreview,
   type AdminProblemPreviewCase
 } from '../api/problems';
+import { AdminLayout } from '../components/AdminLayout';
 import { readStoredAdminToken } from '../auth/storage';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -94,28 +95,25 @@ export function ProblemPreviewPage() {
   }, [problemId]);
 
   return (
-    <main className="shell">
-      <section className="card problems-card">
-        <div className="page-header">
-          <div>
-            <p className="eyebrow">OJ Admin Web</p>
-            <h1>Problem Preview</h1>
-            <p className="message">Student-visible preview for {problemId ?? 'this problem'}.</p>
-          </div>
-
-          <div className="header-actions">
-            <Link
-              className="secondary-button link-button"
-              to={problemId ? `/admin/problems/${problemId}` : '/admin/problems'}
-            >
-              Back to Problem
-            </Link>
-            <Link className="secondary-button link-button" to="/admin/problems">
-              Problems
-            </Link>
-          </div>
-        </div>
-
+    <AdminLayout
+      actions={
+        <>
+          <Link
+            className="secondary-button link-button"
+            to={problemId ? `/admin/problems/${problemId}` : '/admin/problems'}
+          >
+            Back to Problem
+          </Link>
+          <Link className="secondary-button link-button" to="/admin/problems">
+            Problems
+          </Link>
+        </>
+      }
+      description={`Student-visible preview for ${problemId ?? 'this problem'}.`}
+      meta="Hidden tests stay excluded from this page."
+      title="Problem Preview"
+    >
+      <section className="card content-card">
         {loadState === 'loading' ? <p className="hint">Loading problem preview...</p> : null}
         {loadState === 'error' && error ? <p className="error-message">{error}</p> : null}
 
@@ -128,7 +126,7 @@ export function ProblemPreviewPage() {
 
             <section className="form-section">
               <h2>Statement</h2>
-              <pre className="code-block">{preview.statementMarkdown}</pre>
+              <pre className="code-block statement-block">{preview.statementMarkdown}</pre>
             </section>
 
             <PreviewCaseTable
@@ -145,6 +143,6 @@ export function ProblemPreviewPage() {
           </div>
         ) : null}
       </section>
-    </main>
+    </AdminLayout>
   );
 }

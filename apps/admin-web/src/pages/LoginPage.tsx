@@ -28,41 +28,57 @@ export function LoginPage() {
   }
 
   return (
-    <main className="shell">
-      <section className="card auth-card">
-        <p className="eyebrow">OJ Admin Web</p>
-        <h1>Admin Login</h1>
-        <p className="message">Sign in with the configured admin credentials.</p>
+    <main className="login-shell">
+      <section className="login-panel">
+        <div className="login-intro">
+          <p className="eyebrow">OJ Admin Web</p>
+          <h1>Admin Login</h1>
+          <p className="message">
+            Sign in with the configured admin credentials to manage problems and monitor
+            submissions.
+          </p>
+          <p className="hint">
+            The workspace is intentionally light: draft, preview, publish, and review from one calm
+            interface.
+          </p>
+        </div>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="field">
-            <span>Email</span>
-            <input
-              autoComplete="username"
-              name="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
+        <section className="card auth-card">
+          <div className="auth-card-header">
+            <p className="detail-label">Secure Access</p>
+            <p className="detail-value">Use the configured admin account.</p>
+          </div>
 
-          <label className="field">
-            <span>Password</span>
-            <input
-              autoComplete="current-password"
-              name="password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <label className="field">
+              <span>Email</span>
+              <input
+                autoComplete="username"
+                name="email"
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                value={email}
+              />
+            </label>
 
-          {error ? <p className="error-message">{error}</p> : null}
+            <label className="field">
+              <span>Password</span>
+              <input
+                autoComplete="current-password"
+                name="password"
+                onChange={(event) => setPassword(event.target.value)}
+                type="password"
+                value={password}
+              />
+            </label>
 
-          <button className="primary-button" disabled={isSubmitting} type="submit">
-            {isSubmitting ? 'Signing in...' : 'Login'}
-          </button>
-        </form>
+            {error ? <p className="error-message">{error}</p> : null}
+
+            <button className="primary-button" disabled={isSubmitting} type="submit">
+              {isSubmitting ? 'Signing in...' : 'Login'}
+            </button>
+          </form>
+        </section>
       </section>
     </main>
   );

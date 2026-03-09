@@ -5,6 +5,7 @@ import {
   updateAdminProblemTests,
   type AdminProblemTestCase
 } from '../api/tests';
+import { AdminLayout } from '../components/AdminLayout';
 import { readStoredAdminToken } from '../auth/storage';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -136,33 +137,25 @@ export function ProblemTestsPage() {
   }
 
   return (
-    <main className="shell">
-      <section className="card problems-card">
-        <div className="page-header">
-          <div>
-            <p className="eyebrow">OJ Admin Web</p>
-            <h1>Problem Tests</h1>
-            <p className="message">
-              Edit public and hidden tests separately for <strong>{problemId ?? 'this problem'}</strong>.
-            </p>
-          </div>
-
-          <div className="header-actions">
-            <Link className="secondary-button link-button" to="/submissions">
-              Submissions
-            </Link>
-            <Link
-              className="secondary-button link-button"
-              to={problemId ? `/problems/${problemId}` : '/'}
-            >
-              Back to Problem
-            </Link>
-            <Link className="secondary-button link-button" to="/">
-              Problems
-            </Link>
-          </div>
-        </div>
-
+    <AdminLayout
+      actions={
+        <>
+          <Link
+            className="secondary-button link-button"
+            to={problemId ? `/admin/problems/${problemId}` : '/admin/problems'}
+          >
+            Back to Problem
+          </Link>
+          <Link className="secondary-button link-button" to="/admin/problems">
+            Problems
+          </Link>
+        </>
+      }
+      description={`Edit public and hidden tests separately for ${problemId ?? 'this problem'}.`}
+      meta="Hidden tests remain admin-only and are excluded from student preview surfaces."
+      title="Problem Tests"
+    >
+      <section className="card content-card">
         {loadState === 'loading' ? <p className="hint">Loading problem tests...</p> : null}
         {loadState === 'error' && error ? <p className="error-message">{error}</p> : null}
 
@@ -225,6 +218,6 @@ export function ProblemTestsPage() {
           </form>
         ) : null}
       </section>
-    </main>
+    </AdminLayout>
   );
 }

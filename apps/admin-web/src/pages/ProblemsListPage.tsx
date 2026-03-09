@@ -1,10 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchAdminProblems, type AdminProblemListItem } from '../api/problems';
+import { AdminLayout } from '../components/AdminLayout';
 import { useAuth } from '../auth/AuthContext';
 import { readStoredAdminToken } from '../auth/storage';
 
 type LoadState = 'loading' | 'ready' | 'error';
+
+function formatVisibilityLabel(value: string): string {
+  if (value === 'public') {
+    return 'published';
+  }
+
+  if (value === 'private') {
+    return 'archived';
+  }
+
+  return value;
+}
 
 function formatTimestamp(value: string): string {
   const parsed = new Date(value);
@@ -23,7 +36,7 @@ function formatTimestamp(value: string): string {
 }
 
 export function ProblemsListPage() {
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
   const [problems, setProblems] = useState<AdminProblemListItem[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -60,34 +73,23 @@ export function ProblemsListPage() {
   }, []);
 
   return (
-    <main className="shell">
-      <section className="card problems-card">
-        <div className="page-header">
-          <div>
-            <p className="eyebrow">OJ Admin Web</p>
-            <h1>Problems</h1>
-            <p className="message">Signed in as {user?.email ?? 'admin'}.</p>
-          </div>
-
-          <div className="header-actions">
-            <Link className="primary-button link-button" to="/admin/problems/create">
-              Create Problem
-            </Link>
-            <Link className="secondary-button link-button" to="/submissions">
-              Submissions
-            </Link>
-            <button className="secondary-button" onClick={() => void loadProblems()} type="button">
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
-            </button>
-            <button className="secondary-button" onClick={logout} type="button">
-              Logout
-            </button>
-          </div>
-        </div>
-
-        {state === 'loading' ? (
-          <p className="hint">Loading problems...</p>
-        ) : null}
+    <AdminLayout
+      actions={
+        <>
+          <Link className="primary-button link-button" to="/admin/problems/create">
+            Create Problem
+          </Link>
+          <button className="secondary-button" onClick={() => void loadProblems()} type="button">
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </>
+      }
+      description="Manage draft and published problems from a cleaner editing workspace."
+      meta={`Signed in as ${user?.email ?? 'admin'}.`}
+      title="Problems"
+    >
+      <section className="card content-card table-card">
+        {state === 'loading' ? <p className="hint">Loading problems...</p> : null}
 
         {state === 'error' && error ? <p className="error-message">{error}</p> : null}
 
@@ -108,32 +110,38 @@ export function ProblemsListPage() {
                 </tr>
               </thead>
               <tbody>
-                {problems.map((problem) => (
-                  <tr key={problem.problemId}>
-                    <td>
-                      <Link className="problem-link" to={`/admin/problems/${problem.problemId}`}>
-                        {problem.problemId}
-                      </Link>
-                    </td>
-                    <td>
-                      <Link className="problem-link" to={`/admin/problems/${problem.problemId}`}>
-                        {problem.title}
-                      </Link>
-                    </td>
-                    <td>{problem.visibility}</td>
-                    <td>{formatTimestamp(problem.updatedAt)}</td>
-                    <td>
-                      <Link className="problem-link" to={`/admin/problems/${problem.problemId}`}>
-                        Edit
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {problems.map((problem) => {
+                  const visibilityLabel = formatVisibilityLabel(problem.visibility);
+
+                  return (
+                    <tr key={problem.problemId}>
+                      <td>
+                        <Link className="problem-link" to={`/admin/problems/${problem.problemId}`}>
+                          {problem.problemId}
+                        </Link>
+                      </td>
+                      <td>
+                        <Link className="problem-link" to={`/admin/problems/${problem.problemId}`}>
+                          {problem.title}
+                        </Link>
+                      </td>
+                      <td>
+                        <span className={`status-pill ${visibilityLabel}`}>{visibilityLabel}</span>
+                      </td>
+                      <td>{formatTimestamp(problem.updatedAt)}</td>
+                      <td>
+                        <Link className="problem-link" to={`/admin/problems/${problem.problemId}`}>
+                          Edit
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         ) : null}
       </section>
-    </main>
+    </AdminLayout>
   );
 }

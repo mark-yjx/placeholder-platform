@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchAdminSubmissions, type AdminSubmissionListItem } from '../api/submissions';
+import { AdminLayout } from '../components/AdminLayout';
 import { useAuth } from '../auth/AuthContext';
 import { readStoredAdminToken } from '../auth/storage';
 
@@ -27,7 +28,7 @@ function formatMetric(value: number | null, unit: string): string {
 }
 
 export function SubmissionsListPage() {
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
   const [submissions, setSubmissions] = useState<AdminSubmissionListItem[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -64,29 +65,17 @@ export function SubmissionsListPage() {
   }, []);
 
   return (
-    <main className="shell">
-      <section className="card problems-card">
-        <div className="page-header">
-          <div>
-            <p className="eyebrow">OJ Admin Web</p>
-            <h1>Submissions</h1>
-            <p className="message">Inspect submissions across admin-visible users.</p>
-            <p className="hint">Signed in as {user?.email ?? 'admin'}.</p>
-          </div>
-
-          <div className="header-actions">
-            <Link className="secondary-button link-button" to="/">
-              Problems
-            </Link>
-            <button className="secondary-button" onClick={() => void loadSubmissions()} type="button">
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
-            </button>
-            <button className="secondary-button" onClick={logout} type="button">
-              Logout
-            </button>
-          </div>
-        </div>
-
+    <AdminLayout
+      actions={
+        <button className="secondary-button" onClick={() => void loadSubmissions()} type="button">
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+        </button>
+      }
+      description="Inspect submissions across admin-visible users."
+      meta={`Signed in as ${user?.email ?? 'admin'}.`}
+      title="Submissions"
+    >
+      <section className="card content-card table-card">
         {state === 'loading' ? <p className="hint">Loading submissions...</p> : null}
         {state === 'error' && error ? <p className="error-message">{error}</p> : null}
         {state === 'ready' && submissions.length === 0 ? (
@@ -118,7 +107,9 @@ export function SubmissionsListPage() {
                     </td>
                     <td>{submission.ownerUserId}</td>
                     <td>{submission.problemId}</td>
-                    <td>{submission.status}</td>
+                    <td>
+                      <span className={`status-pill ${submission.status}`}>{submission.status}</span>
+                    </td>
                     <td>{submission.verdict ?? 'N/A'}</td>
                     <td>{formatMetric(submission.timeMs, 'ms')}</td>
                     <td>{formatMetric(submission.memoryKb, 'KB')}</td>
@@ -130,6 +121,6 @@ export function SubmissionsListPage() {
           </div>
         ) : null}
       </section>
-    </main>
+    </AdminLayout>
   );
 }

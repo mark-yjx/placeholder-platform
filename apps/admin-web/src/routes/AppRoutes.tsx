@@ -6,6 +6,7 @@ import { ProblemEditPage } from '../pages/ProblemEditPage';
 import { ProblemPreviewPage } from '../pages/ProblemPreviewPage';
 import { ProblemTestsPage } from '../pages/ProblemTestsPage';
 import { ProblemsListPage } from '../pages/ProblemsListPage';
+import { SettingsPage } from '../pages/SettingsPage';
 import { SubmissionDetailPage } from '../pages/SubmissionDetailPage';
 import { SubmissionsListPage } from '../pages/SubmissionsListPage';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -33,6 +34,7 @@ export function AppRoutes() {
         <Route path="/admin/problems/:problemId/tests" element={<ProblemTestsPage />} />
         <Route path="/problems/:problemId" element={<ProblemEditPage />} />
         <Route path="/problems/:problemId/tests" element={<ProblemTestsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/submissions" element={<SubmissionsListPage />} />
         <Route path="/submissions/:submissionId" element={<SubmissionDetailPage />} />
       </Route>

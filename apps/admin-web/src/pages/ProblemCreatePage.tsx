@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createAdminProblem, type AdminProblemCreateRequest } from '../api/problems';
+import { AdminLayout } from '../components/AdminLayout';
 import { readStoredAdminToken } from '../auth/storage';
 
 type SaveState = 'idle' | 'saving' | 'error';
@@ -61,22 +62,17 @@ export function ProblemCreatePage() {
   }
 
   return (
-    <main className="shell">
-      <section className="card problems-card">
-        <div className="page-header">
-          <div>
-            <p className="eyebrow">OJ Admin Web</p>
-            <h1>Create Problem</h1>
-            <p className="message">Create a new draft problem folder with the initial manifest and files.</p>
-          </div>
-
-          <div className="header-actions">
-            <Link className="secondary-button link-button" to="/admin/problems">
-              Back to Problems
-            </Link>
-          </div>
-        </div>
-
+    <AdminLayout
+      actions={
+        <Link className="secondary-button link-button" to="/admin/problems">
+          Back to Problems
+        </Link>
+      }
+      description="Create a new draft problem folder with the initial manifest and files."
+      meta="Keep the starting metadata minimal, then continue in the editor."
+      title="Create Problem"
+    >
+      <section className="card content-card">
         <form className="problem-form" onSubmit={handleSubmit}>
           <section className="form-section">
             <h2>Basic Info</h2>
@@ -157,6 +153,6 @@ export function ProblemCreatePage() {
           </section>
         </form>
       </section>
-    </main>
+    </AdminLayout>
   );
 }

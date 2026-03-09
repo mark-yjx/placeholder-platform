@@ -6,6 +6,7 @@ import {
   updateAdminProblem,
   type AdminProblemDetail
 } from '../api/problems';
+import { AdminLayout } from '../components/AdminLayout';
 import { readStoredAdminToken } from '../auth/storage';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -150,37 +151,37 @@ export function ProblemEditPage() {
   const isPublished = form ? ['published', 'public'].includes(form.visibility) : false;
 
   return (
-    <main className="shell">
-      <section className="card problems-card">
-        <div className="page-header">
-          <div>
-            <p className="eyebrow">OJ Admin Web</p>
-            <h1>Problem Editor</h1>
-            <p className="message">View and update the latest admin-managed problem metadata.</p>
-          </div>
-
-          <div className="header-actions">
-            <Link
-              className="secondary-button link-button"
-              to={problemId ? `/admin/problems/${problemId}/preview` : '/admin/problems'}
-            >
-              Preview
-            </Link>
-            <Link
-              className="secondary-button link-button"
-              to={problemId ? `/admin/problems/${problemId}/tests` : '/admin/problems'}
-            >
-              Tests
-            </Link>
-            <Link className="secondary-button link-button" to="/submissions">
-              Submissions
-            </Link>
-            <Link className="secondary-button link-button" to="/admin/problems">
-              Back to Problems
-            </Link>
-          </div>
-        </div>
-
+    <AdminLayout
+      actions={
+        <>
+          <Link
+            className="secondary-button link-button"
+            to={problemId ? `/admin/problems/${problemId}/preview` : '/admin/problems'}
+          >
+            Preview
+          </Link>
+          <Link
+            className="secondary-button link-button"
+            to={problemId ? `/admin/problems/${problemId}/tests` : '/admin/problems'}
+          >
+            Tests
+          </Link>
+          <Link className="secondary-button link-button" to="/admin/problems">
+            Back to Problems
+          </Link>
+        </>
+      }
+      description="View and update the latest admin-managed problem metadata."
+      meta={
+        form ? (
+          <>
+            Current status <span className={`status-pill ${statusLabel}`}>{statusLabel}</span>
+          </>
+        ) : null
+      }
+      title="Problem Editor"
+    >
+      <section className="card content-card">
         {loadState === 'loading' ? <p className="hint">Loading problem details...</p> : null}
         {loadState === 'error' && error ? <p className="error-message">{error}</p> : null}
 
@@ -232,8 +233,8 @@ export function ProblemEditPage() {
                 </label>
               </div>
               <p className="field-note">
-                Problem ID stays read-only in this MVP to preserve identity. Use Preview and Publish to
-                control student visibility.
+                Problem ID stays read-only in this MVP to preserve identity. Use Preview and Publish
+                to control student visibility.
               </p>
             </section>
 
@@ -309,12 +310,6 @@ export function ProblemEditPage() {
                       ? 'Unpublish'
                       : 'Publish'}
                 </button>
-                <Link
-                  className="secondary-button link-button"
-                  to={problemId ? `/admin/problems/${problemId}/preview` : '/admin/problems'}
-                >
-                  Preview
-                </Link>
                 {saveMessage ? (
                   <p className={saveState === 'success' ? 'success-message' : 'error-message'}>
                     {saveMessage}
@@ -330,6 +325,6 @@ export function ProblemEditPage() {
           </form>
         ) : null}
       </section>
-    </main>
+    </AdminLayout>
   );
 }
