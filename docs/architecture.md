@@ -1,151 +1,191 @@
 # Architecture
 
-This repository is a TypeScript monorepo for a local-first Online Judge platform. The VS Code extension is the user-facing client, while the API, Postgres database, judge worker, and importer provide the real backend workflow.
+This repository is a monorepo for a local-first Online Judge. The student-facing workflow uses a VS Code extension and a Node/TypeScript API. The admin-facing workflow uses a browser-based Admin Web and a FastAPI `admin-api`. Both stacks share the same Postgres database and judge worker.
 
-## System Shape
+## System Overview
 
 ```text
-VS Code Extension
-        ↓ HTTP
-API Server
-        ↓
-Postgres
-        ↓
-Judge Worker
-        ↓
-Sandbox Execution
+VS Code Extension (student)      Admin Web (admin)
+            |                             |
+            | HTTP                        | HTTP
+            v                             v
+Node/TypeScript API             FastAPI admin-api
+            \                             /
+             \                           /
+              v                         v
+                       Postgres
+                          ^
+                          | claims jobs / writes results
+                          |
+                     Judge Worker
+                          |
+                          | docker run
+                          v
+               Sandboxed Python Execution
 ```
 
-## Components
-
-### Extension
+## Extension
 
 Location: `apps/vscode-extension`
 
 Responsibilities:
 
-- present the VS Code UI workflow
+- authenticate users against the API
 - store the access token in VS Code `SecretStorage`
-- fetch problems and problem detail over HTTP
-- open or create local coding files under `.oj/problems/`
-- submit the current Python file
-- poll submission results
-- render submissions and submission detail
-- keep lightweight workspace-local UI state such as selected problem and local file paths
+- render the current student workflow inside VS Code
+- fetch published problems and problem detail
+- materialize starter-backed coding files under `.oj/problems/`
+- submit Python source through the API
+- poll submission results and render them in panel views
 
-UI layout:
+Current UI surfaces:
 
-- Sidebar: problem navigation
-- Editor: problem detail plus coding file
-- Panel: submissions and submission detail
-- Status bar: account entry point
+- status bar account icon
+- account webview window
+- `Problems` sidebar tree
+- `Problem Detail` webview
+- `Submissions` panel tree
+- `Submission Detail` webview
 
-The extension does not judge code locally and does not own submission verdict rules.
+The extension is a client, not a judge. It does not execute hidden tests locally.
 
-### API Server
+## Student API Server
 
 Location: `apps/api`
 
 Responsibilities:
 
-- expose `/healthz` and `/readyz`
-- handle login
-- serve published problems and problem detail
+- expose health and readiness routes
+- handle login and token-based access
+- serve published problem lists and problem detail
 - accept student submissions
-- validate requests and enforce auth/role checks
-- store submissions and judge jobs
-- expose submission history and submission detail
-- expose admin routes for problem and submission inspection
+- persist submissions in `queued` state
+- enqueue judge work
+- serve submission history and submission detail
 
-The API is the only component that accepts student-facing write operations from the extension.
+The API is the only write entry point used by the extension for student submissions.
 
-### Domain Layer
+## Admin Web
+
+Location: `apps/admin-web`
+
+Responsibilities:
+
+- provide a browser-based admin login flow
+- render admin operational pages separately from the student extension
+- consume the FastAPI `admin-api`
+- keep admin-only data such as hidden tests out of student-facing UI surfaces
+
+Admin Web exists because problem editing, admin-only tests management, and cross-user submission inspection are different workflows from student practice.
+
+## Admin API
+
+Location: `apps/admin-api`
+
+Responsibilities:
+
+- authenticate admin sessions for Admin Web
+- serve admin-only problem management routes
+- expand toward admin-only tests management and submission inspection within the Admin Web MVP scope
+
+The admin API is a separate operational surface. It does not replace the student-facing Node/TypeScript API.
+
+## Domain Layer
 
 Location: `packages/domain`
 
 Responsibilities:
 
-- define problem, submission, verdict, and identity models
-- define submission lifecycle states
-- encode invariants such as legal state transitions
-- define repository ports and policy interfaces
+- define submission lifecycle rules
+- define verdict and judge-related domain types
+- define identity, ranking, and policy primitives
+- protect invariants such as terminal-state immutability
 
-The domain layer is framework-independent. It does not know about VS Code, HTTP, SQL, or Docker.
+The domain layer is framework-agnostic. It does not depend on HTTP, VS Code, SQL, or Docker.
 
-### Application Layer
+## Application Layer
 
 Location: `packages/application`
 
 Responsibilities:
 
-- coordinate use cases across domain rules and repository ports
-- implement workflows such as login, submission creation, and result queries
-- translate domain behavior into application-level services
+- coordinate use cases across domain and infrastructure ports
+- implement submission creation and result-query workflows
+- orchestrate authentication and other application services
+- translate persisted data into API-facing or extension-facing views
 
-This is the orchestration layer between domain and infrastructure.
+This is the workflow layer between pure domain logic and runtime adapters.
 
-### Persistence Layer
+## Persistence Layer
 
 Location: `packages/infrastructure`
 
 Responsibilities:
 
 - implement Postgres-backed repositories
-- persist problems, versions, tests, submissions, jobs, and judge results
-- provide adapters used by API and worker runtimes
+- persist users, submissions, judge jobs, judge results, and imported problems
+- enforce persistence-side contracts such as immutable terminal results
+- map nullable runtime metrics to optional application fields
 
-Postgres is the source of truth for imported content, queued work, and judged outcomes.
+Postgres is the system of record for imported problems and judged outcomes.
 
-### Judge Worker
+## Judge Worker
 
 Location: `apps/judge-worker`
 
 Responsibilities:
 
-- claim queued judge jobs
-- move submissions from `queued` to `running`
-- load the problem version and judge configuration
-- execute the configured Python entry function in a sandbox
-- persist terminal results and submission status
+- claim queued judge jobs from Postgres
+- transition submissions from `queued` to `running`
+- load problem version assets and tests
+- build runnable judged Python code using the configured `entryFunction`
+- run the code in a Docker sandbox
+- persist terminal result data and final submission state
 
 The worker is the only component that executes student code.
 
-### Problem Importer
+The worker remains shared between the student-facing and admin-facing stacks.
 
-Location: `tools/scripts/import-problems.mjs`
+## Problem Importer
+
+Primary entrypoint: `tools/scripts/import-problems.mjs`
 
 Responsibilities:
 
-- read repository-managed problem folders under `problems/`
+- read source-controlled problem folders from `problems/`
 - validate `manifest.json`
 - load `statement.md`, `starter.py`, `public.json`, and `hidden.json`
-- compute importable content versions
-- persist problem assets and tests into Postgres
+- compute a stable content digest
+- insert or append Postgres problem versions and associated assets/tests
 
-The importer bridges source-controlled problem content and runtime storage.
+The importer converts repository content into runtime data used by the API and worker.
 
-## Submission Lifecycle
+## Submission Flow End To End
 
-The submission flow is:
+1. The student logs in from the extension account window.
+2. The extension fetches published problems from the API.
+3. The student selects a problem and opens `.oj/problems/<problemId>.py`.
+4. The extension submits source code to the API.
+5. The API validates the request and persists the submission as `queued`.
+6. The API inserts a corresponding row into `judge_jobs`.
+7. The extension starts polling submission result endpoints.
+8. The worker claims the job and transitions the submission to `running`.
+9. The worker loads the imported problem version, including `entryFunction`, limits, and public/hidden tests.
+10. The worker wraps the student submission into judged Python code.
+11. The worker executes the judged code inside a Docker sandbox.
+12. The worker persists a terminal submission state of `finished` or `failed`.
+13. If the submission is `finished`, the worker also persists a verdict such as `AC`, `WA`, `CE`, `RE`, or `TLE`.
+14. The API serves the result view back to the extension.
+15. The extension updates `Submissions` and `Submission Detail`.
 
-1. The student selects a problem in the extension.
-2. The extension opens or creates `.oj/problems/<problemId>.py`.
-3. The student submits from the editor.
-4. The extension sends the submission to the API.
-5. The API validates auth, ownership rules, published visibility, and language.
-6. The API stores the submission in Postgres with status `queued`.
-7. The API inserts a judge job into the queue table.
-8. The worker claims the job and updates the submission to `running`.
-9. The worker loads the imported problem version, entry function, and tests.
-10. The worker executes the submission in the sandbox.
-11. The worker persists a terminal state of `finished` or `failed`.
-12. The extension polls the API and updates the panel views.
+## Architectural Boundaries
 
-## Why The Separation Matters
+- The extension owns student workflow and presentation.
+- Admin Web owns admin workflow and presentation.
+- The student-facing Node/TypeScript API owns student authentication, validation, and durable submission intake.
+- The FastAPI `admin-api` owns admin-only operational routes.
+- The worker owns execution and verdict production.
+- Postgres owns durable state.
+- The importer owns the bridge from repository-authored problem files to runtime problem versions.
 
-- The extension can change its UX without changing judge behavior.
-- The API can enforce auth and validation consistently.
-- Domain rules remain testable without runtime frameworks.
-- Postgres-backed persistence survives extension and container restarts.
-- The worker stays focused on safe execution and result persistence.
-- Problems remain versioned in the repository while still being importable into the runtime database.
+That separation matters because student UX, admin UX, judge behavior, storage, and content authoring can evolve independently without redesigning the whole pipeline.

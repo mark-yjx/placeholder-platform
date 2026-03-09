@@ -1,97 +1,107 @@
 # Roadmap
 
-This roadmap summarizes the major implementation phases tracked under `.specify/specs/tasks.md`.
+This roadmap summarizes the current project direction after the recent UI, architecture, and runtime-metrics hardening work.
 
-## Completed Foundation
+## Current State
 
-The repository already contains working slices for:
+The repository already has a working local-first Online Judge with:
 
-- npm workspace monorepo structure
-- layered package boundaries
-- environment validation
-- API runtime and worker runtime entrypoints
-- Postgres-backed local persistence
-- problem import and manifest validation
-- VSIX packaging
-- sidebar-first extension workflow
-- Docker-backed local development and smoke automation
+- VS Code extension client
+- HTTP API server
+- Postgres persistence
+- judge worker
+- Docker local runtime
+- problem import pipeline
 
-## Major Delivered Phases
+The current emphasis is consolidation: make the platform understandable, observable, and reliable before broadening surface area.
 
-### Core Platform
+## Near-Term Priorities
 
-- domain models for problems, submissions, verdicts, and identity
-- application/use-case orchestration
-- infrastructure adapters for Postgres-backed persistence
+### Admin Web MVP
 
-### API And Persistence
+Admin Web MVP is now an explicit part of the project plan.
 
-- auth routes and session/token flow
-- published problem list/detail endpoints
-- submission creation and result retrieval
-- favorites, reviews, ranking, and stats endpoints
+The current architecture separates student-facing and admin-facing surfaces:
 
-### Judge Pipeline
+- students use the VS Code extension with the Node/TypeScript API
+- admins use Admin Web with the FastAPI `admin-api`
+- both flows share Postgres and the existing judge worker
 
-- queued job persistence
-- worker queue consumption
-- Docker sandbox execution
-- Python runner plugin path
-- persisted terminal results and polling
+The finalized MVP scope for the admin stack is:
 
-### VS Code Extension
+- admin login
+- problems list
+- problem detail/edit
+- tests management
+- submissions list/detail
 
-- login flow
-- problem browsing
-- problem detail webview
-- coding-file creation and reuse
-- submit current file flow
-- submissions list and submission detail panels
+This admin stack is meant to complement the existing student-facing platform, not replace it.
 
-### Local Developer Experience
+### Runtime Metrics Hardening Follow-Ups
 
-- compose-managed Postgres, API, and worker
-- migration and seed helpers
-- problem import script
-- local smoke test
-- VSIX packaging command
+Recent work established correct measured-vs-unavailable semantics. Follow-up work should focus on:
 
-## Current Direction
+- broader verification across more verdict paths
+- clearer `TLE` and resource-limit measurement behavior
+- continued validation of cgroup-based memory collection in local and future deployment targets
+- better operator diagnostics when runtime metrics are unavailable
 
-The current repository direction is to keep improving the student-facing sidebar workflow while preserving the real API + worker execution path.
+### Extension UX Refinement
 
-Areas that remain natural next steps include:
+The extension workflow is now structurally in place. Near-term polish can focus on:
 
-- richer release documentation and operational runbooks
-- stronger extension polish and UX refinement
-- more complete verdict coverage, including clearer resource-limit outcomes
-- broader admin workflows and operational tooling
-- additional observability and troubleshooting ergonomics
+- clearer result messaging
+- stronger recovery after reloads and restarts
+- better affordances around starter files and selected problem context
+- improved visibility into status transitions and failure reasons
 
-## How To Read The Full Plan
+## Security and Identity Direction
 
-The detailed implementation backlog lives in:
+### 2FA Later: TOTP / Authenticator
 
-- `.specify/specs/tasks.md`
+Password login exists today for local use, but future identity work may include:
 
-The task file is organized as phased work, including:
+- TOTP-based two-factor authentication
+- authenticator-app enrollment
+- recovery and reset flows
+- admin policies for who must enable 2FA
 
-- repo setup and contracts
-- auth and RBAC
-- problem CRUD and publication
-- submission lifecycle and queue integration
-- worker sandbox execution
-- results/statistics/ranking
-- extension UX hardening
-- deployment and release readiness
+This is a later-phase hardening item, not an immediate local MVP requirement.
 
-## Practical Reading Order
+## Future Deployment Direction
 
-If you are new to the repository, read in this order:
+The current system is intentionally local-first and compose-centric. Longer term, likely deployment directions include:
 
-1. [README](../README.md)
-2. [Architecture](./architecture.md)
-3. [Local Development](./local-development.md)
-4. [Extension Usage](./extension-usage.md)
-5. [Judge Pipeline](./judge-pipeline.md)
-6. [Problem Format](./problem-format.md)
+- promoting the API and worker into separately managed runtime services
+- formalizing production-grade secret handling
+- improving observability and runbooks for queue and sandbox behavior
+- making deployment topology explicit beyond the current local compose environment
+- evaluating safer or more portable sandboxing strategies where needed
+
+The local compose stack should remain the canonical developer integration environment even as deployment targets grow.
+
+## Longer-Term Product Direction
+
+Possible future themes:
+
+- richer public stats and ranking views
+- better admin workflows for tests management, content publishing, and rejudge operations
+- admin user management
+- admin 2FA / authenticator flows
+- richer admin dashboard and analytics surfaces
+- more problem-author tooling around validation and previews
+- release automation and packaging improvements
+- deployment hardening beyond the current local-first baseline
+- stronger documentation and contributor onboarding
+
+## Reading Order For Contributors
+
+If you are new to the repository, start here:
+
+1. `README.md`
+2. `docs/architecture.md`
+3. `docs/local-development.md`
+4. `docs/problem-format.md`
+5. `docs/judge-pipeline.md`
+6. `docs/runtime-metrics.md`
+7. `.specify/specs/tasks.md`
