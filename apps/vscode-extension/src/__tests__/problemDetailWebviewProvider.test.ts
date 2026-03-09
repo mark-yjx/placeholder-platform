@@ -7,7 +7,8 @@ test('fetched problem detail renders expected fields', () => {
       problemId: 'collapse',
       versionId: 'collapse-v1',
       title: 'Collapse Identical Digits',
-      statementMarkdown: '# Collapse Identical Digits\n\nCollapse duplicate digits.',
+      statementMarkdown:
+        '# Collapse Identical Digits\n\nCollapse duplicate digits.\n\n- Keep the sign\n- Keep the order\n\nUse `collapse(number)`.',
       entryFunction: 'collapse',
       language: 'python',
       starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
@@ -19,8 +20,11 @@ test('fetched problem detail renders expected fields', () => {
   assert.match(html, /Problem ID:<\/strong> <code>collapse<\/code>/);
   assert.doesNotMatch(html, /Entry Function:/);
   assert.doesNotMatch(html, /Language:/);
-  assert.match(html, /# Collapse Identical Digits/);
-  assert.match(html, /Collapse duplicate digits\./);
+  assert.match(html, /<h1>Collapse Identical Digits<\/h1>/);
+  assert.match(html, /<p>Collapse duplicate digits\.<\/p>/);
+  assert.match(html, /<ul><li>Keep the sign<\/li><li>Keep the order<\/li><\/ul>/);
+  assert.match(html, /Use <code>collapse\(number\)<\/code>\./);
+  assert.doesNotMatch(html, /<pre style="white-space: pre-wrap;">/);
   assert.match(html, /Starter File:<\/strong> <code>collapse\.py<\/code>/);
   assert.doesNotMatch(html, /\/home\/mark\/src\/oj-vscode\/\.oj\/problems\/collapse\.py/);
   assert.match(html, /<vscode-button data-command="openStarter">Open Coding File<\/vscode-button>/);
@@ -59,4 +63,19 @@ test('problem detail falls back safely when optional fields are missing', () => 
   assert.match(html, /Starter File:<\/strong> <code>legacy-problem\.py<\/code>/);
   assert.doesNotMatch(html, /\/tmp\/workspace\/\.oj\/problems\/legacy-problem\.py/);
   assert.match(html, /No statement available\./);
+});
+
+test('problem detail renders fenced code blocks as HTML code blocks', () => {
+  const viewModel = createProblemDetailViewModel({
+      problemId: 'collapse',
+      versionId: 'collapse-v1',
+      title: 'Collapse Identical Digits',
+      statementMarkdown: '```python\ndef collapse(number):\n    return number\n```',
+      entryFunction: 'collapse',
+      language: 'python',
+      starterCode: 'def collapse(number):\n    raise NotImplementedError\n'
+    }, '/home/mark/src/oj-vscode/.oj/problems/collapse.py');
+  const html = createProblemDetailHtml(viewModel);
+
+  assert.match(html, /<pre><code class="language-python">def collapse\(number\):\n    return number<\/code><\/pre>/);
 });
