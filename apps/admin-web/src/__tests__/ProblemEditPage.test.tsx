@@ -6,7 +6,7 @@ import { ProblemEditPage } from '../pages/ProblemEditPage';
 
 function renderProblemEditPage() {
   return render(
-    <MemoryRouter initialEntries={['/problems/collapse']}>
+    <MemoryRouter initialEntries={['/admin/problems/collapse']}>
       <AuthProvider
         initialSession={{
           status: 'authenticated',
@@ -14,7 +14,7 @@ function renderProblemEditPage() {
         }}
       >
         <Routes>
-          <Route path="/problems/:problemId" element={<ProblemEditPage />} />
+          <Route path="/admin/problems/:problemId" element={<ProblemEditPage />} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>
@@ -69,6 +69,7 @@ describe('problem edit page', () => {
 
     expect((screen.getByLabelText('Problem ID') as HTMLInputElement).value).toBe('collapse');
     expect((screen.getByLabelText('Entry Function') as HTMLInputElement).value).toBe('collapse');
+    expect((screen.getByLabelText('Status') as HTMLInputElement).value).toBe('published');
     expect((screen.getByLabelText('Statement Markdown') as HTMLTextAreaElement).value).toBe(
       '# Collapse Identical Digits'
     );
@@ -132,9 +133,6 @@ describe('problem edit page', () => {
     fireEvent.change(screen.getByLabelText('Time Limit (ms)'), {
       target: { value: '2500' }
     });
-    fireEvent.change(screen.getByLabelText('Visibility'), {
-      target: { value: 'private' }
-    });
     fireEvent.change(screen.getByLabelText('Statement Markdown'), {
       target: { value: '# Collapse Digits' }
     });
@@ -164,7 +162,7 @@ describe('problem edit page', () => {
           language: 'python',
           timeLimitMs: 2500,
           memoryLimitKb: 65536,
-          visibility: 'private',
+          visibility: 'public',
           statementMarkdown: '# Collapse Digits',
           starterCode: 'def collapse(number):\n    return int(number)\n',
           updatedAt: '2026-03-09T12:00:00Z'
@@ -181,5 +179,73 @@ describe('problem edit page', () => {
     await waitFor(() => {
       expect(screen.getByText('Problem detail is down.')).toBeTruthy();
     });
+  });
+
+  it('publishes a draft problem from the editor', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            problemId: 'collapse',
+            title: 'Collapse Identical Digits',
+            entryFunction: 'collapse',
+            language: 'python',
+            timeLimitMs: 2000,
+            memoryLimitKb: 65536,
+            visibility: 'draft',
+            statementMarkdown: '# Collapse Identical Digits',
+            starterCode: 'def collapse(number):\n    return number\n',
+            updatedAt: '2026-03-09T12:00:00Z'
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            problemId: 'collapse',
+            title: 'Collapse Identical Digits',
+            entryFunction: 'collapse',
+            language: 'python',
+            timeLimitMs: 2000,
+            memoryLimitKb: 65536,
+            visibility: 'published',
+            statementMarkdown: '# Collapse Identical Digits',
+            starterCode: 'def collapse(number):\n    return number\n',
+            updatedAt: '2026-03-10T12:00:00Z'
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        )
+      );
+
+    renderProblemEditPage();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Collapse Identical Digits')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Problem published.')).toBeTruthy();
+    });
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      'http://127.0.0.1:8200/admin/problems/collapse/publish',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          authorization: 'Bearer signed-token'
+        })
+      })
+    );
+    expect((screen.getByLabelText('Status') as HTMLInputElement).value).toBe('published');
   });
 });

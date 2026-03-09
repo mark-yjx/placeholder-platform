@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 
 from app.core.auth import AdminIdentity, require_admin_identity
 from app.models.problems import (
     AdminProblemCreateRequest,
     AdminProblemDetail,
     AdminProblemListItem,
+    AdminProblemPreview,
     AdminProblemUpdateRequest,
 )
 from app.services.problems import (
     AdminProblemService,
     ProblemAlreadyExistsError,
+    ProblemNotReadyError,
     ProblemOperationValidationError,
 )
 
@@ -57,6 +60,29 @@ def get_admin_problem(
     return problem
 
 
+@router.get("/{problem_id}/preview", response_model=AdminProblemPreview)
+def get_admin_problem_preview(
+    problem_id: str,
+    _: AdminIdentity = Depends(require_admin_identity),
+    service: AdminProblemService = Depends(_get_problem_service),
+) -> AdminProblemPreview:
+    try:
+        preview = service.get_problem_preview(problem_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Admin problem preview is unavailable.",
+        ) from exc
+
+    if preview is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Admin problem was not found.",
+        )
+
+    return preview
+
+
 @router.post("", response_model=AdminProblemDetail, status_code=status.HTTP_201_CREATED)
 def create_admin_problem(
     payload: AdminProblemCreateRequest,
@@ -80,6 +106,39 @@ def create_admin_problem(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Admin problem creation is unavailable.",
         ) from exc
+
+
+@router.post("/{problem_id}/publish", response_model=AdminProblemDetail)
+def publish_admin_problem(
+    problem_id: str,
+    _: AdminIdentity = Depends(require_admin_identity),
+    service: AdminProblemService = Depends(_get_problem_service),
+) -> AdminProblemDetail:
+    try:
+        problem = service.publish_problem(problem_id)
+    except ProblemNotReadyError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"error": "problem_not_ready", "missing": exc.missing},
+        )
+    except ProblemOperationValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Admin problem publish is unavailable.",
+        ) from exc
+
+    if problem is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Admin problem was not found.",
+        )
+
+    return problem
 
 
 @router.put("/{problem_id}", response_model=AdminProblemDetail)

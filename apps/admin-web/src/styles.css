@@ -150,6 +150,10 @@ body {
   margin-top: 0;
 }
 
+.form-actions .secondary-button {
+  margin-top: 0;
+}
+
 .link-button {
   text-decoration: none;
 }

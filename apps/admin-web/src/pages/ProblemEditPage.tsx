@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import {
   fetchAdminProblem,
+  publishAdminProblem,
   updateAdminProblem,
   type AdminProblemDetail
 } from '../api/problems';
@@ -9,6 +10,17 @@ import { readStoredAdminToken } from '../auth/storage';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
+type PublishState = 'idle' | 'publishing' | 'success' | 'error';
+
+function formatVisibilityLabel(value: AdminProblemDetail['visibility']): string {
+  if (value === 'public') {
+    return 'published';
+  }
+  if (value === 'private') {
+    return 'archived';
+  }
+  return value;
+}
 
 export function ProblemEditPage() {
   const { problemId } = useParams<{ problemId: string }>();
@@ -24,6 +36,8 @@ export function ProblemEditPage() {
   const [error, setError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [publishState, setPublishState] = useState<PublishState>('idle');
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadProblem() {
@@ -68,6 +82,10 @@ export function ProblemEditPage() {
       setSaveState('idle');
       setSaveMessage(null);
     }
+    if (publishState !== 'idle') {
+      setPublishState('idle');
+      setPublishMessage(null);
+    }
   }
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
@@ -100,6 +118,37 @@ export function ProblemEditPage() {
     }
   }
 
+  async function handlePublish() {
+    if (!problemId || !form || form.visibility === 'published' || form.visibility === 'public') {
+      return;
+    }
+
+    const token = readStoredAdminToken();
+    if (!token) {
+      setPublishState('error');
+      setPublishMessage('Admin session is missing.');
+      return;
+    }
+
+    setPublishState('publishing');
+    setPublishMessage(null);
+
+    try {
+      const published = await publishAdminProblem(token, problemId);
+      setForm(published);
+      setPublishState('success');
+      setPublishMessage('Problem published.');
+    } catch (publishError) {
+      setPublishState('error');
+      setPublishMessage(
+        publishError instanceof Error ? publishError.message : 'Failed to publish the problem.'
+      );
+    }
+  }
+
+  const statusLabel = form ? formatVisibilityLabel(form.visibility) : 'draft';
+  const isPublished = form ? ['published', 'public'].includes(form.visibility) : false;
+
   return (
     <main className="shell">
       <section className="card problems-card">
@@ -111,6 +160,12 @@ export function ProblemEditPage() {
           </div>
 
           <div className="header-actions">
+            <Link
+              className="secondary-button link-button"
+              to={problemId ? `/admin/problems/${problemId}/preview` : '/admin/problems'}
+            >
+              Preview
+            </Link>
             <Link
               className="secondary-button link-button"
               to={problemId ? `/admin/problems/${problemId}/tests` : '/admin/problems'}
@@ -172,24 +227,14 @@ export function ProblemEditPage() {
                   </select>
                 </label>
                 <label className="field">
-                  <span>Visibility</span>
-                  <select
-                    name="visibility"
-                    onChange={(event) =>
-                      updateField(
-                        'visibility',
-                        event.target.value as AdminProblemDetail['visibility']
-                      )
-                    }
-                    value={form.visibility}
-                  >
-                    {form.visibility === 'draft' ? <option value="draft">draft</option> : null}
-                    <option value="public">public</option>
-                    <option value="private">private</option>
-                  </select>
+                  <span>Status</span>
+                  <input readOnly value={statusLabel} />
                 </label>
               </div>
-              <p className="field-note">Problem ID stays read-only in this MVP to preserve identity.</p>
+              <p className="field-note">
+                Problem ID stays read-only in this MVP to preserve identity. Use Preview and Publish to
+                control student visibility.
+              </p>
             </section>
 
             <section className="form-section">
@@ -252,9 +297,32 @@ export function ProblemEditPage() {
                 <button className="primary-button" disabled={saveState === 'saving'} type="submit">
                   {saveState === 'saving' ? 'Saving...' : 'Save'}
                 </button>
+                <button
+                  className="secondary-button"
+                  disabled={publishState === 'publishing' || isPublished}
+                  onClick={() => void handlePublish()}
+                  type="button"
+                >
+                  {publishState === 'publishing'
+                    ? 'Publishing...'
+                    : isPublished
+                      ? 'Unpublish'
+                      : 'Publish'}
+                </button>
+                <Link
+                  className="secondary-button link-button"
+                  to={problemId ? `/admin/problems/${problemId}/preview` : '/admin/problems'}
+                >
+                  Preview
+                </Link>
                 {saveMessage ? (
                   <p className={saveState === 'success' ? 'success-message' : 'error-message'}>
                     {saveMessage}
+                  </p>
+                ) : null}
+                {publishMessage ? (
+                  <p className={publishState === 'success' ? 'success-message' : 'error-message'}>
+                    {publishMessage}
                   </p>
                 ) : null}
               </div>

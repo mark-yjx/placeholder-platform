@@ -77,6 +77,8 @@ describe('problems list page', () => {
     await waitFor(() => {
       expect(screen.getByText('Collapse Identical Digits')).toBeTruthy();
     });
+    expect(screen.getByText('Actions')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Edit' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
 

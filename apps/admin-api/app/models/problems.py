@@ -1,5 +1,5 @@
 import re
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator
 
@@ -57,10 +57,23 @@ class AdminProblemDetail(BaseModel):
     language: Literal["python"]
     timeLimitMs: int
     memoryLimitKb: int
-    visibility: Literal["draft", "public", "private"]
+    visibility: Literal["draft", "published", "archived", "public", "private"]
     statementMarkdown: str
     starterCode: str
     updatedAt: str
+
+
+class AdminProblemPreviewCase(BaseModel):
+    input: Any
+    output: Any
+
+
+class AdminProblemPreview(BaseModel):
+    problemId: str
+    title: str
+    statementMarkdown: str
+    examples: list[AdminProblemPreviewCase]
+    publicTests: list[AdminProblemPreviewCase]
 
 
 class AdminProblemCreateRequest(BaseModel):
@@ -101,7 +114,7 @@ class AdminProblemUpdateRequest(BaseModel):
     language: Literal["python"]
     timeLimitMs: int
     memoryLimitKb: int
-    visibility: Literal["draft", "public", "private"]
+    visibility: Literal["draft", "published", "archived", "public", "private"]
     statementMarkdown: str
     starterCode: str
 

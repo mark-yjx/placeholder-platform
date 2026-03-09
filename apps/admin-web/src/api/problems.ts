@@ -5,7 +5,25 @@ export type AdminProblemListItem = {
   updatedAt: string;
 };
 
-export type AdminProblemVisibility = 'draft' | 'public' | 'private';
+export type AdminProblemVisibility =
+  | 'draft'
+  | 'published'
+  | 'archived'
+  | 'public'
+  | 'private';
+
+export type AdminProblemPreviewCase = {
+  input: unknown;
+  output: unknown;
+};
+
+export type AdminProblemPreview = {
+  problemId: string;
+  title: string;
+  statementMarkdown: string;
+  examples: AdminProblemPreviewCase[];
+  publicTests: AdminProblemPreviewCase[];
+};
 
 export type AdminProblemCreateRequest = {
   problemId: string;
@@ -54,6 +72,25 @@ function responseDetail(body: unknown): string | null {
   return typeof detail === 'string' ? detail : null;
 }
 
+function publishReadinessDetail(body: unknown): string | null {
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    !('error' in body) ||
+    body.error !== 'problem_not_ready'
+  ) {
+    return null;
+  }
+
+  const payload = body as { missing?: unknown };
+  const missing = Array.isArray(payload.missing)
+    ? payload.missing.filter((item): item is string => typeof item === 'string')
+    : [];
+  return missing.length > 0
+    ? `Problem is not ready to publish: ${missing.join(', ')}.`
+    : 'Problem is not ready to publish.';
+}
+
 export async function fetchAdminProblems(token: string): Promise<AdminProblemListItem[]> {
   const response = await fetch(`${adminApiBaseUrl()}/admin/problems`, {
     headers: {
@@ -90,6 +127,27 @@ export async function fetchAdminProblem(
   return body as AdminProblemDetail;
 }
 
+export async function fetchAdminProblemPreview(
+  token: string,
+  problemId: string
+): Promise<AdminProblemPreview> {
+  const response = await fetch(
+    `${adminApiBaseUrl()}/admin/problems/${encodeURIComponent(problemId)}/preview`,
+    {
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    }
+  );
+  const body = (await parseResponse(response)) as AdminProblemPreview | { detail?: string } | null;
+
+  if (!response.ok) {
+    throw new Error(responseDetail(body) ?? 'Admin problem preview is unavailable.');
+  }
+
+  return body as AdminProblemPreview;
+}
+
 export async function createAdminProblem(
   token: string,
   payload: AdminProblemCreateRequest
@@ -106,6 +164,34 @@ export async function createAdminProblem(
 
   if (!response.ok) {
     throw new Error(responseDetail(body) ?? 'Admin problem creation is unavailable.');
+  }
+
+  return body as AdminProblemDetail;
+}
+
+export async function publishAdminProblem(
+  token: string,
+  problemId: string
+): Promise<AdminProblemDetail> {
+  const response = await fetch(
+    `${adminApiBaseUrl()}/admin/problems/${encodeURIComponent(problemId)}/publish`,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`
+      }
+    }
+  );
+  const body = (await parseResponse(response)) as
+    | AdminProblemDetail
+    | { detail?: string }
+    | { error?: string; missing?: string[] }
+    | null;
+
+  if (!response.ok) {
+    throw new Error(
+      publishReadinessDetail(body) ?? responseDetail(body) ?? 'Admin problem publish is unavailable.'
+    );
   }
 
   return body as AdminProblemDetail;

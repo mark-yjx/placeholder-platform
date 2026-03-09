@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from shutil import rmtree
-from typing import Protocol
+from typing import Any, Protocol
 
 import psycopg
 from psycopg.rows import dict_row
@@ -16,6 +16,8 @@ from app.models.problems import (
     AdminProblemCreateRequest,
     AdminProblemDetail,
     AdminProblemListItem,
+    AdminProblemPreview,
+    AdminProblemPreviewCase,
     AdminProblemUpdateRequest,
 )
 
@@ -197,6 +199,12 @@ class AdminProblemService(AdminProblemListService, Protocol):
     def get_problem(self, problem_id: str) -> AdminProblemDetail | None:
         ...
 
+    def get_problem_preview(self, problem_id: str) -> AdminProblemPreview | None:
+        ...
+
+    def publish_problem(self, problem_id: str) -> AdminProblemDetail | None:
+        ...
+
     def update_problem(
         self, problem_id: str, payload: AdminProblemUpdateRequest
     ) -> AdminProblemDetail | None:
@@ -209,6 +217,31 @@ class ProblemAlreadyExistsError(ValueError):
 
 class ProblemOperationValidationError(ValueError):
     """Raised when an admin problem operation violates the current contract."""
+
+
+class ProblemNotReadyError(ValueError):
+    """Raised when a problem cannot be published yet."""
+
+    def __init__(self, missing: list[str]):
+        super().__init__("Problem is not ready to publish.")
+        self.missing = missing
+
+
+@dataclass(frozen=True)
+class FileProblemSnapshot:
+    problemId: str
+    title: str
+    entryFunction: str
+    language: str
+    timeLimitMs: int
+    memoryLimitKb: int
+    visibility: str
+    statementMarkdown: str
+    starterCode: str
+    examples: list[dict[str, Any]]
+    publicTests: list[dict[str, Any]]
+    hiddenTests: list[dict[str, Any]]
+    updatedAt: str
 
 
 @dataclass(frozen=True)
@@ -268,7 +301,13 @@ class PsycopgProblemListService:
         detail = _build_created_problem_detail(payload)
         problem_dir.mkdir(parents=True, exist_ok=False)
         try:
-            _write_problem_files(problem_dir, detail, include_hidden=True)
+            _write_problem_files(
+                problem_dir,
+                detail,
+                examples=[],
+                public_tests=[],
+                include_hidden=True,
+            )
         except Exception:
             rmtree(problem_dir, ignore_errors=True)
             raise
@@ -289,6 +328,29 @@ class PsycopgProblemListService:
 
         return _read_file_problem_detail(self.problems_root / problem_id)
 
+    def get_problem_preview(self, problem_id: str) -> AdminProblemPreview | None:
+        snapshot = _read_file_problem_snapshot(self.problems_root / problem_id)
+        if snapshot is None:
+            return None
+        return _snapshot_to_problem_preview(snapshot)
+
+    def publish_problem(self, problem_id: str) -> AdminProblemDetail | None:
+        problem_dir = self.problems_root / problem_id
+        if not problem_dir.is_dir():
+            return None
+
+        manifest = _read_problem_manifest(problem_dir)
+        if manifest is None:
+            raise ProblemOperationValidationError("Problem manifest is unavailable.")
+
+        missing = _collect_publish_missing(problem_dir, manifest)
+        if missing:
+            raise ProblemNotReadyError(missing)
+
+        manifest["visibility"] = "published"
+        _write_manifest(problem_dir / "manifest.json", manifest)
+        return _read_file_problem_detail(problem_dir)
+
     def update_problem(
         self, problem_id: str, payload: AdminProblemUpdateRequest
     ) -> AdminProblemDetail | None:
@@ -301,9 +363,9 @@ class PsycopgProblemListService:
                         if existing is None:
                             return self._update_file_problem(problem_id, payload)
 
-                        if payload.visibility == "draft":
+                        if payload.visibility not in {"public", "private"}:
                             raise ProblemOperationValidationError(
-                                "Draft visibility is only available for file-backed problems."
+                                "Only public/private visibility is supported for imported problems."
                             )
 
                         cursor.execute(PROBLEM_VERSION_NUMBER_SQL, {"problem_id": problem_id})
@@ -377,6 +439,10 @@ class PsycopgProblemListService:
         if not problem_dir.is_dir():
             return None
 
+        existing_snapshot = _read_file_problem_snapshot(problem_dir)
+        if existing_snapshot is None:
+            raise ProblemOperationValidationError("Problem files are unavailable for editing.")
+
         detail = AdminProblemDetail(
             problemId=payload.problemId,
             title=payload.title,
@@ -389,7 +455,13 @@ class PsycopgProblemListService:
             starterCode=payload.starterCode,
             updatedAt=_format_timestamp(datetime.now(timezone.utc)),
         )
-        _write_problem_files(problem_dir, detail, include_hidden=False)
+        _write_problem_files(
+            problem_dir,
+            detail,
+            examples=existing_snapshot.examples,
+            public_tests=existing_snapshot.publicTests,
+            include_hidden=False,
+        )
         return _read_file_problem_detail(problem_dir)
 
 
@@ -461,6 +533,25 @@ def _list_file_problem_details(problems_root: Path) -> list[AdminProblemDetail]:
 
 
 def _read_file_problem_detail(problem_dir: Path) -> AdminProblemDetail | None:
+    snapshot = _read_file_problem_snapshot(problem_dir)
+    if snapshot is None:
+        return None
+
+    return AdminProblemDetail(
+        problemId=snapshot.problemId,
+        title=snapshot.title,
+        entryFunction=snapshot.entryFunction,
+        language=snapshot.language,
+        timeLimitMs=snapshot.timeLimitMs,
+        memoryLimitKb=snapshot.memoryLimitKb,
+        visibility=str(snapshot.visibility),
+        statementMarkdown=snapshot.statementMarkdown,
+        starterCode=snapshot.starterCode,
+        updatedAt=snapshot.updatedAt,
+    )
+
+
+def _read_file_problem_snapshot(problem_dir: Path) -> FileProblemSnapshot | None:
     manifest_path = problem_dir / "manifest.json"
     statement_path = problem_dir / "statement.md"
     starter_path = problem_dir / "starter.py"
@@ -469,7 +560,14 @@ def _read_file_problem_detail(problem_dir: Path) -> AdminProblemDetail | None:
     if not all(path.exists() for path in (manifest_path, statement_path, starter_path, hidden_path)):
         return None
 
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = _read_problem_manifest(problem_dir)
+    if manifest is None:
+        return None
+
+    hidden_tests = _read_hidden_tests(problem_dir)
+    if hidden_tests is None:
+        return None
+
     updated_at = _format_timestamp(
         datetime.fromtimestamp(
             max(
@@ -480,7 +578,7 @@ def _read_file_problem_detail(problem_dir: Path) -> AdminProblemDetail | None:
         )
     )
 
-    return AdminProblemDetail(
+    return FileProblemSnapshot(
         problemId=str(manifest["problemId"]),
         title=str(manifest["title"]),
         entryFunction=str(manifest["entryFunction"]),
@@ -490,11 +588,21 @@ def _read_file_problem_detail(problem_dir: Path) -> AdminProblemDetail | None:
         visibility=str(manifest["visibility"]),
         statementMarkdown=statement_path.read_text(encoding="utf-8"),
         starterCode=starter_path.read_text(encoding="utf-8"),
+        examples=_normalize_case_list(manifest.get("examples")),
+        publicTests=_normalize_case_list(manifest.get("publicTests")),
+        hiddenTests=hidden_tests,
         updatedAt=updated_at,
     )
 
 
-def _write_problem_files(problem_dir: Path, detail: AdminProblemDetail, include_hidden: bool) -> None:
+def _write_problem_files(
+    problem_dir: Path,
+    detail: AdminProblemDetail,
+    *,
+    examples: list[dict[str, Any]],
+    public_tests: list[dict[str, Any]],
+    include_hidden: bool,
+) -> None:
     manifest = {
         "problemId": detail.problemId,
         "title": detail.title,
@@ -503,17 +611,102 @@ def _write_problem_files(problem_dir: Path, detail: AdminProblemDetail, include_
         "timeLimitMs": detail.timeLimitMs,
         "memoryLimitKb": detail.memoryLimitKb,
         "visibility": detail.visibility,
-        "examples": [],
-        "publicTests": [],
+        "examples": examples,
+        "publicTests": public_tests,
     }
-    (problem_dir / "manifest.json").write_text(
-        f"{json.dumps(manifest, indent=2)}\n",
-        encoding="utf-8",
-    )
+    _write_manifest(problem_dir / "manifest.json", manifest)
     (problem_dir / "statement.md").write_text(detail.statementMarkdown, encoding="utf-8")
     (problem_dir / "starter.py").write_text(detail.starterCode, encoding="utf-8")
     if include_hidden:
         (problem_dir / "hidden.json").write_text("[]\n", encoding="utf-8")
+
+
+def _write_manifest(manifest_path: Path, manifest: dict[str, Any]) -> None:
+    manifest_path.write_text(f"{json.dumps(manifest, indent=2)}\n", encoding="utf-8")
+
+
+def _read_problem_manifest(problem_dir: Path) -> dict[str, Any] | None:
+    manifest_path = problem_dir / "manifest.json"
+    if not manifest_path.exists():
+        return None
+
+    try:
+        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ProblemOperationValidationError("Problem manifest is invalid JSON.") from exc
+
+    if not isinstance(raw, dict):
+        raise ProblemOperationValidationError("Problem manifest must contain a JSON object.")
+    return raw
+
+
+def _read_hidden_tests(problem_dir: Path) -> list[dict[str, Any]] | None:
+    hidden_path = problem_dir / "hidden.json"
+    if not hidden_path.exists():
+        return None
+
+    try:
+        raw = json.loads(hidden_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ProblemOperationValidationError("Hidden tests file is invalid JSON.") from exc
+
+    return _normalize_case_list(raw)
+
+
+def _normalize_case_list(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+
+    normalized: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+
+        output = item.get("output")
+        if "output" not in item and "expected" in item:
+            output = item.get("expected")
+        normalized.append({"input": item.get("input"), "output": output})
+
+    return normalized
+
+
+def _collect_publish_missing(problem_dir: Path, manifest: dict[str, Any]) -> list[str]:
+    missing: list[str] = []
+
+    if not isinstance(manifest.get("title"), str) or not manifest["title"].strip():
+        missing.append("title")
+    if not isinstance(manifest.get("entryFunction"), str) or not manifest["entryFunction"].strip():
+        missing.append("entryFunction")
+    if not (problem_dir / "statement.md").exists():
+        missing.append("statement.md")
+    if not (problem_dir / "starter.py").exists():
+        missing.append("starter.py")
+
+    public_tests = manifest.get("publicTests")
+    if not isinstance(public_tests, list) or len(_normalize_case_list(public_tests)) < 1:
+        missing.append("publicTests")
+
+    hidden_tests = _read_hidden_tests(problem_dir)
+    if hidden_tests is None or len(hidden_tests) < 1:
+        missing.append("hiddenTests")
+
+    return missing
+
+
+def _snapshot_to_problem_preview(snapshot: FileProblemSnapshot) -> AdminProblemPreview:
+    return AdminProblemPreview(
+        problemId=snapshot.problemId,
+        title=snapshot.title,
+        statementMarkdown=snapshot.statementMarkdown,
+        examples=[
+            AdminProblemPreviewCase(input=example["input"], output=example["output"])
+            for example in snapshot.examples
+        ],
+        publicTests=[
+            AdminProblemPreviewCase(input=test_case["input"], output=test_case["output"])
+            for test_case in snapshot.publicTests
+        ],
+    )
 
 
 def _build_content_digest(payload: AdminProblemUpdateRequest) -> str:

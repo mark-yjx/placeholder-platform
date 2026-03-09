@@ -104,6 +104,7 @@ export function ProblemsListPage() {
                   <th>Title</th>
                   <th>Visibility</th>
                   <th>Updated At</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -121,6 +122,11 @@ export function ProblemsListPage() {
                     </td>
                     <td>{problem.visibility}</td>
                     <td>{formatTimestamp(problem.updatedAt)}</td>
+                    <td>
+                      <Link className="problem-link" to={`/admin/problems/${problem.problemId}`}>
+                        Edit
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -8,16 +8,23 @@ from app.models.problems import (
     AdminProblemCreateRequest,
     AdminProblemDetail,
     AdminProblemListItem,
+    AdminProblemPreview,
     AdminProblemUpdateRequest,
 )
-from app.services.problems import ProblemAlreadyExistsError, PsycopgProblemListService
+from app.services.problems import (
+    ProblemAlreadyExistsError,
+    ProblemNotReadyError,
+    PsycopgProblemListService,
+)
 
 
 @dataclass
 class FakeProblemService:
     items: list[AdminProblemListItem]
     details: dict[str, AdminProblemDetail] = field(default_factory=dict)
+    previews: dict[str, AdminProblemPreview] = field(default_factory=dict)
     create_calls: list[AdminProblemCreateRequest] = field(default_factory=list)
+    publish_calls: list[str] = field(default_factory=list)
     update_calls: list[tuple[str, AdminProblemUpdateRequest]] = field(default_factory=list)
 
     def list_problems(self) -> list[AdminProblemListItem]:
@@ -59,6 +66,33 @@ class FakeProblemService:
 
     def get_problem(self, problem_id: str) -> AdminProblemDetail | None:
         return self.details.get(problem_id)
+
+    def get_problem_preview(self, problem_id: str) -> AdminProblemPreview | None:
+        return self.previews.get(problem_id)
+
+    def publish_problem(self, problem_id: str) -> AdminProblemDetail | None:
+        self.publish_calls.append(problem_id)
+        if problem_id == "not-ready":
+            raise ProblemNotReadyError(["publicTests", "hiddenTests"])
+
+        current = self.details.get(problem_id)
+        if current is None:
+            return None
+
+        published = AdminProblemDetail(
+            problemId=current.problemId,
+            title=current.title,
+            entryFunction=current.entryFunction,
+            language=current.language,
+            timeLimitMs=current.timeLimitMs,
+            memoryLimitKb=current.memoryLimitKb,
+            visibility="published",
+            statementMarkdown=current.statementMarkdown,
+            starterCode=current.starterCode,
+            updatedAt="2026-03-10T12:00:00Z",
+        )
+        self.details[problem_id] = published
+        return published
 
     def update_problem(
         self, problem_id: str, payload: AdminProblemUpdateRequest
@@ -166,6 +200,84 @@ def test_admin_problem_detail_rejects_missing_token(monkeypatch) -> None:
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Missing admin bearer token."}
+
+
+def test_admin_problem_preview_returns_student_visible_fields(monkeypatch) -> None:
+    service = FakeProblemService(
+        items=[],
+        previews={
+            "collapse": AdminProblemPreview(
+                problemId="collapse",
+                title="Collapse Identical Digits",
+                statementMarkdown="# Collapse Identical Digits",
+                examples=[{"input": 111, "output": 1}],
+                publicTests=[{"input": 12321, "output": 12321}],
+            )
+        },
+    )
+    client = build_client(monkeypatch, service)
+
+    token = issue_token(client)
+    response = client.get(
+        "/admin/problems/collapse/preview",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "problemId": "collapse",
+        "title": "Collapse Identical Digits",
+        "statementMarkdown": "# Collapse Identical Digits",
+        "examples": [{"input": 111, "output": 1}],
+        "publicTests": [{"input": 12321, "output": 12321}],
+    }
+
+
+def test_admin_problem_publish_returns_published_problem(monkeypatch) -> None:
+    service = FakeProblemService(
+        items=[],
+        details={
+            "collapse": AdminProblemDetail(
+                problemId="collapse",
+                title="Collapse Identical Digits",
+                entryFunction="collapse",
+                language="python",
+                timeLimitMs=2000,
+                memoryLimitKb=262144,
+                visibility="draft",
+                statementMarkdown="# Collapse Identical Digits",
+                starterCode="def collapse(number):\n    return number\n",
+                updatedAt="2026-03-10T00:00:00Z",
+            )
+        },
+    )
+    client = build_client(monkeypatch, service)
+
+    token = issue_token(client)
+    response = client.post(
+        "/admin/problems/collapse/publish",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["visibility"] == "published"
+    assert service.publish_calls == ["collapse"]
+
+
+def test_admin_problem_publish_returns_problem_not_ready_shape(monkeypatch) -> None:
+    client = build_client(monkeypatch, FakeProblemService(items=[]))
+
+    token = issue_token(client)
+    response = client.post(
+        "/admin/problems/not-ready/publish",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": "problem_not_ready",
+        "missing": ["publicTests", "hiddenTests"],
+    }
 
 
 def test_admin_problem_create_returns_created_problem_for_valid_token(monkeypatch) -> None:
@@ -458,6 +570,15 @@ def test_problem_service_reads_and_updates_file_backed_problem(tmp_path) -> None
             memoryLimitKb=262144,
         )
     )
+    manifest_path = tmp_path / "collapse" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["examples"] = [{"input": 111, "output": 1}]
+    manifest["publicTests"] = [{"input": 0, "output": 0}]
+    manifest_path.write_text(f"{json.dumps(manifest, indent=2)}\n", encoding="utf-8")
+    (tmp_path / "collapse" / "hidden.json").write_text(
+        '[{"input": 9999, "output": 9}]\n',
+        encoding="utf-8",
+    )
 
     loaded = service.get_problem("collapse")
     assert loaded is not None
@@ -483,6 +604,98 @@ def test_problem_service_reads_and_updates_file_backed_problem(tmp_path) -> None
     assert json.loads((tmp_path / "collapse" / "manifest.json").read_text(encoding="utf-8"))[
         "title"
     ] == "Collapse Digits"
+    assert json.loads((tmp_path / "collapse" / "manifest.json").read_text(encoding="utf-8"))[
+        "publicTests"
+    ] == [{"input": 0, "output": 0}]
     assert (tmp_path / "collapse" / "statement.md").read_text(encoding="utf-8") == (
         "# Collapse Digits\n\nUpdated statement."
     )
+
+
+def test_problem_service_publish_problem_marks_manifest_published(tmp_path) -> None:
+    service = PsycopgProblemListService(
+        database_url="postgresql://invalid:invalid@127.0.0.1:1/invalid",
+        problems_root=tmp_path,
+    )
+    service.create_problem(
+        AdminProblemCreateRequest(
+            problemId="collapse",
+            title="Collapse Identical Digits",
+            entryFunction="collapse",
+            language="python",
+            timeLimitMs=2000,
+            memoryLimitKb=262144,
+        )
+    )
+    manifest_path = tmp_path / "collapse" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["examples"] = [{"input": 111, "output": 1}]
+    manifest["publicTests"] = [{"input": 0, "output": 0}]
+    manifest_path.write_text(f"{json.dumps(manifest, indent=2)}\n", encoding="utf-8")
+    (tmp_path / "collapse" / "hidden.json").write_text(
+        '[{"input": 9999, "output": 9}]\n',
+        encoding="utf-8",
+    )
+
+    published = service.publish_problem("collapse")
+
+    assert published is not None
+    assert published.visibility == "published"
+    assert json.loads(manifest_path.read_text(encoding="utf-8"))["visibility"] == "published"
+
+
+def test_problem_service_publish_problem_rejects_missing_readiness_requirements(tmp_path) -> None:
+    service = PsycopgProblemListService(
+        database_url="postgresql://invalid:invalid@127.0.0.1:1/invalid",
+        problems_root=tmp_path,
+    )
+    service.create_problem(
+        AdminProblemCreateRequest(
+            problemId="collapse",
+            title="Collapse Identical Digits",
+            entryFunction="collapse",
+            language="python",
+            timeLimitMs=2000,
+            memoryLimitKb=262144,
+        )
+    )
+
+    try:
+        service.publish_problem("collapse")
+    except ProblemNotReadyError as exc:
+        assert exc.missing == ["publicTests", "hiddenTests"]
+    else:
+        raise AssertionError("Expected publish readiness validation to fail.")
+
+
+def test_problem_service_reads_student_preview_without_hidden_tests(tmp_path) -> None:
+    service = PsycopgProblemListService(
+        database_url="postgresql://invalid:invalid@127.0.0.1:1/invalid",
+        problems_root=tmp_path,
+    )
+    service.create_problem(
+        AdminProblemCreateRequest(
+            problemId="collapse",
+            title="Collapse Identical Digits",
+            entryFunction="collapse",
+            language="python",
+            timeLimitMs=2000,
+            memoryLimitKb=262144,
+        )
+    )
+    manifest_path = tmp_path / "collapse" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["examples"] = [{"input": 111, "output": 1}]
+    manifest["publicTests"] = [{"input": 0, "output": 0}]
+    manifest_path.write_text(f"{json.dumps(manifest, indent=2)}\n", encoding="utf-8")
+    (tmp_path / "collapse" / "hidden.json").write_text(
+        '[{"input": 9999, "output": 9}]\n',
+        encoding="utf-8",
+    )
+
+    preview = service.get_problem_preview("collapse")
+
+    assert preview is not None
+    assert [item.model_dump() for item in preview.examples] == [{"input": 111, "output": 1}]
+    assert [item.model_dump() for item in preview.publicTests] == [{"input": 0, "output": 0}]
+    assert "hiddenTests" not in preview.model_dump()
