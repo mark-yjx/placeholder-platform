@@ -1,28 +1,33 @@
 # Architecture
 
-This repository is a monorepo for a local-first Online Judge. The student-facing workflow uses a VS Code extension and a Node/TypeScript API. The admin-facing workflow uses a browser-based Admin Web and a FastAPI `admin-api`. Both stacks share the same Postgres database and judge worker.
+This repository is a monorepo for a local-first Online Judge. The student-facing workflow uses a VS Code extension and a Node/TypeScript API. The admin-facing workflow uses a browser-based Admin Web and a FastAPI `admin-api`. Both stacks share the same Postgres database, and the existing judge worker remains part of the student execution path.
 
 ## System Overview
 
 ```text
-VS Code Extension (student)      Admin Web (admin)
-            |                             |
-            | HTTP                        | HTTP
-            v                             v
-Node/TypeScript API             FastAPI admin-api
-            \                             /
-             \                           /
-              v                         v
-                       Postgres
-                          ^
-                          | claims jobs / writes results
-                          |
-                     Judge Worker
-                          |
-                          | docker run
-                          v
-               Sandboxed Python Execution
+Student Side                         Admin Side
+
+VS Code Extension                    Admin Web
+       |                                    |
+       v                                    v
+Node/TypeScript API                  FastAPI admin-api
+       |                                    |
+       v                                    v
+                  Postgres
+                      ^
+                      |
+                 Judge Worker
+                      |
+                      | docker run
+                      v
+           Sandboxed Python Execution
 ```
+
+Boundary policy:
+
+- the VS Code extension is student-only
+- administrators must use Admin Web instead of the extension
+- the extension should eventually reject admin-role logins at the client boundary
 
 ## Extension
 
@@ -30,13 +35,14 @@ Location: `apps/vscode-extension`
 
 Responsibilities:
 
-- authenticate users against the API
+- authenticate students against the API
 - store the access token in VS Code `SecretStorage`
-- render the current student workflow inside VS Code
+- render the student workflow inside VS Code
 - fetch published problems and problem detail
 - materialize starter-backed coding files under `.oj/problems/`
+- own future local public-test execution when that student-side workflow is implemented
 - submit Python source through the API
-- poll submission results and render them in panel views
+- poll and render the student's own submission results in panel views
 
 Current UI surfaces:
 
@@ -47,7 +53,7 @@ Current UI surfaces:
 - `Submissions` panel tree
 - `Submission Detail` webview
 
-The extension is a client, not a judge. It does not execute hidden tests locally.
+The extension is a student client, not an admin console and not a judge. It does not execute hidden tests locally.
 
 ## Student API Server
 
@@ -56,14 +62,14 @@ Location: `apps/api`
 Responsibilities:
 
 - expose health and readiness routes
-- handle login and token-based access
+- handle student login and token-based access
 - serve published problem lists and problem detail
 - accept student submissions
 - persist submissions in `queued` state
 - enqueue judge work
-- serve submission history and submission detail
+- serve student submission history and submission detail
 
-The API is the only write entry point used by the extension for student submissions.
+The API is the only write entry point used by the extension for student submissions and student-facing reads.
 
 ## Admin Web
 
@@ -75,8 +81,9 @@ Responsibilities:
 - render admin operational pages separately from the student extension
 - consume the FastAPI `admin-api`
 - keep admin-only data such as hidden tests out of student-facing UI surfaces
+- own admin workflows that no longer belong in the VS Code extension
 
-Admin Web exists because problem editing, admin-only tests management, and cross-user submission inspection are different workflows from student practice.
+Admin Web exists because problem editing, admin-only tests management, cross-user submission inspection, and future operator controls are different workflows from student practice.
 
 ## Admin API
 
@@ -86,7 +93,8 @@ Responsibilities:
 
 - authenticate admin sessions for Admin Web
 - serve admin-only problem management routes
-- expand toward admin-only tests management and submission inspection within the Admin Web MVP scope
+- serve admin-only tests management and submission inspection routes
+- expand later toward user management and 2FA-related admin controls
 
 The admin API is a separate operational surface. It does not replace the student-facing Node/TypeScript API.
 
@@ -154,7 +162,7 @@ Responsibilities:
 
 - read source-controlled problem folders from `problems/`
 - validate `manifest.json`
-- load `statement.md`, `starter.py`, `public.json`, and `hidden.json`
+- load `statement.md`, `starter.py`, and `hidden.json`, with public tests embedded in `manifest.json`
 - compute a stable content digest
 - insert or append Postgres problem versions and associated assets/tests
 
@@ -180,10 +188,12 @@ The importer converts repository content into runtime data used by the API and w
 
 ## Architectural Boundaries
 
-- The extension owns student workflow and presentation.
+- The VS Code extension owns student workflow and presentation only.
+- Administrators must use Admin Web instead of the extension.
+- The extension should eventually reject admin-role logins so the client boundary matches the product boundary.
 - Admin Web owns admin workflow and presentation.
-- The student-facing Node/TypeScript API owns student authentication, validation, and durable submission intake.
-- The FastAPI `admin-api` owns admin-only operational routes.
+- The student-facing Node/TypeScript API owns student authentication, validation, published-problem access, and durable submission intake.
+- The FastAPI `admin-api` owns admin-only operational routes, including hidden test access and cross-user inspection.
 - The worker owns execution and verdict production.
 - Postgres owns durable state.
 - The importer owns the bridge from repository-authored problem files to runtime problem versions.

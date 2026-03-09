@@ -37,6 +37,7 @@
     "onCommand:oj.practice.fetchProblems",
     "onCommand:oj.practice.submitCode",
     "onCommand:oj.practice.submitCurrentFile",
+    "onCommand:oj.practice.runPublicTests",
     "onCommand:oj.practice.viewResult",
     "onCommand:oj.practice.cancelPolling",
     "onCommand:oj.practice.selectSubmission",
@@ -107,6 +108,10 @@
       {
         "command": "oj.practice.submitCurrentFile",
         "title": "OJ: Submit Current File"
+      },
+      {
+        "command": "oj.practice.runPublicTests",
+        "title": "OJ: Run Public Tests"
       },
       {
         "command": "oj.practice.viewResult",

@@ -1,54 +1,91 @@
 # Extension Usage
 
-This guide describes the primary student workflow inside the VS Code extension.
+This guide describes the primary student workflow in the current VS Code extension.
 
-## Sidebar Layout
+## Product Boundary
 
-The extension adds an `OJ` activity bar entry with these sidebar views:
+The VS Code extension is student-only.
 
-- `Problems`
-- `Problem Detail`
-- `Submissions`
-- `Submission Detail`
-- `Account`
+Administrators should no longer use the extension. Admin workflows belong in Admin Web.
 
-The intended flow is sidebar-first rather than command-palette-first.
+That means the extension is responsible for student workflows such as:
 
-## Login
+- student login
+- fetch problems
+- view problem detail
+- open starter files
+- run public tests locally
+- submit solutions
+- view the student's own submissions
 
-1. Open the `OJ` sidebar.
-2. Go to `Account`.
+Admin workflows such as problem CRUD, hidden test editing, and cross-user submission inspection belong in Admin Web instead.
+
+The extension should eventually reject admin-role logins so the runtime behavior matches this documented product boundary.
+
+## Current UI Layout
+
+The extension uses these surfaces:
+
+- status bar icon for account access
+- account webview window for login/logout
+- `Problems` sidebar tree
+- `Problem Detail` webview
+- `Submissions` panel tree
+- `Submission Detail` webview
+
+## Login Via Status Bar Icon
+
+1. Look for the OJ account icon in the VS Code status bar.
+2. Click the icon to open the account window.
 3. Enter email and password.
-4. Click `Login`.
+4. Submit the login form.
 
-On success, the extension stores the access token in VS Code `SecretStorage` and the panel switches to the authenticated state showing the current email and role.
+On success:
 
-## Fetch Problems
+- the access token is stored in VS Code `SecretStorage`
+- later API requests use that token
+- the account view refreshes to show the authenticated user
 
-Use the `Fetch Problems` action in the `Problems` panel title.
+This flow is intended for student accounts. Admin accounts should use Admin Web instead of the extension.
 
-This requests the published problem list from the API and updates the `Problems` tree.
+Fallback command:
 
-## Select A Problem
+- `OJ: Open Account`
 
-Clicking a problem in the `Problems` tree:
+## Fetch or Refresh Problems From the Sidebar
 
-- updates `Problem Detail`
-- does not automatically open `statement.md`
-- does not automatically open `starter.py`
-- does not switch editor focus
+Use the refresh action in the `Problems` view title or run:
 
-The `Problem Detail` panel shows:
+- `OJ: Fetch Problems`
+
+This requests the current published problem list from the API and updates the sidebar tree.
+
+## Select a Problem
+
+Click a problem in the `Problems` tree.
+
+That updates the `Problem Detail` webview with:
 
 - title
 - problem id
 - entry function
-- language when available
-- rendered statement markdown
+- statement markdown
 
-## Open Coding File
+The current UX keeps the selected problem as the context for later actions such as opening the coding file and submitting.
 
-Click `Open Coding File` in `Problem Detail`.
+## Run Public Tests Locally
+
+Use the `Run Public Tests` action from `Problem Detail` or run:
+
+- `OJ: Run Public Tests`
+
+The extension loads the selected problem's student-visible `publicTests` and executes them locally against the current Python file using the configured `entryFunction`.
+
+The extension does not scan starter files for doctest and does not run doctest.
+
+## Open the Coding File
+
+Use the `Open Coding File` action from `Problem Detail`.
 
 The extension opens or creates:
 
@@ -58,61 +95,85 @@ The extension opens or creates:
 
 Behavior:
 
-- existing files are reopened instead of overwritten
-- new files are created from imported starter content
-- the selected problem remains the sidebar context for future actions
+- existing files are reused
+- missing files are created from imported starter content
+- the file path stays stable for repeated work on the same problem
 
 ## Submit
 
-Click `Submit` in `Problem Detail` or use the command fallback `OJ: Submit Current File`.
+You can submit in three common ways:
 
-The submit flow:
+- the `Submit` action in `Problem Detail`
+- `OJ: Submit Code`
+- `OJ: Submit Current File`
+
+The submit path:
 
 1. reads the current Python file
 2. extracts the configured `entryFunction`
-3. posts the submission to the API
-4. records a pending submission in the sidebar
-5. polls until the result becomes terminal
+3. submits the code to the HTTP API
+4. records the new submission in local extension state
+5. polls until the result reaches `finished` or `failed`
 
-## Submission Views
+## View Submissions in the Panel
+
+The bottom `OJ Results` panel contains:
+
+- `Submissions`
+- `Submission Detail`
 
 ### `Submissions`
 
-Shows recent submissions in a compact tree format, for example:
+Shows recent submissions and their current state. While polling, you should see transitions like:
 
 ```text
-WA    790ms | 0KB
+queued
+running
+finished with wrong answer (WA), time=865ms, memory=11924KB
 ```
+
+If memory is unavailable, the UI should show `N/A` rather than `0KB`.
 
 ### `Submission Detail`
 
 Selecting a submission shows:
 
 - submission id
-- lifecycle status
-- verdict
-- time
-- memory
-- failure or compile/runtime information when available
+- submission status
+- verdict if present
+- time if available
+- memory if available
+- failure information if present
 
-## Command Palette Fallbacks
+## Runtime Metrics In The UI
 
-The extension still exposes command fallbacks such as:
+- measured `timeMs` is shown as milliseconds
+- measured `memoryKb` is shown as kilobytes
+- unavailable metrics are rendered as `N/A` or `Not available`
+- unavailable metrics must not be shown as `0`
 
-- `OJ: Login`
-- `OJ: Fetch Problems`
-- `OJ: Submit Current File`
+## Hidden Tests
 
-These are useful for debugging, but the primary UX is the sidebar.
+The extension never shows hidden tests.
 
-## Typical Student Workflow
+Students may still receive:
 
-1. Login in `Account`.
-2. Fetch problems from `Problems`.
-3. Select a problem.
-4. Review the statement in `Problem Detail`.
-5. Open the coding file.
-6. Implement the solution.
+- `WA`
+- `RE`
+- `TLE`
+
+based on hidden tests executed by the worker, but the hidden inputs and expected outputs remain server-side only.
+
+The extension also does not expose admin-only workflows or admin-only hidden failure inspection.
+
+## Typical Workflow
+
+1. Click the status bar account icon.
+2. Log in.
+3. Refresh `Problems`.
+4. Select a problem.
+5. Open `.oj/problems/<problemId>.py`.
+6. Edit the file.
 7. Submit.
-8. Watch `queued -> running -> finished|failed`.
-9. Inspect the result in `Submission Detail`.
+8. Watch the panel update through `queued -> running -> finished | failed`.
+9. Open `Submission Detail` for the final result.

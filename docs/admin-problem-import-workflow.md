@@ -10,8 +10,9 @@ Sample problem source in this repository:
 - `problems/collapse/manifest.json`
 - `problems/collapse/statement.md`
 - `problems/collapse/starter.py`
-- `problems/collapse/public.json`
 - `problems/collapse/hidden.json`
+
+`manifest.json` includes the student-visible `publicTests`, while `hidden.json` remains judge-only.
 
 Supported import command:
 

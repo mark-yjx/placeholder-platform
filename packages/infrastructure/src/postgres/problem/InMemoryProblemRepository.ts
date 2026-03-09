@@ -45,6 +45,10 @@ export class InMemoryProblemRepository
     timeLimitMs: number;
     memoryLimitKb: number;
     starterCode: string;
+    publicTests: readonly {
+      input: unknown;
+      output: unknown;
+    }[];
   } | null> {
     return null;
   }

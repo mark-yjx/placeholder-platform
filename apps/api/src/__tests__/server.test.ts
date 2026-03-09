@@ -47,7 +47,8 @@ function createRuntime() {
             language: 'python',
             starterCode: 'def two_sum(nums, target):\n    return 42\n',
             timeLimitMs: 2000,
-            memoryLimitKb: 262144
+            memoryLimitKb: 262144,
+            publicTests: []
           };
         }
       },
@@ -541,7 +542,8 @@ test('local runtime routes problem, favorites, and reviews through injected pers
             language: 'python',
             starterCode: 'def two_sum(nums, target):\n    return 42\n',
             timeLimitMs: 2000,
-            memoryLimitKb: 262144
+            memoryLimitKb: 262144,
+            publicTests: []
           };
         }
       },
@@ -680,7 +682,8 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     language: 'python',
     starterCode: 'def two_sum(nums, target):\n    return 42\n',
     timeLimitMs: 2000,
-    memoryLimitKb: 262144
+    memoryLimitKb: 262144,
+    publicTests: []
   });
 
   const favorite = await invoke({
@@ -843,7 +846,7 @@ test('student problem endpoints whitelist manifest-driven public fields only', a
             timeLimitMs: 2000,
             memoryLimitKb: 262144,
             hiddenTests: [{ input: [111], expected: 1 }],
-            publicTests: [{ input: [122], expected: 12 }]
+            publicTests: [{ input: [122], output: 12 }]
           } as never;
         }
       }
@@ -885,10 +888,10 @@ test('student problem endpoints whitelist manifest-driven public fields only', a
     language: 'python',
     starterCode: 'def collapse(number):\n    return number\n',
     timeLimitMs: 2000,
-    memoryLimitKb: 262144
+    memoryLimitKb: 262144,
+    publicTests: [{ input: [122], output: 12 }]
   });
   assert.equal('hiddenTests' in (detailResponse.body as Record<string, unknown>), false);
-  assert.equal('publicTests' in (detailResponse.body as Record<string, unknown>), false);
 });
 
 test('student submission detail returns failureReason for failed submissions', async () => {

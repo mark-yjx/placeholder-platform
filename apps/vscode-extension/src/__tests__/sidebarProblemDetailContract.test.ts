@@ -19,6 +19,7 @@ test('problem detail panel is registered in extension runtime', () => {
 
   assert.match(extensionSource, /registerWebviewViewProvider\(\s*'ojProblemDetail'/);
   assert.match(extensionSource, /executeCommand\('oj\.practice\.openProblemStarter'/);
+  assert.match(extensionSource, /executeCommand\('oj\.practice\.runPublicTests'/);
   assert.match(extensionSource, /executeCommand\('oj\.practice\.submitCurrentFile'/);
   assert.match(extensionSource, /executeCommand\('oj\.practice\.fetchProblems'/);
 });
@@ -46,6 +47,7 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(viewModelSource, /resolveProblemStatementMarkdown\(problem\) \?\? 'No statement available\.'/);
   assert.match(viewModelSource, /<vscode-button/);
   assert.match(viewModelSource, /Open Coding File/);
+  assert.match(viewModelSource, /Run Public Tests/);
   assert.match(viewModelSource, /data-command="submitCurrentFile"/);
   assert.match(viewModelSource, />Submit</);
   assert.doesNotMatch(viewModelSource, /refreshProblem/);

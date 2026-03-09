@@ -103,6 +103,7 @@ test('extension package keeps production packaging whitelist and activation even
     'onCommand:oj.practice.fetchProblems',
     'onCommand:oj.practice.submitCode',
     'onCommand:oj.practice.submitCurrentFile',
+    'onCommand:oj.practice.runPublicTests',
     'onCommand:oj.practice.viewResult',
     'onCommand:oj.practice.cancelPolling',
     'onCommand:oj.practice.selectSubmission',

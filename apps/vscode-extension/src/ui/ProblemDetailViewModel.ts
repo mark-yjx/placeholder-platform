@@ -60,6 +60,9 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   const statement = escapeHtml(input.statement);
   const starterFilePath = escapeHtml(input.starterFilePath ?? 'No problem selected yet.');
   const openStarterAttributes = input.isEmpty ? ' data-command="openStarter" disabled' : ' data-command="openStarter"';
+  const runPublicTestsAttributes = input.isEmpty
+    ? ' data-command="runPublicTests" disabled'
+    : ' data-command="runPublicTests"';
   const submitAttributes = input.isEmpty
     ? ' data-command="submitCurrentFile" disabled'
     : ' data-command="submitCurrentFile"';
@@ -80,6 +83,7 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     <p><strong>Starter File:</strong> <code>${starterFilePath}</code></p>
     <div>
       <vscode-button${openStarterAttributes}>Open Coding File</vscode-button>
+      <vscode-button${runPublicTestsAttributes}>Run Public Tests</vscode-button>
       <vscode-button appearance="primary"${submitAttributes}>Submit</vscode-button>
     </div>
     <hr />

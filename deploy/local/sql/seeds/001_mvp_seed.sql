@@ -61,34 +61,10 @@ VALUES
     '["digits","iteration"]'::jsonb,
     '1.0.0',
     'COMP9021 Staff',
-    $$def collapse(number):
-    """
-    >>> collapse(0)
-    0
-    >>> collapse(-0)
-    0
-    >>> collapse(9)
-    9
-    >>> collapse(-9)
-    -9
-    >>> collapse(12321)
-    12321
-    >>> collapse(-12321)
-    -12321
-    >>> collapse(-1111222232222111)
-    -12321
-    >>> collapse(1155523335551116111666)
-    152351616
-    >>> collapse(-900111212777394440300)
-    -9012127394030
-    """
+$$def collapse(number):
+    """Collapse adjacent repeated digits while preserving sign."""
     # YOUR CODE HERE
     raise NotImplementedError
-
-
-if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
 $$,
     '15b2fb79497422f1b3ca4993577bdaf7e6d4cd45f442dbe7966503999ccb1873'
   )

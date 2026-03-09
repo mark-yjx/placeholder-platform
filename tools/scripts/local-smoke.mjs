@@ -333,8 +333,11 @@ function assertImportedCollapseDetail(detail) {
     throw new Error('imported collapse entryFunction does not match manifest.json');
   }
 
-  if ('hiddenTests' in detail || 'publicTests' in detail || 'tests' in detail) {
+  if ('hiddenTests' in detail || 'tests' in detail) {
     throw new Error('student-visible problem detail must not expose hidden or raw test definitions');
+  }
+  if (!Array.isArray(detail.publicTests)) {
+    throw new Error('student-visible problem detail must expose publicTests for local execution');
   }
 }
 

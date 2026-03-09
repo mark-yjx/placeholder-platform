@@ -52,8 +52,8 @@ test('admin import doc defines the supported local content workflow without manu
   assert.match(adminDoc, /problems\/collapse\/manifest\.json/);
   assert.match(adminDoc, /problems\/collapse\/statement\.md/);
   assert.match(adminDoc, /problems\/collapse\/starter\.py/);
-  assert.match(adminDoc, /problems\/collapse\/public\.json/);
   assert.match(adminDoc, /problems\/collapse\/hidden\.json/);
+  assert.match(adminDoc, /publicTests/i);
   assert.match(adminDoc, /queued -> running -> finished\|failed/);
   assert.match(adminDoc, /manual database edits/i);
   assert.match(adminDoc, /does not require manual database edits/i);

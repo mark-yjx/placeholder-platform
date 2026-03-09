@@ -6,6 +6,7 @@ import { ProblemDetail, PublishedProblem, SubmissionResult } from './api/Practic
 import { formatSubmissionDetail } from './ui/PracticeViewState';
 import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { extractSubmitPayload } from './submission/SubmissionPayloadExtraction';
+import { runLocalPublicTests } from './practice/PublicTestRunner';
 import { LocalPracticeStateStore } from './runtime/LocalPracticeStateStore';
 import { createLoginViewModel } from './auth/AuthViews';
 import { resolveProblemStatementMarkdown } from './ui/PracticeViewState';
@@ -282,6 +283,7 @@ export function registerExtensionCommands(
     } catch {
       return 'solve';
     }
+
     return 'solve';
   };
 
@@ -431,6 +433,48 @@ export function registerExtensionCommands(
         dependencies.output.appendLine(`Submitted current file: ${submission.submissionId}`);
         dependencies.window.showInformationMessage('Submission queued.');
         await pollSubmissionLifecycle(submission.submissionId);
+      })
+    ),
+    dependencies.registerCommand(
+      'oj.practice.runPublicTests',
+      runWithHandling('oj.practice.runPublicTests', async (...args: unknown[]) => {
+        const explicitProblemId = typeof args[0] === 'string' ? args[0] : '';
+        const inferredProblemId = inferProblemIdFromCurrentWorkspaceFile();
+        const problemId = await resolveSelectedProblemId(explicitProblemId || inferredProblemId || undefined);
+        const problemDetail = await loadProblemDetail(problemId);
+        const publicTests = problemDetail.publicTests ?? [];
+
+        if (publicTests.length === 0) {
+          dependencies.window.showInformationMessage('No public tests are defined for this problem.');
+          return;
+        }
+
+        const sourceCode = resolveCurrentPythonFileSource();
+        const entryFunction = await resolveProblemEntryFunction(problemId);
+        const result = runLocalPublicTests(sourceCode, entryFunction, publicTests);
+        const passed = result.total - result.failures.length;
+
+        dependencies.output.appendLine(
+          `Local public tests for ${problemId}: ${passed}/${result.total} passed`
+        );
+        for (const failure of result.failures) {
+          if (failure.caseIndex === 0 && failure.error) {
+            dependencies.output.appendLine(`Setup error: ${failure.error}`);
+            continue;
+          }
+          const detail = failure.error
+            ? `error=${failure.error}`
+            : `expected=${JSON.stringify(failure.expected)} actual=${JSON.stringify(failure.actual)}`;
+          dependencies.output.appendLine(
+            `Case ${failure.caseIndex} failed | input=${JSON.stringify(failure.input)} | ${detail}`
+          );
+        }
+
+        dependencies.window.showInformationMessage(
+          result.failures.length === 0
+            ? `All ${result.total} public tests passed locally.`
+            : `${passed} of ${result.total} public tests passed locally.`
+        );
       })
     ),
     dependencies.registerCommand(

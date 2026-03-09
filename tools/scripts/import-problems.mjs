@@ -149,11 +149,35 @@ function parseJsonValueToken(source, index) {
   return cursor;
 }
 
-function parseJsonCasesWithRawValues(filePath) {
-  const source = fs.readFileSync(filePath, 'utf8');
+function validateManifestCases(manifest, fieldName, problemId) {
+  const value = manifest[fieldName];
+  if (!Array.isArray(value)) {
+    throw new Error(`Problem ${problemId} must define ${fieldName} as an array`);
+  }
+
+  for (let index = 0; index < value.length; index += 1) {
+    const testCase = value[index];
+    if (!testCase || typeof testCase !== 'object' || Array.isArray(testCase)) {
+      throw new Error(
+        `Problem ${problemId} ${fieldName}[${index}] must contain JSON objects with input and expected/output fields`
+      );
+    }
+    if (!Object.prototype.hasOwnProperty.call(testCase, 'input')) {
+      throw new Error(`Problem ${problemId} ${fieldName}[${index}] must define input`);
+    }
+    if (
+      !Object.prototype.hasOwnProperty.call(testCase, 'expected') &&
+      !Object.prototype.hasOwnProperty.call(testCase, 'output')
+    ) {
+      throw new Error(`Problem ${problemId} ${fieldName}[${index}] must define expected or output`);
+    }
+  }
+}
+
+function parseJsonCasesWithRawValues(source, location) {
   let cursor = skipJsonWhitespace(source, 0);
   if (source[cursor] !== '[') {
-    throw new Error(`Expected JSON array in ${filePath}`);
+    throw new Error(`Expected JSON array in ${location}`);
   }
   cursor += 1;
   const cases = [];
@@ -164,7 +188,7 @@ function parseJsonCasesWithRawValues(filePath) {
       break;
     }
     if (source[cursor] !== '{') {
-      throw new Error(`Expected JSON object in ${filePath}`);
+      throw new Error(`Expected JSON object in ${location}`);
     }
     cursor += 1;
 
@@ -183,7 +207,7 @@ function parseJsonCasesWithRawValues(filePath) {
       const key = JSON.parse(source.slice(keyStart, keyEnd));
       cursor = skipJsonWhitespace(source, keyEnd);
       if (source[cursor] !== ':') {
-        throw new Error(`Expected ":" after key ${key} in ${filePath}`);
+        throw new Error(`Expected ":" after key ${key} in ${location}`);
       }
       cursor += 1;
 
@@ -192,7 +216,7 @@ function parseJsonCasesWithRawValues(filePath) {
       const rawValue = source.slice(valueStart, valueEnd).trim();
       if (key === 'input') {
         inputJson = rawValue;
-      } else if (key === 'expected') {
+      } else if (key === 'expected' || key === 'output') {
         expectedJson = rawValue;
       }
       cursor = skipJsonWhitespace(source, valueEnd);
@@ -207,7 +231,7 @@ function parseJsonCasesWithRawValues(filePath) {
     }
 
     if (inputJson === null || expectedJson === null) {
-      throw new Error(`Each test case in ${filePath} must define input and expected`);
+      throw new Error(`Each test case in ${location} must define input and expected/output`);
     }
 
     cases.push({ inputJson, expectedJson });
@@ -222,6 +246,63 @@ function parseJsonCasesWithRawValues(filePath) {
   }
 
   return cases;
+}
+
+function extractTopLevelJsonFieldRaw(source, fieldName, filePath) {
+  let cursor = skipJsonWhitespace(source, 0);
+  if (source[cursor] !== '{') {
+    throw new Error(`Expected JSON object in ${filePath}`);
+  }
+  cursor += 1;
+
+  while (true) {
+    cursor = skipJsonWhitespace(source, cursor);
+    if (source[cursor] === '}') {
+      return null;
+    }
+    if (source[cursor] !== '"') {
+      throw new Error(`Expected JSON string key in ${filePath}`);
+    }
+
+    const keyStart = cursor;
+    const keyEnd = parseJsonStringToken(source, keyStart);
+    const key = JSON.parse(source.slice(keyStart, keyEnd));
+    cursor = skipJsonWhitespace(source, keyEnd);
+    if (source[cursor] !== ':') {
+      throw new Error(`Expected ":" after key ${key} in ${filePath}`);
+    }
+    cursor += 1;
+
+    const valueStart = skipJsonWhitespace(source, cursor);
+    const valueEnd = parseJsonValueToken(source, valueStart);
+    if (key === fieldName) {
+      return source.slice(valueStart, valueEnd).trim();
+    }
+
+    cursor = skipJsonWhitespace(source, valueEnd);
+    if (source[cursor] === ',') {
+      cursor += 1;
+      continue;
+    }
+    if (source[cursor] === '}') {
+      return null;
+    }
+  }
+}
+
+function parseManifestCasesFile(manifestPath, fieldName, problemId) {
+  const source = readRequiredTextFile(manifestPath, 'manifest file');
+  const fieldRaw = extractTopLevelJsonFieldRaw(source, fieldName, manifestPath);
+  if (fieldRaw === null) {
+    throw new Error(`Problem ${problemId} must define ${fieldName} as an array`);
+  }
+
+  return parseJsonCasesWithRawValues(fieldRaw, `${manifestPath} field ${fieldName}`);
+}
+
+function parseJsonCasesFile(filePath, label) {
+  const source = readRequiredTextFile(filePath, label);
+  return parseJsonCasesWithRawValues(source, filePath);
 }
 
 function stableJson(value) {
@@ -292,11 +373,10 @@ function isValidPythonIdentifier(value) {
 }
 
 export function readProblemDefinition(problemDir) {
+  const manifestPath = path.join(problemDir, 'manifest.json');
   const metadata = parseManifestJson(problemDir);
   const statement = readRequiredTextFile(path.join(problemDir, 'statement.md'), 'statement file');
   const starterCode = readRequiredTextFile(path.join(problemDir, 'starter.py'), 'starter file');
-  const publicTests = parseJsonCasesWithRawValues(path.join(problemDir, 'public.json'));
-  const hiddenTests = parseJsonCasesWithRawValues(path.join(problemDir, 'hidden.json'));
 
   if (typeof metadata.problemId !== 'string' || metadata.problemId.trim().length === 0) {
     throw new Error(`Problem at ${problemDir} must define a non-empty problemId`);
@@ -316,6 +396,10 @@ export function readProblemDefinition(problemDir) {
   if (metadata.visibility !== 'public' && metadata.visibility !== 'private') {
     throw new Error(`Problem ${metadata.problemId} must use visibility "public" or "private"`);
   }
+
+  validateManifestCases(metadata, 'publicTests', metadata.problemId);
+  const publicTests = parseManifestCasesFile(manifestPath, 'publicTests', metadata.problemId);
+  const hiddenTests = parseJsonCasesFile(path.join(problemDir, 'hidden.json'), 'hidden test file');
 
   const definition = {
     slug: metadata.problemId.trim(),

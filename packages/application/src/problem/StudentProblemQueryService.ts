@@ -8,6 +8,10 @@ export type ManifestProblemAssets = {
   timeLimitMs: number;
   memoryLimitKb: number;
   starterCode: string;
+  publicTests: readonly {
+    input: unknown;
+    output: unknown;
+  }[];
 };
 
 export interface StudentProblemQueryRepository extends ProblemRepository {
@@ -36,6 +40,10 @@ export type StudentProblemDetailView = StudentProblemView & {
   starterCode: string;
   timeLimitMs: number;
   memoryLimitKb: number;
+  publicTests: readonly {
+    input: unknown;
+    output: unknown;
+  }[];
 };
 
 export class StudentProblemQueryService {
@@ -84,7 +92,8 @@ export class StudentProblemQueryService {
       language: assets.language,
       starterCode: assets.starterCode,
       timeLimitMs: assets.timeLimitMs,
-      memoryLimitKb: assets.memoryLimitKb
+      memoryLimitKb: assets.memoryLimitKb,
+      publicTests: assets.publicTests
     };
   }
 }

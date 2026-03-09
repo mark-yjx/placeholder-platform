@@ -55,6 +55,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     openStarterFile: async (problemId) => {
       await vscode.commands.executeCommand('oj.practice.openProblemStarter', problemId);
     },
+    runPublicTests: async (problemId) => {
+      await vscode.commands.executeCommand('oj.practice.runPublicTests', problemId);
+    },
     submitCurrentFile: async () => {
       await vscode.commands.executeCommand('oj.practice.submitCurrentFile');
     },

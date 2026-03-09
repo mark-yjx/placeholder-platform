@@ -2,12 +2,14 @@ import { ProblemDetail } from '../api/PracticeApiClient';
 
 export type ProblemDetailWebviewActions = {
   openStarterFile(problemId: string): Promise<void>;
+  runPublicTests(problemId: string): Promise<void>;
   submitCurrentFile(): Promise<void>;
   refreshProblem(problemId: string): Promise<void>;
 };
 
 export type ProblemDetailMessage =
   | { command: 'openStarter' }
+  | { command: 'runPublicTests' }
   | { command: 'submitCurrentFile' }
   | { command: 'refreshProblem' };
 
@@ -16,7 +18,12 @@ export function isProblemDetailMessage(message: unknown): message is ProblemDeta
     return false;
   }
   const command = (message as { command?: unknown }).command;
-  return command === 'openStarter' || command === 'submitCurrentFile' || command === 'refreshProblem';
+  return (
+    command === 'openStarter' ||
+    command === 'runPublicTests' ||
+    command === 'submitCurrentFile' ||
+    command === 'refreshProblem'
+  );
 }
 
 export async function handleProblemDetailMessage(
@@ -35,6 +42,11 @@ export async function handleProblemDetailMessage(
 
   if (message.command === 'openStarter') {
     await actions.openStarterFile(problemId);
+    return;
+  }
+
+  if (message.command === 'runPublicTests') {
+    await actions.runPublicTests(problemId);
     return;
   }
 

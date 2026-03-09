@@ -7,6 +7,11 @@ export type PublishedProblem = {
   statementMarkdown?: string;
 };
 
+export type PublicProblemTestCase = {
+  input: unknown;
+  output: unknown;
+};
+
 export type ProblemDetail = PublishedProblem & {
   versionId: string;
   statementMarkdown: string;
@@ -15,6 +20,7 @@ export type ProblemDetail = PublishedProblem & {
   language?: 'python';
   timeLimitMs?: number;
   memoryLimitKb?: number;
+  publicTests?: readonly PublicProblemTestCase[];
 };
 
 export type CreateSubmissionRequest = {

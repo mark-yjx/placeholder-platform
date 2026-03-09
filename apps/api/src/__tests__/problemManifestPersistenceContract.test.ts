@@ -28,11 +28,10 @@ test('import persistence stores optional manifest metadata alongside problem ass
   assert.match(importer, /JSON\.stringify\(problem\.tags \?\? \[\]\)/);
 });
 
-test('student-facing problem projections do not expose hidden or raw test payloads', () => {
+test('student-facing problem projections expose public tests without leaking hidden or raw judge payloads', () => {
   const service = readText('packages', 'application', 'src', 'problem', 'StudentProblemQueryService.ts');
 
   assert.doesNotMatch(service, /hiddenTests/);
-  assert.doesNotMatch(service, /publicTests/);
   assert.doesNotMatch(service, /test_type/);
   assert.match(service, /problemId:/);
   assert.match(service, /versionId:/);
@@ -42,4 +41,5 @@ test('student-facing problem projections do not expose hidden or raw test payloa
   assert.match(service, /timeLimitMs:/);
   assert.match(service, /memoryLimitKb:/);
   assert.match(service, /starterCode:/);
+  assert.match(service, /publicTests:/);
 });

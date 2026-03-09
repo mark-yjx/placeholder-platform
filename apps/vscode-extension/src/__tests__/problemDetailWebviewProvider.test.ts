@@ -24,6 +24,7 @@ test('fetched problem detail renders expected fields', () => {
   assert.match(html, /Starter File:<\/strong> <code>collapse\.py<\/code>/);
   assert.doesNotMatch(html, /\/home\/mark\/src\/oj-vscode\/\.oj\/problems\/collapse\.py/);
   assert.match(html, /<vscode-button data-command="openStarter">Open Coding File<\/vscode-button>/);
+  assert.match(html, /<vscode-button data-command="runPublicTests">Run Public Tests<\/vscode-button>/);
   assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile">Submit<\/vscode-button>/);
   assert.doesNotMatch(html, /Refresh/);
 });
@@ -37,6 +38,7 @@ test('empty state shows friendly placeholder instead of blank panel', () => {
   assert.match(html, /No problem selected yet\./);
   assert.match(html, /<strong>Starter File:<\/strong> <code>No problem selected yet\.<\/code>/);
   assert.match(html, /<vscode-button data-command="openStarter" disabled>Open Coding File<\/vscode-button>/);
+  assert.match(html, /<vscode-button data-command="runPublicTests" disabled>Run Public Tests<\/vscode-button>/);
   assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile" disabled>Submit<\/vscode-button>/);
 });
 

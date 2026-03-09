@@ -70,7 +70,8 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
         versionId: 'problem-1-v1',
         title: 'Two Sum',
         statementMarkdown: 'Solve it',
-        starterCode: 'def two_sum():\n    pass\n'
+        starterCode: 'def two_sum():\n    pass\n',
+        publicTests: [{ input: 1, output: 1 }]
       });
     }
 
@@ -113,7 +114,8 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
       versionId: 'problem-1-v1',
       title: 'Two Sum',
       statementMarkdown: 'Solve it',
-      starterCode: 'def two_sum():\n    pass\n'
+      starterCode: 'def two_sum():\n    pass\n',
+      publicTests: [{ input: 1, output: 1 }]
     });
 
     const submission = await client.createSubmission('student-token', {

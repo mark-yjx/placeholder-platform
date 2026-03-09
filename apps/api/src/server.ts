@@ -69,6 +69,10 @@ type LocalApiRuntime = {
         starterCode: string;
         timeLimitMs: number;
         memoryLimitKb: number;
+        publicTests: readonly {
+          input: unknown;
+          output: unknown;
+        }[];
       }>;
     };
     favorites: {
@@ -541,7 +545,8 @@ export function createApiRequestHandler(
           language: problem.language,
           starterCode: problem.starterCode,
           timeLimitMs: problem.timeLimitMs,
-          memoryLimitKb: problem.memoryLimitKb
+          memoryLimitKb: problem.memoryLimitKb,
+          publicTests: problem.publicTests
         });
       } catch (error) {
         sendError(response, mapUnknownError(error));

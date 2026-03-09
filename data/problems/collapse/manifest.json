@@ -6,6 +6,11 @@
   "timeLimitMs": 2000,
   "memoryLimitKb": 65536,
   "visibility": "public",
+  "publicTests": [
+    { "input": 0, "output": 0 },
+    { "input": 12321, "output": 12321 },
+    { "input": -1111222232222111, "output": -12321 }
+  ],
   "difficulty": "easy",
   "tags": ["digits", "iteration"],
   "version": "1.0.0",

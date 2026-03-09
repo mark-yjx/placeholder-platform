@@ -28,8 +28,8 @@ test('problem manifest spec defines canonical manifest metadata and layer respon
   assert.match(spec, /problems\/\s*\n\s*<problemId>\//);
   assert.match(spec, /statement\.md/);
   assert.match(spec, /starter\.py/);
-  assert.match(spec, /public\.json/);
   assert.match(spec, /hidden\.json/);
+  assert.match(spec, /publicTests/i);
 
   assert.match(spec, /`problemId`/);
   assert.match(spec, /`title`/);
@@ -57,7 +57,7 @@ test('problem manifest spec defines canonical manifest metadata and layer respon
 test('sample collapse manifest problem folder matches the canonical manifest layout', () => {
   const repoRoot = resolveRepoRoot();
   const problemDir = path.join(repoRoot, 'problems', 'collapse');
-  const expectedFiles = ['manifest.json', 'statement.md', 'starter.py', 'public.json', 'hidden.json'];
+  const expectedFiles = ['manifest.json', 'statement.md', 'starter.py', 'hidden.json'];
 
   for (const fileName of expectedFiles) {
     assert.equal(fs.existsSync(path.join(problemDir, fileName)), true, `${fileName} should exist`);
@@ -71,6 +71,10 @@ test('sample collapse manifest problem folder matches the canonical manifest lay
     timeLimitMs: number;
     memoryLimitKb: number;
     visibility: string;
+    publicTests: Array<{
+      input: unknown;
+      output: unknown;
+    }>;
     difficulty?: string;
     tags?: string[];
     version?: string;
@@ -78,13 +82,10 @@ test('sample collapse manifest problem folder matches the canonical manifest lay
   };
   const statement = readText('problems', 'collapse', 'statement.md');
   const starter = readText('problems', 'collapse', 'starter.py');
-  const publicTests = readJson('problems', 'collapse', 'public.json') as Array<{
-    input: unknown;
-    expected: unknown;
-  }>;
   const hiddenTests = readJson('problems', 'collapse', 'hidden.json') as Array<{
     input: unknown;
-    expected: unknown;
+    expected?: unknown;
+    output?: unknown;
   }>;
 
   assert.equal(manifest.problemId, 'collapse');
@@ -94,6 +95,7 @@ test('sample collapse manifest problem folder matches the canonical manifest lay
   assert.equal(manifest.timeLimitMs, 2000);
   assert.equal(manifest.memoryLimitKb, 65536);
   assert.equal(manifest.visibility, 'public');
+  assert.equal(manifest.publicTests.length > 0, true);
   assert.equal(manifest.difficulty, 'easy');
   assert.deepEqual(manifest.tags, ['digits', 'iteration']);
   assert.equal(manifest.version, '1.0.0');
@@ -101,6 +103,6 @@ test('sample collapse manifest problem folder matches the canonical manifest lay
 
   assert.match(statement, /# Collapse Identical Digits/);
   assert.match(starter, /def collapse\(number\):/);
-  assert.equal(publicTests.length > 0, true);
+  assert.doesNotMatch(starter, /doctest/);
   assert.equal(hiddenTests.length > 0, true);
 });

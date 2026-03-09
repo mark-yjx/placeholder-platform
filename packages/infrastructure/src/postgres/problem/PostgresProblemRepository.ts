@@ -34,6 +34,11 @@ type ProblemManifestAssetRow = {
   starter_code: string;
 };
 
+type ProblemManifestPublicTestRow = {
+  input: unknown;
+  expected: unknown;
+};
+
 export interface PostgresSqlClient {
   query<T>(sql: string, params?: readonly unknown[]): Promise<readonly T[]>;
   execute(sql: string, params?: readonly unknown[]): Promise<void>;
@@ -105,6 +110,16 @@ SELECT pva.starter_code AS starter_code
 FROM problem_version_assets pva
 WHERE pva.problem_version_id = $1
 LIMIT 1
+`;
+
+const FIND_PROBLEM_PUBLIC_TESTS_SQL = `
+SELECT
+  pvt.input AS input,
+  pvt.expected AS expected
+FROM problem_version_tests pvt
+WHERE pvt.problem_version_id = $1
+  AND pvt.test_type = 'public'
+ORDER BY pvt.position ASC
 `;
 
 function parsePublicationState(value: string): PublicationState {
@@ -229,6 +244,10 @@ export class PostgresProblemRepository
     timeLimitMs: number;
     memoryLimitKb: number;
     starterCode: string;
+    publicTests: readonly {
+      input: unknown;
+      output: unknown;
+    }[];
   } | null> {
     const rows = await this.client.query<ProblemManifestAssetRow>(FIND_PROBLEM_MANIFEST_ASSETS_SQL, [
       versionId
@@ -237,13 +256,22 @@ export class PostgresProblemRepository
       return null;
     }
 
+    const publicTestRows = await this.client.query<ProblemManifestPublicTestRow>(
+      FIND_PROBLEM_PUBLIC_TESTS_SQL,
+      [versionId]
+    );
+
     return {
       entryFunction: rows[0].entry_function,
       language: rows[0].language,
       visibility: rows[0].visibility,
       timeLimitMs: rows[0].time_limit_ms,
       memoryLimitKb: rows[0].memory_limit_kb,
-      starterCode: rows[0].starter_code
+      starterCode: rows[0].starter_code,
+      publicTests: publicTestRows.map((row) => ({
+        input: row.input,
+        output: row.expected
+      }))
     };
   }
 }
