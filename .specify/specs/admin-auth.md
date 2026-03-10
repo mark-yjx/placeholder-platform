@@ -9,11 +9,26 @@ This spec defines the next security phase for the admin-facing stack only:
 
 It does not redesign student authentication and does not change the judge pipeline.
 
-## Why OIDC
+## Supported Login Modes
 
-The admin login problem is an authentication problem, not just delegated authorization.
+Admin Web must support two primary login modes:
 
-This phase uses OpenID Connect rather than generic "OAuth" terminology because the admin stack needs:
+- local email/password
+- Microsoft OIDC
+
+Both login modes are admin-only entry paths. Neither mode may bypass local platform authorization or TOTP policy.
+
+## Why both local login and OIDC
+
+- Local email/password provides a platform-owned login path for deployments that need direct local admin access.
+- Microsoft OIDC provides an SSO path for deployments that want provider-backed identity verification.
+- The product requirement is not to pick one of these models exclusively, but to let both converge into the same local admin authorization and second-factor flow.
+
+## Why OIDC terminology is still explicit
+
+The Microsoft SSO path is an authentication problem, not just delegated authorization.
+
+This phase uses OpenID Connect rather than generic "OAuth" terminology for the SSO path because the admin stack needs:
 
 - a standard login redirect flow
 - issuer and audience validation
@@ -57,11 +72,27 @@ Required/expected claims:
 
 The platform must not rely on Microsoft-specific admin-group semantics for final admission.
 
-## Local User Mapping Contract
+## Local Credential Flow
 
-Successful OIDC authentication does not, by itself, authorize admin access.
+Planned browser flow:
 
-The platform must map the external identity to a local platform user. The local platform user remains the source of truth for:
+1. Admin opens the Admin Web login page.
+2. Admin submits local email and password.
+3. `admin-api` verifies the local credential against the local platform user record.
+4. The platform confirms the local user is eligible for Admin Web.
+5. If the local user requires TOTP, the platform returns a pending second-factor state.
+6. After successful TOTP, the platform issues the admin session.
+
+The local login path is still subject to the same local authorization contract:
+
+- `role = admin`
+- `status = active`
+
+## Local User Verification and Mapping Contract
+
+Successful authentication by either primary mode does not, by itself, authorize admin access.
+
+The platform must resolve the login to a local platform user. The local platform user remains the source of truth for:
 
 - `userId`
 - `role`
@@ -69,7 +100,11 @@ The platform must map the external identity to a local platform user. The local 
 - future TOTP enrollment state
 - future recovery/reset state
 
-Planned mapping rule:
+For local email/password login:
+
+- the local user is resolved directly by verified local credentials
+
+For Microsoft OIDC login:
 
 - the durable mapping key should be the external identity issuer + subject pair
 - verified email may assist bootstrap or operator linking flows, but email alone must not be the long-term authorization key
@@ -82,9 +117,10 @@ Admin access requires all of the following:
 
 Access must be denied for:
 
+- invalid local credentials
 - unknown external identity
-- mapped non-admin user
-- mapped disabled user
+- resolved non-admin user
+- resolved disabled user
 
 This keeps admission provider-agnostic and lets the platform revoke access locally without waiting on provider-side policy changes.
 
@@ -102,8 +138,8 @@ Enrollment contract:
 
 Verification contract:
 
-1. OIDC login succeeds.
-2. Local mapping succeeds.
+1. The primary login succeeds, either by local credential verification or OIDC identity mapping.
+2. The corresponding local user resolution succeeds.
 3. The platform prompts for a TOTP code.
 4. A valid code completes the admin login session.
 5. An invalid code blocks session issuance.
@@ -114,16 +150,25 @@ Backup/recovery policy, minimum documented version:
 - recovery material must be treated as security credentials, not plaintext notes
 - recovery handling belongs to the local platform account lifecycle, not to the external provider
 
-TOTP must be enforced only after successful local identity mapping. The platform must not prompt for TOTP for unknown or ineligible users.
+TOTP must be enforced only after successful local user verification or identity mapping. The platform must not prompt for TOTP for unknown or ineligible users.
+
+## Unified Admin Auth Rules
+
+- External identity never grants admin access by itself.
+- Successful local password verification never bypasses local admin authorization.
+- Local `role` and `status` remain mandatory for both login modes.
+- TOTP policy applies equally to both local login and Microsoft OIDC login.
+- Unknown, disabled, or non-admin users must be rejected before session establishment.
 
 ## Planned Failure States
 
 The hardened admin login flow must define and document at least these failures:
 
+- invalid local credentials: local email/password does not verify
 - unknown user: external identity authenticated, but no mapped local platform user exists
-- disabled user: external identity mapped, but local `status = disabled`
-- non-admin user: external identity mapped, but local `role != admin`
-- invalid TOTP: OIDC and local mapping passed, but second-factor verification failed
+- disabled user: a local user was resolved, but local `status = disabled`
+- non-admin user: a local user was resolved, but local `role != admin`
+- invalid TOTP: primary authentication and local authorization passed, but second-factor verification failed
 
 Each failure should be expressed as an intentional admin-auth state, not as a generic internal error.
 

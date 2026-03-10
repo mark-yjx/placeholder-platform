@@ -12,6 +12,7 @@ The repository already has a working local-first Online Judge with:
 - judge worker
 - Docker local runtime
 - problem import pipeline
+- stats, badges, and leaderboard MVP
 
 The current emphasis is consolidation: make the platform understandable, observable, and reliable before broadening surface area.
 
@@ -55,7 +56,40 @@ The extension workflow is now structurally in place. Near-term polish can focus 
 - better affordances around starter files and selected problem context
 - improved visibility into status transitions and failure reasons
 
+### Stats & Ranking MVP
+
+The first practical stats phase is now part of the shipped platform shape:
+
+- per-student stats derived from submissions and problem metadata
+- simple all-time, weekly, monthly, and streak leaderboards
+- rule-based badges
+- signed-in extension stats surface
+- lightweight admin analytics overview
+
+Future follow-up can focus on scale, richer profile presentation, and additional operator analytics without introducing contest-rating complexity too early.
+
 ## Security and Identity Direction
+
+### Student Auth MVP
+
+The next student-auth phase is focused on replacing embedded extension login with a browser-based student auth flow.
+
+Planned direction:
+
+- student `Sign in` and `Sign up` actions in the VS Code extension
+- system-browser registration and login pages
+- Node/TypeScript API remains the backend for student auth
+- explicit student/admin auth separation
+- automatic VS Code callback as the primary browser-to-extension completion path
+- a short-lived auth code or session completion token exchanged by the extension for the real student session
+- manual code handoff only as fallback if callback completion fails
+
+This phase is intentionally scoped so that:
+
+- admin auth remains in Admin Web and `admin-api`
+- the extension remains student-only
+- SSO for students is deferred until after browser-based local sign up/sign in works
+- judge behavior remains unchanged
 
 ### Admin Identity Hardening
 
@@ -63,11 +97,12 @@ The next identity-security phase is focused on the admin stack, not the student 
 
 Planned direction:
 
-- OIDC login for Admin Web
+- local email/password login for Admin Web
+- Microsoft OIDC login for Admin Web
 - Microsoft as the first provider
-- local mapping from external identity to a platform user
+- local resolution from either primary login mode to a platform user
 - local enforcement of `role = admin` and `status = active`
-- TOTP as a second factor after successful identity mapping
+- TOTP as a second factor after successful local user verification or identity mapping
 
 This phase is intentionally scoped so that:
 
@@ -77,7 +112,7 @@ This phase is intentionally scoped so that:
 
 ### TOTP / Authenticator
 
-TOTP remains part of the planned admin hardening direction, but it is tied to the admin-only OIDC-plus-local-mapping flow rather than becoming a platform-wide auth rewrite in the same phase.
+TOTP remains part of the planned admin hardening direction, but it is tied to the admin-only local-login-or-OIDC-plus-local-authorization flow rather than becoming a platform-wide auth rewrite in the same phase.
 
 ## Future Deployment Direction
 

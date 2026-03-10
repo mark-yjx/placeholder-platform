@@ -55,6 +55,7 @@ The student API and the admin API read from and write to the same durable backen
 
 The Admin Web MVP is the first practical browser-based admin surface. Its scope is:
 
+- analytics overview
 - admin login
 - problems list
 - problem detail/edit
@@ -64,6 +65,7 @@ The Admin Web MVP is the first practical browser-based admin surface. Its scope 
 Implementation status at the time of this document:
 
 - implemented: Microsoft OIDC admin login with local user mapping and TOTP hardening
+- implemented: analytics overview
 - implemented: problems list
 - implemented: problem detail/edit
 - implemented: tests management
@@ -92,7 +94,6 @@ Hidden tests must remain admin-only. They may influence verdicts, but their raw 
 
 The Admin Web MVP does not include:
 
-- analytics dashboard
 - contest features
 - broad replacement of the student-facing Node/TypeScript API
 - Google OIDC provider support
@@ -113,19 +114,27 @@ Those are later expansions, not guarantees of current implementation.
 
 ## Admin Identity Hardening
 
-Admin Web now uses a hardened admin-only login model:
+Admin Web now supports two admin-only login modes:
 
-- Microsoft OIDC is the primary external identity provider
-- `admin-api` handles login initiation, callback processing, and code exchange
-- the external identity must map to a local platform user
+- local email/password
+- Microsoft OIDC
+
+Both login modes converge into the same local admin authorization model:
+
+- `admin-api` verifies either local credentials or the OIDC callback identity
+- the login attempt must resolve to a local platform user
 - local access still requires `role = admin` and `status = active`
-- TOTP is enforced after local identity mapping, not before it
+- TOTP is enforced after local user verification or identity mapping, not before it
 
 The student-facing VS Code extension remains student-only and does not participate in this admin login flow.
 
-Current admin login sequence:
+Current local login sequence:
 
-`Microsoft OIDC -> callback -> local user mapping -> TOTP (if enabled) -> admin session`
+`local email/password -> local user verification -> admin role/status check -> TOTP (if enabled) -> admin session`
+
+Current Microsoft login sequence:
+
+`Microsoft OIDC -> callback -> local user mapping -> admin role/status check -> TOTP (if enabled) -> admin session`
 
 Current auth states exposed to Admin Web:
 
@@ -135,6 +144,7 @@ Current auth states exposed to Admin Web:
 
 Current denial states include:
 
+- invalid local credentials
 - Microsoft login failed
 - callback invalid or expired
 - external identity is not mapped to a local admin user

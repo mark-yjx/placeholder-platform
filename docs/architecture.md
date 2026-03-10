@@ -35,9 +35,10 @@ Location: `apps/vscode-extension`
 
 Responsibilities:
 
-- authenticate students against the API
+- launch browser-based student sign up and sign in flows against the API
 - store the access token in VS Code `SecretStorage`
 - render the student workflow inside VS Code
+- render the signed-in student stats surface, including badges and leaderboard context
 - fetch published problems and problem detail
 - materialize starter-backed coding files under `.oj/problems/`
 - own future local public-test execution when that student-side workflow is implemented
@@ -55,6 +56,17 @@ Current UI surfaces:
 
 The extension is a student client, not an admin console and not a judge. It does not execute hidden tests locally.
 
+Planned student auth direction:
+
+- the extension exposes student `Sign in` and `Sign up` launch actions
+- those actions open the system browser
+- the extension supplies a callback URI and state for the auth attempt
+- registration and login happen on browser pages backed by the Node/TypeScript API
+- after successful auth, the student-facing API redirects back to the extension callback URI
+- the extension validates callback state and completes a final exchange for the real student session
+- editor-embedded student login is deprecated
+- manual code entry remains only as fallback if callback completion fails
+
 ## Student API Server
 
 Location: `apps/api`
@@ -62,14 +74,17 @@ Location: `apps/api`
 Responsibilities:
 
 - expose health and readiness routes
-- handle student login and token-based access
+- handle student browser-based sign up, sign in, callback-aware auth initiation, and token-based access
 - serve published problem lists and problem detail
+- derive and serve student stats and leaderboard views from local platform data
 - accept student submissions
 - persist submissions in `queued` state
 - enqueue judge work
 - serve student submission history and submission detail
 
 The API is the only write entry point used by the extension for student submissions and student-facing reads.
+It remains the backend for student authentication in the Student Auth MVP.
+It also owns redirecting successful student auth back to the extension callback URI and performing the final short-lived auth-code exchange into the real student session.
 
 ## Admin Web
 
@@ -83,6 +98,7 @@ Responsibilities:
 - keep admin-only data such as hidden tests out of student-facing UI surfaces
 - own admin workflows that no longer belong in the VS Code extension
 - own admin-only user management pages
+- render a lightweight analytics overview for platform-level aggregates
 
 Admin Web exists because problem editing, admin-only tests management, cross-user submission inspection, and future operator controls are different workflows from student practice.
 
@@ -96,6 +112,7 @@ Responsibilities:
 - serve admin-only problem management routes
 - serve admin-only tests management and submission inspection routes
 - serve admin-only user management routes
+- serve admin-only analytics overview aggregates
 - keep room for future 2FA-related admin controls without implementing them yet
 
 The admin API is a separate operational surface. It does not replace the student-facing Node/TypeScript API.
@@ -193,6 +210,8 @@ The importer converts repository content into runtime data used by the API and w
 - The VS Code extension owns student workflow and presentation only.
 - Administrators must use Admin Web instead of the extension.
 - The extension should eventually reject admin-role logins so the client boundary matches the product boundary.
+- Student auth belongs to the Node/TypeScript API plus browser pages, not to `admin-api`.
+- Admin auth belongs to Admin Web plus `admin-api`, not to the extension.
 - Admin Web owns admin workflow and presentation.
 - The student-facing Node/TypeScript API owns student authentication, validation, published-problem access, and durable submission intake.
 - The FastAPI `admin-api` owns admin-only operational routes, including hidden test access and cross-user inspection.
@@ -234,24 +253,25 @@ Admin Web and `admin-api` own user-management operations. The student-facing VS 
 
 The admin stack now uses:
 
-- Microsoft OIDC for primary external identity
-- local mapping from external identity to the shared platform user model
+- local email/password as a platform-owned login path
+- Microsoft OIDC as an SSO login path
+- local resolution to the shared platform user model
 - local enforcement of admin `role` and `status`
-- TOTP after successful identity mapping
+- TOTP after successful local user verification or identity mapping
 
 The critical architectural boundary remains:
 
-- provider authentication answers who authenticated with Microsoft
+- primary authentication answers either who verified with local credentials or who authenticated with Microsoft
 - local platform authorization answers whether that identity may enter Admin Web
 
-This means a successful Microsoft login alone is never enough for admin access. `admin-api` must still resolve the provider identity to a local user and confirm:
+This means neither successful local password verification nor successful Microsoft login is enough by itself for admin access. `admin-api` must still resolve the login to a local user and confirm:
 
 - `role = admin`
 - `status = active`
 
 If the mapped admin has TOTP enabled, the session remains `pending_tfa` until a valid code upgrades it to `authenticated_admin`.
 
-This keeps Admin Web admission locally revocable and provider-agnostic while leaving room for later providers such as Google without redesigning the platform user model.
+This keeps Admin Web admission locally revocable and provider-agnostic while leaving room for later providers such as Google without redesigning the platform user model or removing the local login path.
 
 This implementation does not change:
 

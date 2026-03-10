@@ -10,7 +10,7 @@ Administrators should no longer use the extension. Admin workflows belong in Adm
 
 That means the extension is responsible for student workflows such as:
 
-- student login
+- launching student sign up and sign in
 - fetch problems
 - view problem detail
 - open starter files
@@ -27,30 +27,71 @@ The extension should eventually reject admin-role logins so the runtime behavior
 The extension uses these surfaces:
 
 - status bar icon for account access
-- account webview window for login/logout
+- account webview window for browser sign-in, stats, badges, and logout
 - `Problems` sidebar tree
 - `Problem Detail` webview
 - `Submissions` panel tree
 - `Submission Detail` webview
 
-## Login Via Status Bar Icon
+## Planned Student Auth MVP
+
+Planned student authentication direction:
+
+- the extension exposes `Sign in` and `Sign up` actions
+- clicking either action opens the system browser
+- registration and login happen on browser pages backed by the Node/TypeScript API
+- the extension provides a callback URI and state for the auth attempt
+- after successful auth, the browser redirects back to VS Code automatically
+- the extension validates callback state and completes sign-in automatically
+- editor-area login is deprecated
+
+Planned primary completion method:
+
+- the browser callback carries only short-lived completion data, not the final long-lived student token when avoidable
+- the extension exchanges that short-lived completion data for the real student session/token
+
+Fallback:
+
+- if callback completion fails, the browser may still show a one-time manual code
+- manual code entry remains fallback-only, not the primary UX
+
+This keeps the extension student-only while moving credential entry and registration UX to the browser.
+
+## Current Login Via Status Bar Icon
 
 1. Look for the OJ account icon in the VS Code status bar.
 2. Click the icon to open the account window.
-3. Enter email and password.
-4. Submit the login form.
+3. Click `Sign in` or `Sign up`.
+4. Complete auth in the system browser.
+5. Return to VS Code automatically through the callback flow.
 
 On success:
 
 - the access token is stored in VS Code `SecretStorage`
 - later API requests use that token
-- the account view refreshes to show the authenticated user
+- the account view refreshes to show the authenticated user, stats, badges, and the all-time leaderboard
 
 This flow is intended for student accounts. Admin accounts should use Admin Web instead of the extension.
 
 Fallback command:
 
 - `OJ: Open Account`
+
+Fallback path:
+
+- if the callback cannot complete automatically, the account window still supports entering the one-time browser code manually
+
+## Signed-In Account View
+
+When you are signed in, the account window shows:
+
+- solved count
+- solved-by-difficulty
+- current streak and longest streak
+- language breakdown
+- tag breakdown
+- badge progress
+- the current all-time leaderboard
 
 ## Fetch or Refresh Problems From the Sidebar
 

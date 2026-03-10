@@ -289,30 +289,37 @@ Acceptance checks:
 ### Phase 13: Admin Identity Hardening
 
 Goals:
-- Harden the Admin Web login path with OpenID Connect, local platform-user mapping, and TOTP-based second-factor verification.
-- Keep the admin authentication model provider-aware without making provider claims the source of truth for platform authorization.
+- Harden the Admin Web login path with two supported primary login modes: local email/password and Microsoft OpenID Connect.
+- Keep the admin authentication model provider-aware without making either local credentials or provider claims the sole source of truth for platform authorization.
 - Preserve the existing platform-level user model so admin access remains controlled by local `role` and `status`.
+- Make both primary login modes converge into the same local authorization and TOTP-based second-factor flow.
 - Keep the student-facing VS Code extension and student-facing Node/TypeScript API unchanged in this phase.
 
-Why OIDC is used instead of plain OAuth terminology:
+Why Admin Web supports both local credentials and OIDC:
+- Local email/password provides a platform-owned admin login path that does not depend on external provider availability or tenant policy.
+- Microsoft OIDC provides an SSO path for organizations that want external identity verification and centralized sign-in.
+- Supporting both modes keeps the product usable in smaller local deployments and in provider-backed admin environments without changing the downstream authorization model.
+
+Why OIDC is used instead of plain OAuth terminology for the SSO path:
 - The requirement is admin login and identity verification, not delegated API access on behalf of a third-party client.
 - OIDC defines the identity layer needed here: ID token semantics, issuer validation, nonce handling, discovery metadata, and a standard callback/login model.
 - Saying only "OAuth" would be too imprecise because OAuth is the broader authorization framework and does not, by itself, define the full authentication contract the admin stack needs.
 
-Why local user mapping is required:
+Why local user verification and mapping are both required:
+- A successful local email/password check proves the user knows the platform credential, but it still does not bypass local authorization rules.
 - A successful OIDC login proves the user authenticated with an external identity provider, but it does not by itself decide whether that identity is allowed into this platform.
-- The platform must map the external identity to a local platform user so that platform-owned properties such as `role`, `status`, and future recovery/reset controls remain authoritative.
+- The platform must resolve both login modes to the same local platform user so that platform-owned properties such as `role`, `status`, TOTP enrollment, and future recovery/reset controls remain authoritative.
 - Local mapping also keeps the design provider-agnostic so Microsoft can be first and Google can be added later without redefining platform authorization rules.
 
 Why admin role enforcement must remain local:
-- Admin admission is a platform authorization decision, not a trust delegation to Microsoft or any later identity provider.
+- Admin admission is a platform authorization decision, not a side effect of successful password verification or a trust delegation to Microsoft or any later identity provider.
 - The platform must remain able to deny access for `disabled` users, remove admin rights quickly, and keep behavior stable even if external group/tenant claims change unexpectedly.
-- Therefore, Admin Web entry must still require a mapped local user with `role = admin` and `status = active`.
+- Therefore, Admin Web entry must still require a local user with `role = admin` and `status = active` regardless of how the user authenticated first.
 
-Why TOTP is added after OIDC identity verification:
-- The first step is to establish who the external identity is and which local platform user it maps to.
-- Only after that mapping succeeds should the platform challenge for a TOTP code, because the TOTP secret belongs to the local platform account rather than the raw provider identity.
-- This ordering keeps TOTP enrollment, recovery, and enforcement attached to the platform user while still using OIDC as the primary identity proof.
+Why TOTP is added after primary identity verification:
+- The first step is to establish which local platform user the login attempt corresponds to, either by verifying local credentials or by mapping the external OIDC identity.
+- Only after that local user resolution succeeds should the platform challenge for a TOTP code, because the TOTP secret belongs to the local platform account rather than to the raw password credential or provider identity.
+- This ordering keeps TOTP enrollment, recovery, and enforcement attached to the platform user while allowing both local login and OIDC SSO to share the same second-factor policy.
 
 Why student flows remain unchanged in this phase:
 - The hardening work applies only to Admin Web and `admin-api`.
@@ -326,8 +333,193 @@ Non-goals:
 - No implementation of Google login yet, beyond leaving room for a later provider addition.
 
 Acceptance checks:
-- Microsoft OIDC is documented as the primary provider for the first hardened admin login phase.
-- The planned login sequence is explicit: `OIDC -> callback -> local user mapping -> TOTP -> admin session`.
-- Admin entry is specified to require a mapped local user with `role = admin` and `status = active`.
-- Failure states are explicitly documented for unknown user, disabled user, non-admin user, and invalid TOTP.
+- Admin Web is specified to support both local email/password and Microsoft OIDC login modes.
+- The planned local login sequence is explicit: `local email/password -> local user verification -> admin role/status check -> TOTP -> admin session`.
+- The planned Microsoft login sequence is explicit: `OIDC -> callback -> local user mapping -> admin role/status check -> TOTP -> admin session`.
+- Admin entry is specified to require a local user with `role = admin` and `status = active` for both login modes.
+- Failure states are explicitly documented for unknown user, disabled user, non-admin user, invalid credentials, and invalid TOTP.
 - Architecture and admin docs remain explicit that the VS Code extension is still student-only.
+
+### Phase 14: Student Auth MVP
+
+Goals:
+- Replace the extension's editor-embedded login experience with browser-based student sign up and sign in flows.
+- Keep student authentication on the existing Node/TypeScript student-facing API rather than moving it into `admin-api`.
+- Make the VS Code extension a launcher for student auth rather than the place where credentials are entered.
+- Keep student auth and admin auth as separate product surfaces with separate backends and policies.
+- Deliver a simple MVP auth return path from the browser back into the extension before any SSO work is introduced.
+
+Why editor-embedded login is being deprecated:
+- Entering credentials inside an editor webview is a weak product experience for a platform that already has browser-capable login and registration needs.
+- Embedded login makes sign-up, password UX, and future account-recovery flows harder to design and explain.
+- It also conflates extension UI responsibilities with account-management responsibilities that belong on the web.
+
+Why browser-based auth is a better student UX:
+- A browser page can handle registration, sign-in, validation, and future account flows with clearer navigation and less UI constraint than the extension surface.
+- The system browser is also the right place to grow later into password reset, email verification, or third-party auth without rebuilding the extension account panel each time.
+- The extension should focus on launching the auth flow and consuming the resulting student session, not on rendering a full account form experience.
+
+Why student auth remains on the existing Node/TypeScript API:
+- The student-facing API already owns student login/session concerns and is the backend used by the extension for student actions.
+- Keeping student auth there avoids splitting one student workflow across two backends.
+- `admin-api` remains an admin-only operational surface and should not become a shared auth service for students in this phase.
+
+Why admin auth and student auth remain separate:
+- Students and admins have different products, different UX expectations, and different security surfaces.
+- Students use the VS Code extension plus browser-based auth pages backed by the Node/TypeScript API.
+- Admins use Admin Web plus `admin-api`.
+- Keeping those surfaces separate avoids reintroducing admin behavior into the student client and preserves the student-only product boundary of the extension.
+
+Why SSO/OAuth is deferred:
+- The first student auth milestone is to make basic browser-based sign up and sign in work end to end.
+- Introducing Google, Microsoft, GitHub, or broader OAuth/SSO too early would add provider complexity before the baseline student account flow is stable.
+- Browser-based local registration and login should be the explicit MVP foundation; SSO can build on top later.
+
+MVP student auth fields:
+- Sign up: `email`, `displayName`, `password`, `confirmPassword`
+- Sign in: `email`, `password`
+
+Non-goals:
+- No Google SSO.
+- No Microsoft SSO for students.
+- No GitHub SSO.
+- No passwordless email login.
+- No SMS login.
+- No student 2FA.
+- No major redesign of admin auth.
+
+Acceptance checks:
+- Browser-based student auth is specified as the replacement for editor-embedded login.
+- The extension is specified to expose student `Sign in` and `Sign up` actions that open the system browser.
+- Student registration fields and successful registration behavior are defined.
+- Student sign-in fields and successful sign-in behavior are defined.
+- One concrete MVP token/session return method from browser to extension is specified and testable.
+- Architecture and extension docs state clearly that student auth stays on the Node/TypeScript API and remains separate from admin auth.
+
+### Phase 15: Student Auth Callback UX Upgrade
+
+Goals:
+- Upgrade student browser auth so successful sign up and sign in return automatically into the VS Code extension.
+- Make automatic VS Code callback the primary student auth completion UX.
+- Deprecate manual code copy/paste as the primary completion path while keeping it as a fallback only when callback delivery fails.
+- Keep student auth on the existing Node/TypeScript API and keep `admin-api` out of scope.
+- Preserve the extension as a student-only client.
+
+Why the callback upgrade is needed:
+- Manual code copy/paste is acceptable as an MVP bootstrap, but it breaks the flow and feels unlike a normal app sign-in experience.
+- A callback-driven completion path lets the browser hand control back to the extension directly after auth succeeds.
+- It reduces friction for both sign up and sign in without moving student auth into the admin stack.
+
+Why the callback should not carry the final session token directly:
+- Browser redirects and callback URIs are a poor place to expose long-lived student session tokens.
+- A short-lived auth code or session completion token is safer because the backend can enforce one-time use, expiry, and state validation before issuing the real session.
+- This keeps the final student session establishment on the API exchange path rather than in the raw browser redirect.
+
+Target callback completion flow:
+1. The extension initiates student `Sign in` or `Sign up`.
+2. The extension provides a callback URI plus a generated state value.
+3. The system browser opens the student auth page on the Node/TypeScript API.
+4. The student completes sign up or sign in in the browser.
+5. The student-facing API redirects to the callback URI with callback parameters such as state plus a short-lived auth code or completion proof.
+6. The extension receives the callback through its URI handler.
+7. The extension validates callback state and any local auth-attempt binding.
+8. The extension exchanges the short-lived auth code or completion proof with the student-facing API for the real student session/token.
+9. The extension stores the authenticated student session and refreshes the signed-in UI automatically.
+10. If callback completion fails, the browser may still present manual fallback instructions using a one-time code.
+
+Required extension capabilities:
+- register and handle a callback URI
+- launch browser auth with callback URI and state
+- correlate callback state with the pending auth attempt
+- complete the final auth exchange automatically
+- show manual fallback instructions only if automatic callback completion fails
+
+Required student-facing API capabilities:
+- accept callback URI and state when student sign up or sign in is initiated
+- preserve that initiation state through the browser auth flow
+- redirect to the callback URI after successful auth
+- issue a short-lived auth code or session completion token for the extension exchange step
+- complete the final exchange into the real student session/token
+
+Non-goals:
+- No student SSO provider work.
+- No admin auth redesign.
+- No direct browser redirect carrying a long-lived student token when avoidable.
+- No judge pipeline change.
+
+Acceptance checks:
+- Automatic VS Code callback is specified as the primary student auth completion UX.
+- Manual code copy/paste is specified as fallback-only behavior.
+- The extension responsibilities for callback URI handling, state validation, and automatic completion are explicit.
+- The student-facing API responsibilities for callback initiation, redirect, and final exchange are explicit.
+- The security model states that long-lived student tokens should not be returned directly in the callback URI when avoidable.
+- Architecture, roadmap, and extension docs all describe the callback upgrade consistently.
+
+### Phase 19: Stats & Ranking MVP
+
+Goals:
+- Add a first end-to-end statistics and ranking MVP that feels similar in spirit to LeetCode-style profile stats without introducing contest-rating complexity too early.
+- Reuse existing local platform data from users, problems, submissions, and judged results to produce explainable user stats, leaderboards, badges, and a minimal analytics overview.
+- Keep formulas deterministic, reproducible, and clearly documented before any implementation-level optimization or materialization work.
+
+MVP scope:
+- User stats:
+  - solvedCount
+  - solvedByDifficulty
+  - submissionCount
+  - acceptedCount
+  - acceptanceRate
+  - activeDays
+  - currentStreak
+  - longestStreak
+  - languageBreakdown
+  - tagBreakdown
+- Leaderboards:
+  - all-time leaderboard
+  - weekly leaderboard
+  - monthly leaderboard
+  - streak leaderboard
+- Badges:
+  - first AC
+  - solved 10
+  - solved 50
+  - 7-day streak
+  - 30-day streak
+- Surfaces:
+  - a student-visible profile/stats surface
+  - an admin-visible analytics overview if appropriate for the existing admin product surface
+
+Ranking principles:
+- Rankings are derived only from local platform data already owned by this repository.
+- Rankings must be reproducible and explainable from documented formulas and tie-break rules.
+- Leaderboard formulas stay simple and deterministic for MVP.
+- A solved problem counts once per user per problem.
+- Accepted-only stats remain clearly distinct from submission-volume stats.
+
+Default MVP leaderboard guidance:
+- All-time leaderboard:
+  - primary sort: solvedCount descending
+  - tie-breakers: acceptedCount descending, submissionCount ascending, stable userId fallback
+- Weekly leaderboard:
+  - primary sort: unique problems solved in the current UTC week
+  - tie-breakers: accepted submissions in the window descending, total submissions in the window ascending, stable userId fallback
+- Monthly leaderboard:
+  - primary sort: unique problems solved in the current UTC month
+  - tie-breakers: accepted submissions in the window descending, total submissions in the window ascending, stable userId fallback
+- Streak leaderboard:
+  - primary sort: currentStreak descending
+  - tie-breakers: longestStreak descending, solvedCount descending, stable userId fallback
+
+Non-goals:
+- No complex contest rating algorithm.
+- No contest-based Elo-like rating.
+- No global percentile system beyond simple deterministic leaderboards.
+- No discussion/community reputation model.
+- No anti-cheat sophistication beyond basic deterministic counting safeguards.
+
+Acceptance checks:
+- The MVP scope for user stats, leaderboards, badges, and profile/analytics surfaces is explicitly documented.
+- Ranking principles are documented with simple, reproducible formulas and stable tie-breakers.
+- Solved counts are defined as unique solved problems per user rather than raw accepted-submission volume.
+- Accepted-only metrics are explicitly distinguished from overall submission-volume metrics.
+- The phase explicitly excludes contest-rating complexity, reputation systems, and advanced anti-cheat work.

@@ -1309,15 +1309,32 @@ OUT:
 # Phase 16 – Admin Identity Hardening
 
 Goal:
-Define the next admin-auth security phase for Admin Web and `admin-api` using OpenID Connect, local platform-user mapping, and TOTP-based second-factor verification without changing student-facing flows.
+Define the next admin-auth security phase for Admin Web and `admin-api` using two supported login modes, local platform authorization, and TOTP-based second-factor verification without changing student-facing flows.
 
-## 114. Task A — OIDC provider integration planning
+## 114. Task A — Dual login-mode contract
+
+Acceptance checks:
+- Admin Web login is specified to support both local email/password and Microsoft sign-in.
+- The local credential flow is specified.
+- The Microsoft OIDC flow is specified.
+- No student/plugin changes are included.
+
+Scope:
+IN:
+- admin login surface contract
+- dual-mode login planning
+- convergence rules for downstream authorization
+OUT:
+- student-facing auth redesign
+- VS Code extension changes
+- implementation code
+
+## 115. Task B — OIDC provider integration planning
 
 Acceptance checks:
 - Microsoft OIDC is defined as the primary provider.
 - The callback flow is specified.
 - Required scopes and claims are documented.
-- No student/plugin changes are included.
 
 Scope:
 IN:
@@ -1329,28 +1346,30 @@ OUT:
 - VS Code extension changes
 - provider implementation code
 
-## 115. Task B — Local user mapping contract
+## 116. Task C — Local user verification and mapping contract
 
 Acceptance checks:
+- Local email/password verification is specified for the local login path.
 - External identity is mapped to a local platform user.
 - Local role/status enforcement is specified.
-- Admin access requires `role = admin` and `status = active`.
+- Admin access requires `role = admin` and `status = active` for both login modes.
 
 Scope:
 IN:
+- local credential verification contract
 - external-to-local identity mapping rules
 - local platform-user authorization contract
 OUT:
 - course-specific identity rules
 - provider-managed admin authorization as the source of truth
 
-## 116. Task C — TOTP 2FA contract
+## 117. Task D — TOTP 2FA contract
 
 Acceptance checks:
 - TOTP enrollment flow is defined.
 - TOTP verification flow is defined.
 - Backup/recovery policy is at least minimally documented.
-- TOTP is enforced only after successful identity mapping.
+- TOTP is enforced only after successful local user verification or identity mapping.
 
 Scope:
 IN:
@@ -1362,11 +1381,13 @@ OUT:
 - full recovery implementation
 - student MFA changes
 
-## 117. Task D — Admin session flow
+## 118. Task E — Admin session flow
 
 Acceptance checks:
-- The full login sequence is specified as `OIDC -> callback -> local user mapping -> TOTP -> session`.
+- The full local login sequence is specified as `local email/password -> local user verification -> admin role/status check -> TOTP -> session`.
+- The full Microsoft login sequence is specified as `OIDC -> callback -> local user mapping -> admin role/status check -> TOTP -> session`.
 - Failure states are documented for:
+  - invalid local credentials
   - unknown user
   - disabled user
   - non-admin user
@@ -1380,10 +1401,11 @@ OUT:
 - session implementation code
 - student session changes
 
-## 118. Task E — Docs
+## 119. Task F — Docs
 
 Acceptance checks:
 - `docs/admin-web.md` and/or `docs/architecture.md` explain the new admin auth model.
+- `docs/admin-web.md` explains that the login page offers both local login and Microsoft sign-in.
 - The extension remains clearly student-only.
 
 Scope:
@@ -1393,3 +1415,342 @@ IN:
 OUT:
 - code changes
 - judge lifecycle changes
+
+# Phase 17 – Student Auth MVP
+
+Goal:
+Define the MVP student authentication phase around browser-based sign up and sign in flows launched from the VS Code extension, while keeping student auth on the existing Node/TypeScript API and keeping admin auth separate.
+
+## 120. Task A — Student auth product boundary
+
+Acceptance checks:
+- The extension no longer treats admin auth as part of the student flow.
+- Browser-based student auth is explicitly defined.
+- Admin auth remains separate.
+
+Scope:
+IN:
+- student-vs-admin auth boundary planning
+- extension student-auth surface contract
+- backend ownership boundary for student auth
+OUT:
+- admin auth redesign
+- judge changes
+- implementation code
+
+## 121. Task B — Student sign up flow
+
+Acceptance checks:
+- A browser-based registration page is defined.
+- Required registration fields are defined as `email`, `displayName`, `password`, and `confirmPassword`.
+- Successful registration behavior is specified.
+
+Scope:
+IN:
+- browser registration contract
+- MVP field definitions
+- registration success behavior
+OUT:
+- SSO registration
+- email verification implementation
+- password reset implementation
+
+## 122. Task C — Student sign in flow
+
+Acceptance checks:
+- A browser-based login page is defined.
+- Successful login behavior is specified.
+- Plugin-side behavior after login is specified.
+
+Scope:
+IN:
+- browser login contract
+- extension post-login behavior
+- student session completion planning
+OUT:
+- admin login changes
+- student SSO provider work
+- implementation code
+
+## 123. Task D — Extension integration
+
+Acceptance checks:
+- Extension `Sign in` and `Sign up` actions are defined.
+- Opening the system browser is defined.
+- Editor-area login is marked deprecated.
+
+Scope:
+IN:
+- extension command/surface planning
+- deprecation of embedded student login UI
+OUT:
+- actual extension implementation
+- admin-web changes
+
+## 124. Task E — Session/token return flow
+
+Acceptance checks:
+- One concrete MVP method is specified for completing login back into the extension.
+- The method is simple, explicit, and testable.
+
+Scope:
+IN:
+- auth completion contract between browser and extension
+- token/session handoff planning
+OUT:
+- alternative auth-return mechanisms beyond the MVP
+- OAuth/SSO provider design
+
+## 125. Task F — Docs
+
+Acceptance checks:
+- Student auth flow is documented.
+- Student vs admin auth boundary is documented.
+
+Scope:
+IN:
+- architecture docs
+- extension usage docs
+- student-auth planning docs
+OUT:
+- code changes
+- judge lifecycle changes
+
+# Phase 18 – Student Auth Callback UX Upgrade
+
+Goal:
+Define the upgrade from manual code handoff to automatic VS Code callback completion for browser-based student sign up and sign in, while keeping student auth on the existing Node/TypeScript API and keeping manual code entry only as fallback.
+
+## 126. Task A — Callback completion UX contract
+
+Acceptance checks:
+- Automatic VS Code callback is specified as the primary completion path.
+- Manual copy/paste code entry is specified as fallback-only behavior.
+- The end-to-end flow from extension launch to authenticated student session is explicit.
+
+Scope:
+IN:
+- primary student auth completion UX
+- sign-in and sign-up callback completion planning
+- fallback behavior definition
+OUT:
+- admin auth changes
+- implementation code
+
+## 127. Task B — Extension callback handler contract
+
+Acceptance checks:
+- The extension is specified to register a callback/URI handler.
+- The extension is specified to launch browser auth with callback URI and state.
+- The extension is specified to validate callback state and complete sign-in automatically.
+
+Scope:
+IN:
+- extension URI handler capability planning
+- callback state correlation rules
+- automatic session completion behavior
+OUT:
+- concrete VS Code implementation code
+- non-student auth flows
+
+## 128. Task C — Student API redirect contract
+
+Acceptance checks:
+- The student-facing API is specified to accept callback URI and state on auth initiation.
+- The student-facing API is specified to redirect to the callback URI after successful auth.
+- The final exchange step is defined on the student-facing API rather than `admin-api`.
+
+Scope:
+IN:
+- callback initiation parameters
+- browser redirect contract
+- exchange endpoint planning
+OUT:
+- admin-api changes
+- provider/SSO work
+
+## 129. Task D — Security and exchange model
+
+Acceptance checks:
+- Long-lived student tokens are explicitly not returned directly in the callback URI when avoidable.
+- A short-lived auth code or session completion token is defined as the preferred callback payload.
+- Callback state validation and one-time exchange semantics are specified.
+
+Scope:
+IN:
+- callback payload security model
+- state validation contract
+- one-time auth code or completion-token planning
+OUT:
+- platform-wide auth rewrite
+- student MFA
+
+## 130. Task E — Failure and fallback behavior
+
+Acceptance checks:
+- Expected callback failure modes are documented.
+- The extension fallback behavior is defined.
+- Manual code entry remains available only when callback completion fails or cannot be delivered.
+
+Scope:
+IN:
+- callback failure handling
+- fallback UX planning
+- recovery messaging
+OUT:
+- helpdesk/recovery systems
+- general account recovery features
+
+## 131. Task F — Docs
+
+Acceptance checks:
+- Student auth docs describe automatic callback as the primary UX.
+- Architecture docs describe callback ownership between the extension and the student-facing API.
+- Roadmap docs describe manual code handoff as deprecated primary UX and fallback-only.
+
+Scope:
+IN:
+- `.specify/specs/plan.md`
+- `.specify/specs/tasks.md`
+- `.specify/specs/student-auth.md`
+- `docs/extension-usage.md`
+- `docs/architecture.md`
+- `docs/roadmap.md`
+OUT:
+- code changes
+- judge lifecycle changes
+
+# Phase 19 – Stats & Ranking MVP
+
+Goal:
+Define a practical Stats & Ranking MVP that introduces user stats, simple leaderboards, rule-based badges, and minimal student/admin stats surfaces without introducing contest-rating complexity or unrelated platform redesign.
+
+## 132. Task A — Stats data model
+
+Acceptance checks:
+- A user stats model exists.
+- Stats can be computed or materialized from submissions and problems.
+- The model clearly distinguishes unique problem solves from submission-volume counters.
+
+Scope:
+IN:
+- stats data contracts
+- derived-vs-materialized MVP decision
+- minimal persistence planning if needed
+OUT:
+- contest rating algorithms
+- unrelated schema redesign
+
+## 133. Task B — Stats computation
+
+Acceptance checks:
+- Solved counts are defined and computable.
+- Acceptance metrics are defined and computable.
+- Streak metrics are defined and computable.
+- Language breakdown exists.
+- Tag breakdown exists.
+- Solved-by-difficulty exists.
+
+Scope:
+IN:
+- solvedCount
+- solvedByDifficulty
+- submissionCount
+- acceptedCount
+- acceptanceRate
+- activeDays
+- currentStreak
+- longestStreak
+- languageBreakdown
+- tagBreakdown
+OUT:
+- contest participation metrics
+- social/community metrics
+
+## 134. Task C — Leaderboards
+
+Acceptance checks:
+- All-time leaderboard exists.
+- Weekly leaderboard exists.
+- Monthly leaderboard exists.
+- Streak leaderboard exists.
+- Ranking formula is documented and deterministic.
+
+Scope:
+IN:
+- leaderboard windows
+- tie-break rules
+- disabled-user visibility policy
+- documented simple scoring formulas
+OUT:
+- Elo-like rating
+- percentile/rating ladders
+
+## 135. Task D — Badges
+
+Acceptance checks:
+- Rule-based badge awarding exists.
+- Badge data is persisted or derivable.
+- Basic badge display is supported.
+
+Scope:
+IN:
+- first AC badge
+- solved 10 badge
+- solved 50 badge
+- 7-day streak badge
+- 30-day streak badge
+OUT:
+- badge marketplace/gamification systems
+- complex badge progression trees
+
+## 136. Task E — Student-facing stats UI
+
+Acceptance checks:
+- A user can see their own stats.
+- A user can see at least one leaderboard.
+
+Scope:
+IN:
+- student-visible stats/profile surface
+- leaderboard presentation
+- badge presentation
+OUT:
+- full profile redesign
+- unrelated extension/web UX work
+
+## 137. Task F — Admin analytics
+
+Acceptance checks:
+- Admin can inspect platform-level aggregate stats.
+
+Scope:
+IN:
+- total users
+- active users
+- total submissions
+- total accepted submissions
+- total solved events or unique problem solves
+OUT:
+- full BI/dashboard platform
+- advanced cohort analytics
+
+## 138. Task G — Docs
+
+Acceptance checks:
+- Stats definitions are documented.
+- Leaderboard formulas are documented.
+- Badge rules are documented.
+
+Scope:
+IN:
+- `.specify/specs/plan.md`
+- `.specify/specs/tasks.md`
+- `.specify/specs/stats-ranking.md`
+- `docs/architecture.md`
+- `docs/roadmap.md`
+- `docs/extension-usage.md`
+- `docs/admin-web.md`
+OUT:
+- code changes
+- judge pipeline changes
