@@ -135,14 +135,12 @@ test('account panel renders browser auth actions when unauthenticated', () => {
     })
   );
 
-  assert.match(html, /Student authentication now happens in your browser\./);
-  assert.match(html, /Primary action/);
-  assert.match(html, /New to OJ\?/);
-  assert.match(html, /How it works/);
-  assert.match(html, /Open browser auth/);
-  assert.match(html, /Automatic completion/);
+  assert.match(html, /OJ Practice/);
+  assert.match(html, /Sign in to sync your account, fetch problems, and submit solutions\./);
+  assert.match(html, /Get Started/);
+  assert.match(html, /Authentication opens in your browser and returns to VS Code automatically\./);
+  assert.match(html, /Need A Fallback\?/);
   assert.match(html, /Enter browser code/);
-  assert.match(html, /fallback-only/i);
   assert.doesNotMatch(html, /Administrators must use Web Admin/);
   assert.match(html, /data-command="signIn"/);
   assert.match(html, /data-command="signUp"/);
@@ -159,7 +157,7 @@ test('account panel renders unauthenticated state when identity is incomplete', 
     })
   );
 
-  assert.match(html, /Student authentication now happens in your browser\./);
+  assert.match(html, /Sign in to sync your account, fetch problems, and submit solutions\./);
   assert.match(html, /data-command="signIn"/);
 });
 
@@ -312,7 +310,7 @@ test('account panel clears incomplete session after browser auth', async () => {
     email: null,
     role: null
   });
-  assert.match(webview.html, /Student authentication now happens in your browser\./);
+  assert.match(webview.html, /Sign in to sync your account, fetch problems, and submit solutions\./);
   assert.deepEqual(errorMessages, [
     'Login failed because the account profile is incomplete. Try again or contact your instructor.'
   ]);
@@ -347,7 +345,7 @@ test('account panel rejects admin browser auth and clears any existing session',
     email: null,
     role: null
   });
-  assert.match(webview.html, /Student authentication now happens in your browser\./);
+  assert.match(webview.html, /Sign in to sync your account, fetch problems, and submit solutions\./);
   assert.match(webview.html, new RegExp(STUDENT_ONLY_EXTENSION_MESSAGE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.deepEqual(errorMessages, [STUDENT_ONLY_EXTENSION_MESSAGE]);
 });
