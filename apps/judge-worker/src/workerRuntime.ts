@@ -114,16 +114,8 @@ function resolveDockerRunImage(args: readonly string[]): string {
   throw new Error('Docker image is required for worker execution');
 }
 
-async function executeDockerCommand(command: {
-  command: string;
-  args: readonly string[];
-  stdin: string;
-}): Promise<{ stdout: string; stderr: string; exitCode: number; timeMs: number; memoryKb?: number }> {
-  const image = resolveDockerRunImage(command.args);
-  const imageIndex = command.args.indexOf(image);
-  const prefixArgs = command.args.slice(0, imageIndex);
-  const startedAt = Date.now();
-  const wrappedCommand = [
+function buildDockerRunWrapperCommand(): string {
+  return [
     'cat >/tmp/main.py',
     'python /tmp/main.py',
     'exit_code=$?',
@@ -138,7 +130,19 @@ async function executeDockerCommand(command: {
     '  fi',
     'done',
     'exit "$exit_code"'
-  ].join('; ');
+  ].join('\n');
+}
+
+async function executeDockerCommand(command: {
+  command: string;
+  args: readonly string[];
+  stdin: string;
+}): Promise<{ stdout: string; stderr: string; exitCode: number; timeMs: number; memoryKb?: number }> {
+  const image = resolveDockerRunImage(command.args);
+  const imageIndex = command.args.indexOf(image);
+  const prefixArgs = command.args.slice(0, imageIndex);
+  const startedAt = Date.now();
+  const wrappedCommand = buildDockerRunWrapperCommand();
   return new Promise((resolve, reject) => {
     const child = spawn(
       command.command,
@@ -376,5 +380,6 @@ export function runWorkerProcess(): void {
 }
 
 export const __internal__ = {
-  resolveDockerRunImage
+  resolveDockerRunImage,
+  buildDockerRunWrapperCommand
 };

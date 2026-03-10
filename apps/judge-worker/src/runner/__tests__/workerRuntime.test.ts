@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import Module from 'node:module';
@@ -183,6 +184,18 @@ test('worker runtime resolves docker image after flags that include colon-valued
     ]),
     'python:3.12-alpine'
   );
+});
+
+test('worker runtime builds a shell-valid docker wrapper command for sandbox execution', () => {
+  const { __internal__ } = loadWorkerRuntime();
+  const wrappedCommand = __internal__.buildDockerRunWrapperCommand();
+
+  execFileSync('sh', ['-n', '-c', wrappedCommand], {
+    stdio: ['ignore', 'ignore', 'pipe']
+  });
+
+  assert.match(wrappedCommand, /\/sys\/fs\/cgroup\/memory\.peak/);
+  assert.doesNotMatch(wrappedCommand, /case "\$value" in;$/m);
 });
 
 test('worker tick uses problem tests and records AC for a correct submission', async () => {
