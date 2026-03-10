@@ -35,6 +35,8 @@ type ProblemManifestAssetRow = {
     input: unknown;
     output?: unknown;
     expected?: unknown;
+    inputJson?: unknown;
+    expectedJson?: unknown;
   }> | null;
   starter_code: string;
 };
@@ -139,6 +141,31 @@ function parsePublicationState(value: string): PublicationState {
     return PublicationState.UNPUBLISHED;
   }
   throw new Error(`Unsupported publication state: ${value}`);
+}
+
+function parseStoredCaseValue(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function toStudentVisibleCase(example: {
+  input: unknown;
+  output?: unknown;
+  expected?: unknown;
+  inputJson?: unknown;
+  expectedJson?: unknown;
+}): { input: unknown; output: unknown } {
+  return {
+    input: parseStoredCaseValue(example.input ?? example.inputJson),
+    output: parseStoredCaseValue(example.output ?? example.expected ?? example.expectedJson)
+  };
 }
 
 function toProblemVersion(row: {
@@ -278,10 +305,7 @@ export class PostgresProblemRepository
       timeLimitMs: rows[0].time_limit_ms,
       memoryLimitKb: rows[0].memory_limit_kb,
       starterCode: rows[0].starter_code,
-      examples: (rows[0].examples ?? []).map((example) => ({
-        input: example.input,
-        output: example.output ?? example.expected
-      })),
+      examples: (rows[0].examples ?? []).map(toStudentVisibleCase),
       publicTests: publicTestRows.map((row) => ({
         input: row.input,
         output: row.expected

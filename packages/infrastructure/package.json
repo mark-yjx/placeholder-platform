@@ -9,8 +9,8 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "node -e \"console.log('lint @packages/infrastructure')\"",
-    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/postgres/submission/__tests__/*.test.js .tmp-test/postgres/results/__tests__/*.test.js",
-    "build": "node -e \"console.log('build @packages/infrastructure')\""
+    "lint": "node -e \"console.log('lint @placeholder/infrastructure')\"",
+    "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/postgres/submission/__tests__/*.test.js .tmp-test/postgres/results/__tests__/*.test.js .tmp-test/postgres/problem/__tests__/*.test.js",
+    "build": "node -e \"console.log('build @placeholder/infrastructure')\""
   }
 }
