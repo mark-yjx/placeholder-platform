@@ -422,8 +422,9 @@ test('student browser auth pages render and complete sign-in/sign-up handoff flo
   });
   assert.equal(signInPage.statusCode, 200);
   assert.match(signInPage.headers['content-type'], /text\/html/);
-  assert.match(signInPage.body, /Welcome back/);
-  assert.match(signInPage.body, /Sign in to sync your account, fetch problems, and submit solutions\./);
+  assert.match(signInPage.body, /OJ Practice/);
+  assert.match(signInPage.body, /Sign in to continue solving problems in VS Code\./);
+  assert.match(signInPage.body, /Don't have an account\?/);
   assert.match(signInPage.body, /name="email"/);
   assert.match(signInPage.body, /name="password"/);
   assert.match(signInPage.body, /name="callbackUri"/);
@@ -434,8 +435,9 @@ test('student browser auth pages render and complete sign-in/sign-up handoff flo
     runtime
   });
   assert.equal(signUpPage.statusCode, 200);
-  assert.match(signUpPage.body, /Create your student account/);
-  assert.match(signUpPage.body, /Set up OJ Practice once, then return to VS Code and keep working from the same student account\./);
+  assert.match(signUpPage.body, /OJ Practice/);
+  assert.match(signUpPage.body, /Create your account to start solving problems\./);
+  assert.match(signUpPage.body, /Already have an account\?/);
   assert.match(signUpPage.body, /name="displayName"/);
   assert.match(signUpPage.body, /name="confirmPassword"/);
 
@@ -447,9 +449,10 @@ test('student browser auth pages render and complete sign-in/sign-up handoff flo
     runtime
   });
   assert.equal(signInSuccess.statusCode, 200);
-  assert.match(signInSuccess.body, /Return to VS Code/);
-  assert.match(signInSuccess.body, /We are sending you back to VS Code now\./);
-  assert.match(signInSuccess.body, /Return to VS Code<\/a>/);
+  assert.match(signInSuccess.body, /Success/);
+  assert.match(signInSuccess.body, /Your account is ready\./);
+  assert.match(signInSuccess.body, /Returning to VS Code\.\.\./);
+  assert.match(signInSuccess.body, /Open VS Code<\/a>/);
   assert.match(signInSuccess.body, /window\.location\.replace/);
   assert.match(signInSuccess.body, /SIGNIN1234/);
   assert.match(
@@ -466,9 +469,10 @@ test('student browser auth pages render and complete sign-in/sign-up handoff flo
     runtime
   });
   assert.equal(signUpSuccess.statusCode, 200);
-  assert.match(signUpSuccess.body, /Return to VS Code/);
-  assert.match(signUpSuccess.body, /Your student account is ready/);
-  assert.match(signUpSuccess.body, /Return to VS Code<\/a>/);
+  assert.match(signUpSuccess.body, /Success/);
+  assert.match(signUpSuccess.body, /Your account is ready\./);
+  assert.match(signUpSuccess.body, /Returning to VS Code\.\.\./);
+  assert.match(signUpSuccess.body, /Open VS Code<\/a>/);
   assert.match(signUpSuccess.body, /window\.location\.replace/);
   assert.match(signUpSuccess.body, /SIGNUP1234/);
   assert.match(

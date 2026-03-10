@@ -136,11 +136,11 @@ test('account panel renders browser auth actions when unauthenticated', () => {
   );
 
   assert.match(html, /OJ Practice/);
-  assert.match(html, /Sign in to sync your account, fetch problems, and submit solutions\./);
-  assert.match(html, /Get Started/);
-  assert.match(html, /Authentication opens in your browser and returns to VS Code automatically\./);
-  assert.match(html, /Need A Fallback\?/);
-  assert.match(html, /Enter browser code/);
+  assert.match(html, /Solve problems directly in VS Code\./);
+  assert.match(html, /Sign in to sync your account, fetch problems, and submit\./);
+  assert.match(html, /Auth opens in your browser and returns automatically\./);
+  assert.match(html, /Already have a browser code\?/);
+  assert.match(html, /Enter code/);
   assert.doesNotMatch(html, /Administrators must use Web Admin/);
   assert.match(html, /data-command="signIn"/);
   assert.match(html, /data-command="signUp"/);
@@ -157,7 +157,8 @@ test('account panel renders unauthenticated state when identity is incomplete', 
     })
   );
 
-  assert.match(html, /Sign in to sync your account, fetch problems, and submit solutions\./);
+  assert.match(html, /Solve problems directly in VS Code\./);
+  assert.match(html, /Sign in to sync your account, fetch problems, and submit\./);
   assert.match(html, /data-command="signIn"/);
 });
 
@@ -310,7 +311,7 @@ test('account panel clears incomplete session after browser auth', async () => {
     email: null,
     role: null
   });
-  assert.match(webview.html, /Sign in to sync your account, fetch problems, and submit solutions\./);
+  assert.match(webview.html, /Solve problems directly in VS Code\./);
   assert.deepEqual(errorMessages, [
     'Login failed because the account profile is incomplete. Try again or contact your instructor.'
   ]);
@@ -345,7 +346,7 @@ test('account panel rejects admin browser auth and clears any existing session',
     email: null,
     role: null
   });
-  assert.match(webview.html, /Sign in to sync your account, fetch problems, and submit solutions\./);
+  assert.match(webview.html, /Solve problems directly in VS Code\./);
   assert.match(webview.html, new RegExp(STUDENT_ONLY_EXTENSION_MESSAGE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.deepEqual(errorMessages, [STUDENT_ONLY_EXTENSION_MESSAGE]);
 });

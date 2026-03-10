@@ -26,7 +26,7 @@ export function createAccountViewModel(input: {
   if (!input.isAuthenticated || !email || !role) {
     return {
       title: 'OJ Practice',
-      status: 'Sign in to sync your account, fetch problems, and submit solutions.',
+      status: 'Solve problems directly in VS Code.',
       email: '',
       role: '',
       errorMessage: input.errorMessage ?? '',
@@ -54,45 +54,30 @@ export function createAccountHtml(input: AccountViewModel): string {
   const accountStyles = `
       .account-shell {
         width: min(100%, 580px);
-      }
-
-      .account-shell .hero-card {
-        overflow: hidden;
-      }
-
-      .account-shell .login-card {
         gap: 20px;
       }
 
       .account-shell .account-intro {
         display: grid;
         gap: 10px;
-        max-width: 42ch;
+        justify-items: center;
+        text-align: center;
       }
 
-      .account-shell .account-section {
+      .account-shell .account-intro .hero-title {
+        margin-top: 0;
+      }
+
+      .account-shell .auth-required-card {
         display: grid;
-        gap: 12px;
-        padding: 18px;
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        background:
-          linear-gradient(180deg, color-mix(in srgb, var(--surface) 84%, transparent), transparent 160%),
-          color-mix(in srgb, var(--surface-muted) 72%, var(--surface));
+        gap: 18px;
+        padding: 28px 24px;
       }
 
-      .account-shell .account-section-title {
+      .account-shell .account-card-copy {
         margin: 0;
-        font-size: 0.84rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--text-secondary);
-      }
-
-      .account-shell .account-section-copy {
-        margin: 0;
-        color: var(--text-secondary);
+        color: var(--text-primary);
+        font-size: 1rem;
         line-height: 1.6;
       }
 
@@ -103,48 +88,38 @@ export function createAccountHtml(input: AccountViewModel): string {
       }
 
       .account-shell .account-actions vscode-button::part(control),
-      .account-shell .account-secondary-actions vscode-button::part(control) {
+      .account-shell .account-fallback vscode-button::part(control) {
         justify-content: center;
         min-height: 42px;
       }
 
-      .account-shell .account-secondary-actions {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 10px;
+      .account-shell .account-helper {
+        margin: 0;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        max-width: 34ch;
       }
 
-      .account-shell .auth-helper {
-        display: grid;
-        gap: 12px;
-      }
-
-      .account-shell .auth-helper-actions {
+      .account-shell .account-fallback {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        align-items: center;
+        gap: 10px 12px;
+        padding-top: 2px;
       }
 
-      .account-shell .auth-helper-actions vscode-button {
+      .account-shell .account-fallback-copy {
+        margin: 0;
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+
+      .account-shell .account-fallback vscode-button {
         width: fit-content;
       }
 
-      .account-shell .auth-helper-note {
-        color: var(--text-secondary);
-        line-height: 1.6;
-      }
-
-      .account-shell .account-note {
-        padding: 14px 16px;
-        border-radius: 16px;
-        border: 1px dashed var(--border);
-        background: color-mix(in srgb, var(--surface) 78%, transparent);
-        color: var(--text-secondary);
-        line-height: 1.6;
-      }
-
-      .account-shell .account-note strong {
-        color: var(--vscode-foreground);
+      .account-shell .alert-card {
+        width: 100%;
       }
 
       .account-shell .account-signed-in {
@@ -166,31 +141,22 @@ ${sharedHead}
   </head>
   <body>
     <main class="webview-shell account-shell">
-      <section class="hero-card login-card">
-        <div class="account-intro">
-          <p class="eyebrow">Student Practice</p>
-          <h2 class="hero-title">${title}</h2>
-          <p class="hero-copy">${status}</p>
+      <div class="account-intro">
+        <h2 class="hero-title">${title}</h2>
+        <p class="hero-copy">${status}</p>
+      </div>
+      ${errorMessage ? `<div class="alert-card error-text">${errorMessage}</div>` : ''}
+      <section class="hero-card auth-required-card">
+        <p class="account-card-copy">Sign in to sync your account, fetch problems, and submit.</p>
+        <div class="account-actions">
+          <vscode-button appearance="primary" data-command="signIn">Sign in</vscode-button>
+          <vscode-button appearance="secondary" data-command="signUp">Sign up</vscode-button>
         </div>
-        ${errorMessage ? `<div class="alert-card error-text">${errorMessage}</div>` : ''}
-        <section class="account-section">
-          <p class="account-section-title">Get Started</p>
-          <p class="account-section-copy">Authentication opens in your browser and returns to VS Code automatically.</p>
-          <div class="account-actions">
-            <vscode-button appearance="primary" data-command="signIn">Sign in</vscode-button>
-            <vscode-button data-command="signUp">Sign up</vscode-button>
-          </div>
-        </section>
-        <section class="account-section">
-          <p class="account-section-title">Need A Fallback?</p>
-          <div class="auth-helper">
-            <p class="account-section-copy">If VS Code does not reopen after browser auth, you can still finish with the one-time code shown in the browser.</p>
-            <div class="auth-helper-actions">
-              <vscode-button data-command="enterCode">Enter browser code</vscode-button>
-            </div>
-          </div>
-        </section>
-        <p class="account-note"><strong>Note:</strong> Sign in and Sign up always happen in your browser. VS Code is just where you continue practicing once your student session is ready.</p>
+        <p class="account-helper">Auth opens in your browser and returns automatically.</p>
+        <div class="account-fallback">
+          <p class="account-fallback-copy">Already have a browser code?</p>
+          <vscode-button appearance="secondary" data-command="enterCode">Enter code</vscode-button>
+        </div>
       </section>
     </main>
     <script>

@@ -23,7 +23,6 @@ function renderLayout(input: { title: string; body: string }): string {
         --bg: #f5f1ea;
         --bg-glow: rgba(223, 212, 196, 0.45);
         --panel: rgba(255, 252, 247, 0.94);
-        --panel-soft: rgba(248, 242, 234, 0.88);
         --text: #201b17;
         --muted: #6c655e;
         --border: rgba(122, 111, 98, 0.18);
@@ -34,7 +33,6 @@ function renderLayout(input: { title: string; body: string }): string {
         --error-text: #9d3326;
         --shadow: 0 20px 48px rgba(39, 31, 25, 0.08);
         --radius-xl: 28px;
-        --radius-lg: 20px;
         --radius: 16px;
         --space-1: 8px;
         --space-2: 12px;
@@ -56,45 +54,54 @@ function renderLayout(input: { title: string; body: string }): string {
         color: var(--text);
         display: grid;
         place-items: center;
-        padding: var(--space-4);
+        padding: var(--space-5) var(--space-4);
       }
       main {
-        width: min(100%, 540px);
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-xl);
-        padding: var(--space-5);
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(14px);
-      }
-      .eyebrow {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.78rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        width: min(100%, 520px);
       }
       h1 {
-        font-size: clamp(2rem, 5vw, 2.4rem);
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 2.5rem);
         line-height: 1.05;
         letter-spacing: -0.04em;
-        margin: var(--space-1) 0 0;
       }
       p {
         margin: 0;
         line-height: 1.6;
       }
+      a {
+        color: inherit;
+      }
       .muted {
         color: var(--muted);
       }
-      .stack {
+      .page-shell {
         display: grid;
-        gap: var(--space-4);
+        gap: var(--space-5);
       }
       .intro {
         display: grid;
         gap: var(--space-2);
+        justify-items: center;
+        text-align: center;
+      }
+      .support-copy {
+        max-width: 28ch;
+      }
+      .card {
+        display: grid;
+        gap: 20px;
+        padding: 28px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0)),
+          var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(14px);
+      }
+      .form-card {
+        gap: var(--space-4);
       }
       .error {
         background: var(--error-bg);
@@ -103,27 +110,9 @@ function renderLayout(input: { title: string; body: string }): string {
         border-radius: var(--radius);
         padding: 14px 16px;
       }
-      .section {
-        display: grid;
-        gap: var(--space-3);
-        padding: 20px;
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0)),
-          var(--panel-soft);
-      }
-      .section-title {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.82rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
       form {
         display: grid;
-        gap: var(--space-3);
+        gap: 18px;
       }
       label {
         display: grid;
@@ -144,7 +133,8 @@ function renderLayout(input: { title: string; body: string }): string {
         outline: 3px solid var(--accent-soft);
         border-color: var(--accent);
       }
-      button, .button-link {
+      button,
+      .button-link {
         appearance: none;
         border: none;
         border-radius: var(--radius);
@@ -157,14 +147,66 @@ function renderLayout(input: { title: string; body: string }): string {
         text-decoration: none;
         text-align: center;
         display: inline-block;
+        width: 100%;
       }
-      button:hover, .button-link:hover {
+      button:hover,
+      .button-link:hover {
         background: var(--accent-strong);
       }
-      .button-link.secondary {
-        background: transparent;
-        border: 1px solid var(--border);
+      .actions {
+        display: grid;
+        gap: var(--space-2);
+      }
+      .secondary-nav {
+        display: grid;
+        gap: 6px;
+      }
+      .secondary-nav p {
+        color: var(--muted);
+      }
+      .secondary-nav a {
+        color: var(--accent-strong);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .secondary-nav a:hover {
+        text-decoration: underline;
+      }
+      .success-mark {
+        width: 54px;
+        height: 54px;
+        border-radius: 999px;
+        display: inline-grid;
+        place-items: center;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        font-size: 1.45rem;
+        font-weight: 700;
+      }
+      .success-card {
+        justify-items: center;
+        text-align: center;
+      }
+      .card-copy {
         color: var(--text);
+        font-size: 1rem;
+      }
+      .helper-copy {
+        color: var(--muted);
+        max-width: 34ch;
+      }
+      .success-card .actions {
+        width: min(100%, 240px);
+      }
+      .fallback-block {
+        display: grid;
+        gap: 12px;
+        width: 100%;
+        padding-top: 4px;
+      }
+      .fallback-label {
+        color: var(--muted);
+        font-size: 0.95rem;
       }
       .code-block {
         font-family: ui-monospace, SFMono-Regular, monospace;
@@ -181,6 +223,7 @@ function renderLayout(input: { title: string; body: string }): string {
       .footer-link {
         font-size: 0.95rem;
         text-align: center;
+        color: var(--muted);
       }
       .footer-link a {
         color: var(--accent-strong);
@@ -189,18 +232,11 @@ function renderLayout(input: { title: string; body: string }): string {
       .footer-link a:hover {
         text-decoration: underline;
       }
-      .actions {
-        display: grid;
-        gap: var(--space-2);
-      }
-      .support-copy {
-        max-width: 42ch;
-      }
     </style>
   </head>
   <body>
     <main>
-      <div class="stack">${input.body}</div>
+      <div class="page-shell">${input.body}</div>
     </main>
   </body>
 </html>`;
@@ -216,15 +252,15 @@ export function renderStudentAuthForm(input: {
   callbackUri?: string | null;
   state?: string | null;
 }): string {
-  const title = input.mode === 'sign-in' ? 'Welcome back' : 'Create your student account';
   const pageTitle = input.mode === 'sign-in' ? 'OJ Practice Sign In' : 'OJ Practice Sign Up';
   const action = input.mode === 'sign-in' ? '/auth/sign-in' : '/auth/sign-up';
   const secondaryHref = input.mode === 'sign-in' ? '/auth/sign-up' : '/auth/sign-in';
-  const secondaryLabel = input.mode === 'sign-in' ? 'Need an account? Sign up' : 'Already have an account? Sign in';
+  const secondaryLabel = input.mode === 'sign-in' ? 'Sign up' : 'Sign in';
+  const secondaryPrompt = input.mode === 'sign-in' ? "Don't have an account?" : 'Already have an account?';
   const supportCopy =
     input.mode === 'sign-in'
-      ? 'Sign in to sync your account, fetch problems, and submit solutions.'
-      : 'Set up OJ Practice once, then return to VS Code and keep working from the same student account.';
+      ? 'Sign in to continue solving problems in VS Code.'
+      : 'Create your account to start solving problems.';
   const errorMessage = input.errorMessage ? `<div class="error">${escapeHtml(input.errorMessage)}</div>` : '';
   const email = escapeHtml(input.values?.email ?? '');
   const displayName = escapeHtml(input.values?.displayName ?? '');
@@ -242,13 +278,11 @@ export function renderStudentAuthForm(input: {
     title: pageTitle,
     body: `
       <div class="intro">
-        <p class="eyebrow">OJ Practice</p>
-        <h1>${escapeHtml(title)}</h1>
+        <h1>OJ Practice</h1>
         <p class="muted support-copy">${escapeHtml(supportCopy)}</p>
       </div>
-      ${errorMessage}
-      <section class="section">
-        <p class="section-title">${input.mode === 'sign-in' ? 'Student Sign In' : 'Student Sign Up'}</p>
+      <section class="card form-card">
+        ${errorMessage}
         <form method="post" action="${action}">
           ${callbackFields}
           <label>
@@ -275,12 +309,11 @@ export function renderStudentAuthForm(input: {
             : ''}
           <button type="submit">${input.mode === 'sign-in' ? 'Sign in' : 'Create account'}</button>
         </form>
+        <div class="secondary-nav">
+          <p>${secondaryPrompt}</p>
+          <p><a href="${secondaryHref}">${secondaryLabel}</a></p>
+        </div>
       </section>
-      <section class="section">
-        <p class="section-title">Continue In VS Code</p>
-        <p class="muted">Authentication opens in your browser and returns to VS Code automatically when it is ready.</p>
-      </section>
-      <p class="footer-link"><a href="${secondaryHref}">${secondaryLabel}</a></p>
     `
   });
 }
@@ -291,28 +324,27 @@ export function renderStudentAuthSuccess(input: {
   code: string;
   expiresAt: string;
 }): string {
-  const title = input.mode === 'sign-in' ? 'Return to VS Code' : 'Return to VS Code';
-
   return renderLayout({
-    title,
+    title: 'Success',
     body: `
       <div class="intro">
-        <p class="eyebrow">OJ Practice</p>
-        <h1>${escapeHtml(title)}</h1>
-        <p class="muted support-copy">
-          ${input.mode === 'sign-in' ? 'You are signed in' : 'Your student account is ready'} for
-          <strong>${escapeHtml(input.email)}</strong>. Head back to VS Code and enter this one-time code to finish.
-        </p>
+        <div class="success-mark" aria-hidden="true">✓</div>
+        <h1>Success</h1>
+        <p class="muted support-copy">Your account is ready.</p>
       </div>
-      <section class="section">
-        <p class="section-title">Browser Code</p>
-        <p class="muted">
-          This fallback code expires at
-          ${escapeHtml(new Date(input.expiresAt).toLocaleString('en-AU', { hour12: false, timeZone: 'UTC' }))} UTC.
+      <section class="card success-card">
+        <p class="card-copy">Return to VS Code to finish signing in.</p>
+        <div class="fallback-block">
+          <p class="fallback-label">
+            If you need the manual fallback, enter this one-time code in VS Code before
+            ${escapeHtml(new Date(input.expiresAt).toLocaleString('en-AU', { hour12: false, timeZone: 'UTC' }))} UTC.
+          </p>
+          <div class="code-block">${escapeHtml(input.code)}</div>
+        </div>
+        <p class="footer-link">
+          <a href="${input.mode === 'sign-in' ? '/auth/sign-in' : '/auth/sign-up'}">Start again</a>
         </p>
-        <div class="code-block">${escapeHtml(input.code)}</div>
       </section>
-      <p class="footer-link"><a href="${input.mode === 'sign-in' ? '/auth/sign-in' : '/auth/sign-up'}">Start again</a></p>
     `
   });
 }
@@ -369,7 +401,6 @@ export function renderStudentAuthCallbackRedirect(input: {
   callbackUri: string;
   state: string;
 }): string {
-  const title = 'Return to VS Code';
   const completionUri = createStudentAuthCompletionUri({
     callbackUri: input.callbackUri,
     state: input.state,
@@ -379,37 +410,33 @@ export function renderStudentAuthCallbackRedirect(input: {
   const autoOpenScript = JSON.stringify(completionUri);
 
   return renderLayout({
-    title,
+    title: 'Success',
     body: `
       <div class="intro">
-        <p class="eyebrow">OJ Practice</p>
-        <h1>${escapeHtml(title)}</h1>
-        <p class="muted support-copy">
-          ${input.mode === 'sign-in' ? 'You are signed in' : 'Your student account is ready'} for
-          <strong>${escapeHtml(input.email)}</strong>. We are sending you back to VS Code now.
-        </p>
+        <div class="success-mark" aria-hidden="true">✓</div>
+        <h1>Success</h1>
+        <p class="muted support-copy">Your account is ready.</p>
       </div>
-      <section class="section">
-        <p class="section-title">Continue</p>
-        <p class="muted">If VS Code does not open automatically, use the button below to return. The browser code stays available as a backup.</p>
+      <section class="card success-card">
+        <p class="card-copy">Returning to VS Code...</p>
+        <p class="helper-copy">If nothing happens, use the button below.</p>
         <div class="actions">
-          <a class="button-link" href="${escapedCompletionUri}">Return to VS Code</a>
+          <a class="button-link" href="${escapedCompletionUri}">Open VS Code</a>
+        </div>
+        <div class="fallback-block">
+          <p class="fallback-label">
+            If you need the manual fallback, this code works until
+            ${escapeHtml(new Date(input.expiresAt).toLocaleString('en-AU', { hour12: false, timeZone: 'UTC' }))} UTC.
+          </p>
+          <div class="code-block">${escapeHtml(input.code)}</div>
         </div>
       </section>
-      <section class="section">
-        <p class="section-title">Fallback Code</p>
-        <p class="muted">
-          Use this only if VS Code stays in the background. It expires at
-          ${escapeHtml(new Date(input.expiresAt).toLocaleString('en-AU', { hour12: false, timeZone: 'UTC' }))} UTC.
-        </p>
-        <div class="code-block">${escapeHtml(input.code)}</div>
-      </section>
+      <noscript>
+        <p class="footer-link">JavaScript is disabled. Use the Open VS Code button above, or enter the browser code manually in VS Code.</p>
+      </noscript>
       <script>
         window.location.replace(${autoOpenScript});
       </script>
-      <noscript>
-        <p class="muted">JavaScript is disabled. Use the Return to VS Code button above, or enter the fallback code manually in VS Code.</p>
-      </noscript>
     `
   });
 }
