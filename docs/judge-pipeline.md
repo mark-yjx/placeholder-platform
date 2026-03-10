@@ -1,122 +1,101 @@
 # Judge Pipeline
 
-The judge pipeline turns a submitted solution into a persisted result that the extension can display.
+## Purpose
+
+The judge pipeline turns a submitted Python solution into durable result data that the
+student extension and admin system can display.
+
+## Actors
+
+- `apps/vscode-extension`: submits student code and polls for results
+- `apps/api`: validates requests, stores submissions, and enqueues judge jobs
+- Postgres: stores submissions, jobs, imported problem versions, and judge results
+- `apps/judge-worker`: claims jobs, executes submissions, and persists outcomes
+- Docker sandbox: isolates the actual Python execution
 
 ## Submission Lifecycle
 
-The submission lifecycle is:
+The lifecycle is:
 
-`queued -> running -> finished | failed`
+```text
+queued -> running -> finished | failed
+```
 
 ### `queued`
 
-The API has accepted the submission, stored it in Postgres, and inserted a judge job.
+The student API accepted the submission, stored it, and inserted a judge job.
 
 ### `running`
 
-The judge worker has claimed the job and started processing it.
+The worker claimed the job and started the judge path for the imported problem version.
 
 ### `finished`
 
-The worker completed judging and persisted a verdict with any runtime metrics that were actually available for that judged run.
+The run reached a normal judge outcome. A verdict may be accompanied by measured runtime metrics.
 
 ### `failed`
 
-The submission could not complete the normal judge path because of a non-verdict processing failure, such as missing judge configuration or another worker-side failure.
+The pipeline could not complete the normal judge path because of a non-verdict problem such as
+missing judge configuration or another worker/runtime failure.
 
 ## Verdicts
 
-### `AC`
+Normal judged outcomes use the standard verdict set:
 
-Accepted. All tests matched the expected outputs.
+- `AC`
+- `WA`
+- `CE`
+- `RE`
+- `TLE`
 
-### `WA`
-
-Wrong Answer. The program ran, but at least one test output did not match the expected result.
-
-### `CE`
-
-Compile Error. The judged Python payload could not be prepared into runnable judged code.
-
-### `RE`
-
-Runtime Error. The program started but crashed during execution.
-
-### `TLE`
-
-Time Limit Exceeded. The execution exceeded the configured time budget.
-
-## Hidden Tests
-
-Each imported problem version stores:
-
-- `public.json` for visible example-style tests
-- `hidden.json` for judge-only validation
-
-Hidden tests are part of the real judge path:
-
-- they are imported into Postgres with the problem version
-- they are executed by the worker during judging
-- they affect the final verdict
-- they are not returned to student-facing problem APIs
-- they are not shown in the extension UI
-
-This means a submission can satisfy visible examples and still receive `WA` on hidden coverage.
-
-## Runtime Metrics
-
-The judge pipeline tracks two runtime metrics for normal judged outcomes:
-
-- `time`
-- `memory`
-
-`time` is the execution time recorded for the judged run.
-
-`memory` is the memory usage recorded for the judged run when the sandbox can measure it.
-
-These metrics are not placeholders. They only represent measured runtime data when the runtime actually produced that data.
-
-If a metric is unavailable, the system keeps it unavailable instead of converting it to `0`. That distinction matters:
-
-- `0` means the metric value is explicitly zero
-- unavailable means the metric was not measured or could not be reported
-
-Student-facing and extension-facing displays should therefore show unavailable metrics as unavailable, not as `0`.
+`finished` means the pipeline produced a judged result. `failed` means the pipeline itself broke
+before it could produce a normal verdict.
 
 ## Execution Flow
 
-1. The extension sends a submission to the API.
-2. The API stores the submission as `queued`.
-3. The API inserts a judge job into Postgres.
-4. The worker claims the job and marks the submission `running`.
-5. The worker loads the problem version, entry function, and public/hidden tests.
-6. The worker prepares judged Python code for the configured entry function.
-7. The worker runs that code inside a sandbox.
-8. The worker persists the verdict, time, and memory for normal judged outcomes when those metrics are available.
-9. The worker persists `failed` plus a failure reason for non-verdict failures.
-10. The extension polls the API and renders the result.
+1. The student API stores the submission as `queued`.
+2. The API inserts a row in `judge_jobs`.
+3. The worker claims the job and marks the submission `running`.
+4. The worker loads the imported problem version, including `entryFunction`,
+   examples, public tests, hidden tests, and limits.
+5. The worker builds the judged Python payload.
+6. The worker executes the payload inside Docker.
+7. The worker records a verdict and any measured runtime metrics, or marks the submission `failed`.
+8. The student API serves the stored result to the extension.
 
-## Sandbox Execution
+## Public Vs Hidden Tests
 
-The worker runs student code in a Docker-backed sandbox. The sandbox exists to provide:
+Imported problem versions split tests into two visibility levels:
 
-- isolated execution
-- controlled runtime behavior
-- resource limits
-- a real backend judge path instead of a client-only simulation
+- `publicTests`: student-visible and eligible for local extension execution
+- `hidden.json` data: judge-only and never exposed through student-facing payloads
 
-The worker uses the problem manifest’s configured `entryFunction` and the imported tests for the specific problem version being judged.
+Hidden tests are part of the real backend judge contract. They may change the final verdict even
+when a submission passes all visible cases.
 
-## Persistence Model
+## Runtime Metrics
+
+The judge path may persist two measured metrics:
+
+- `timeMs`
+- `memoryKb`
+
+These metrics remain optional:
+
+- when measured, they are returned as values
+- when unavailable, they stay unavailable
+- unavailable metrics are not rewritten to `0`
+
+See [runtime-metrics.md](./runtime-metrics.md) for measurement details and UI expectations.
+
+## Persistence Rules
 
 Postgres stores:
 
-- submission rows and lifecycle state
-- queue rows for pending judge work
-- imported public and hidden tests
+- submission lifecycle state
+- judge jobs
+- imported problem versions and tests
 - terminal judge results
-- failure reasons when the submission ends in `failed`
+- failure information for `failed` submissions
 
-Persisted judge results keep the distinction between measured metrics and unavailable metrics. An unavailable memory reading is not stored or documented as `0`.
-
-That persisted state is what allows the extension to restore and poll recent results across reloads.
+The stored result becomes the source of truth for both the student extension and admin-facing views.

@@ -1,283 +1,106 @@
 # Architecture
 
-This repository is a monorepo for a local-first Online Judge. The student-facing workflow uses a VS Code extension and a Node/TypeScript API. The admin-facing workflow uses a browser-based Admin Web and a FastAPI `admin-api`. Both stacks share the same Postgres database, and the existing judge worker remains part of the student execution path.
-
 ## System Overview
 
-```text
-Student Side                         Admin Side
+The platform has two user-facing entry points and one shared execution backend:
 
-VS Code Extension                    Admin Web
-       |                                    |
-       v                                    v
-Node/TypeScript API                  FastAPI admin-api
-       |                                    |
-       v                                    v
-                  Postgres
-                      ^
-                      |
-                 Judge Worker
-                      |
-                      | docker run
-                      v
-           Sandboxed Python Execution
+- `apps/vscode-extension` is the student client.
+- `apps/admin-web` is the admin frontend.
+- `apps/api` is the student-facing API.
+- `apps/admin-api` is the admin-only API.
+- `apps/judge-worker` executes student submissions against imported tests.
+- Postgres is the shared durable store for problems, submissions, results, and users.
+
+```text
+Student path
+  VS Code extension
+    -> student API
+    -> Postgres
+    -> judge worker
+    -> Docker sandbox
+
+Admin path
+  Admin Web
+    -> admin-api
+    -> Postgres
 ```
 
-Boundary policy:
+## Application Surfaces
 
-- the VS Code extension is student-only
-- administrators must use Admin Web instead of the extension
-- the extension should eventually reject admin-role logins at the client boundary
+| Component | Path | Audience | Responsibility |
+| --- | --- | --- | --- |
+| VS Code extension | `apps/vscode-extension` | Students | Problem discovery, local coding workflow, public-test execution, submission, result review |
+| Student API | `apps/api` | Students | Published problems, submissions, result polling, student auth/session boundaries |
+| Judge worker | `apps/judge-worker` | Internal | Job claiming, sandbox execution, verdict production, runtime metrics capture |
+| Admin Web | `apps/admin-web` | Admins | Operational UI for problems, tests, submissions, analytics, and user management |
+| Admin API | `apps/admin-api` | Admins | Admin auth, admin-only CRUD and inspection APIs |
 
-## Extension
+## Shared Layers
 
-Location: `apps/vscode-extension`
+The apps layer sits on shared packages:
 
-Responsibilities:
+- `packages/domain`: domain entities, verdicts, status rules, and invariants
+- `packages/application`: use-case orchestration and application services
+- `packages/infrastructure`: Postgres repositories and runtime adapters
+- `tools/scripts`: local stack helpers, import tooling, and smoke verification
 
-- launch browser-based student sign up and sign in flows against the API
-- store the access token in VS Code `SecretStorage`
-- render the student workflow inside VS Code
-- render the signed-in student stats surface, including badges and leaderboard context
-- fetch published problems and problem detail
-- materialize starter-backed coding files under `.oj/problems/`
-- own future local public-test execution when that student-side workflow is implemented
-- submit Python source through the API
-- poll and render the student's own submission results in panel views
+## Product Boundaries
 
-Current UI surfaces:
+The platform deliberately separates student and admin behavior:
 
-- status bar account icon
-- account webview window
-- `Problems` sidebar tree
-- `Problem Detail` webview
-- `Submissions` panel tree
-- `Submission Detail` webview
+- The extension is the student surface only. It does not expose hidden tests or admin workflows.
+- Admin workflows belong in Admin Web and `admin-api`.
+- The student API owns student-facing submission intake and student-facing reads.
+- `admin-api` owns admin-only operations and admin authentication.
+- The judge worker is the only component that executes student code.
+- Postgres is the source of truth for imported problem versions, submissions, jobs, and judge results.
 
-The extension is a student client, not an admin console and not a judge. It does not execute hidden tests locally.
+## Submission Lifecycle
 
-Planned student auth direction:
+The end-to-end student submission flow is:
 
-- the extension exposes student `Sign in` and `Sign up` launch actions
-- those actions open the system browser
-- the extension supplies a callback URI and state for the auth attempt
-- registration and login happen on browser pages backed by the Node/TypeScript API
-- after successful auth, the student-facing API redirects back to the extension callback URI
-- the extension validates callback state and completes a final exchange for the real student session
-- editor-embedded student login is deprecated
-- manual code entry remains only as fallback if callback completion fails
+1. The extension submits Python source to `apps/api`.
+2. The API validates the request and stores the submission as `queued`.
+3. The API inserts a judge job in Postgres.
+4. The worker claims the job and marks the submission `running`.
+5. The worker loads the imported problem version, including limits, `entryFunction`,
+   examples, public tests, and hidden tests.
+6. The worker runs the judged code inside Docker.
+7. The worker persists a terminal status of `finished` or `failed`.
+8. If the run reached the judge contract, the worker also persists a verdict
+   such as `AC`, `WA`, `CE`, `RE`, or `TLE`.
+9. The API serves the result back to the extension.
 
-## Student API Server
+See [judge-pipeline.md](./judge-pipeline.md) for lifecycle and verdict details.
 
-Location: `apps/api`
+## Problem Content Lifecycle
 
-Responsibilities:
+Problem content is authored in the repository under `problems/<problemId>/` and imported into
+runtime storage:
 
-- expose health and readiness routes
-- handle student browser-based sign up, sign in, callback-aware auth initiation, and token-based access
-- serve published problem lists and problem detail
-- derive and serve student stats and leaderboard views from local platform data
-- accept student submissions
-- persist submissions in `queued` state
-- enqueue judge work
-- serve student submission history and submission detail
+1. A problem folder provides `manifest.json`, `statement.md`, `starter.py`, and `hidden.json`.
+2. `tools/scripts/import-problems.mjs` validates the manifest and loads the authored assets.
+3. The importer writes the canonical problem version into Postgres.
+4. The student API serves only student-visible fields.
+5. The worker uses the same imported problem version during judging.
 
-The API is the only write entry point used by the extension for student submissions and student-facing reads.
-It remains the backend for student authentication in the Student Auth MVP.
-It also owns redirecting successful student auth back to the extension callback URI and performing the final short-lived auth-code exchange into the real student session.
+See [problem-format.md](./problem-format.md) for the authored file contract.
 
-## Admin Web
+## Authentication Boundaries
 
-Location: `apps/admin-web`
+- Student authentication belongs to the student API and the extension account flow.
+- Admin authentication belongs to Admin Web and `admin-api`.
+- Hidden tests, admin-only submission inspection, and cross-user operations remain off the student path.
+- Admin access requires local admin authorization even when primary authentication uses an external provider.
 
-Responsibilities:
+## Runtime Metrics
 
-- provide a browser-based admin login flow
-- render admin operational pages separately from the student extension
-- consume the FastAPI `admin-api`
-- keep admin-only data such as hidden tests out of student-facing UI surfaces
-- own admin workflows that no longer belong in the VS Code extension
-- own admin-only user management pages
-- render a lightweight analytics overview for platform-level aggregates
+The platform tracks runtime metrics as optional measured values:
 
-Admin Web exists because problem editing, admin-only tests management, cross-user submission inspection, and future operator controls are different workflows from student practice.
+- `timeMs`
+- `memoryKb`
 
-## Admin API
+Unavailable metrics remain unavailable through persistence and UI rendering. They are not
+rewritten to `0`.
 
-Location: `apps/admin-api`
-
-Responsibilities:
-
-- authenticate admin sessions for Admin Web
-- serve admin-only problem management routes
-- serve admin-only tests management and submission inspection routes
-- serve admin-only user management routes
-- serve admin-only analytics overview aggregates
-- keep room for future 2FA-related admin controls without implementing them yet
-
-The admin API is a separate operational surface. It does not replace the student-facing Node/TypeScript API.
-
-## Domain Layer
-
-Location: `packages/domain`
-
-Responsibilities:
-
-- define submission lifecycle rules
-- define verdict and judge-related domain types
-- define identity, ranking, and policy primitives
-- protect invariants such as terminal-state immutability
-
-The domain layer is framework-agnostic. It does not depend on HTTP, VS Code, SQL, or Docker.
-
-## Application Layer
-
-Location: `packages/application`
-
-Responsibilities:
-
-- coordinate use cases across domain and infrastructure ports
-- implement submission creation and result-query workflows
-- orchestrate authentication and other application services
-- translate persisted data into API-facing or extension-facing views
-
-This is the workflow layer between pure domain logic and runtime adapters.
-
-## Persistence Layer
-
-Location: `packages/infrastructure`
-
-Responsibilities:
-
-- implement Postgres-backed repositories
-- persist platform users, submissions, judge jobs, judge results, and imported problems
-- enforce persistence-side contracts such as immutable terminal results
-- map nullable runtime metrics to optional application fields
-
-Postgres is the system of record for imported problems and judged outcomes.
-
-## Judge Worker
-
-Location: `apps/judge-worker`
-
-Responsibilities:
-
-- claim queued judge jobs from Postgres
-- transition submissions from `queued` to `running`
-- load problem version assets and tests
-- build runnable judged Python code using the configured `entryFunction`
-- run the code in a Docker sandbox
-- persist terminal result data and final submission state
-
-The worker is the only component that executes student code.
-
-The worker remains shared between the student-facing and admin-facing stacks.
-
-## Problem Importer
-
-Primary entrypoint: `tools/scripts/import-problems.mjs`
-
-Responsibilities:
-
-- read source-controlled problem folders from `problems/`
-- validate `manifest.json`
-- load `statement.md`, `starter.py`, and `hidden.json`, with public tests embedded in `manifest.json`
-- compute a stable content digest
-- insert or append Postgres problem versions and associated assets/tests
-
-The importer converts repository content into runtime data used by the API and worker.
-
-## Submission Flow End To End
-
-1. The student logs in from the extension account window.
-2. The extension fetches published problems from the API.
-3. The student selects a problem and opens `.oj/problems/<problemId>.py`.
-4. The extension submits source code to the API.
-5. The API validates the request and persists the submission as `queued`.
-6. The API inserts a corresponding row into `judge_jobs`.
-7. The extension starts polling submission result endpoints.
-8. The worker claims the job and transitions the submission to `running`.
-9. The worker loads the imported problem version, including `entryFunction`, limits, and public/hidden tests.
-10. The worker wraps the student submission into judged Python code.
-11. The worker executes the judged code inside a Docker sandbox.
-12. The worker persists a terminal submission state of `finished` or `failed`.
-13. If the submission is `finished`, the worker also persists a verdict such as `AC`, `WA`, `CE`, `RE`, or `TLE`.
-14. The API serves the result view back to the extension.
-15. The extension updates `Submissions` and `Submission Detail`.
-
-## Architectural Boundaries
-
-- The VS Code extension owns student workflow and presentation only.
-- Administrators must use Admin Web instead of the extension.
-- The extension should eventually reject admin-role logins so the client boundary matches the product boundary.
-- Student auth belongs to the Node/TypeScript API plus browser pages, not to `admin-api`.
-- Admin auth belongs to Admin Web plus `admin-api`, not to the extension.
-- Admin Web owns admin workflow and presentation.
-- The student-facing Node/TypeScript API owns student authentication, validation, published-problem access, and durable submission intake.
-- The FastAPI `admin-api` owns admin-only operational routes, including hidden test access and cross-user inspection.
-- The worker owns execution and verdict production.
-- Postgres owns durable state.
-- The importer owns the bridge from repository-authored problem files to runtime problem versions.
-
-That separation matters because student UX, admin UX, judge behavior, storage, and content authoring can evolve independently without redesigning the whole pipeline.
-
-## Platform User Management
-
-The shared `users` table is now the platform user store for both student and admin accounts.
-
-Minimum persisted user fields:
-
-- `id`
-- `email`
-- `display_name`
-- `role`
-- `status`
-- `password_hash`
-- `created_at`
-- `updated_at`
-- `last_login_at`
-
-Role values:
-
-- `student`
-- `admin`
-
-Status values:
-
-- `active`
-- `disabled`
-
-Admin Web and `admin-api` own user-management operations. The student-facing VS Code extension does not expose admin user-management workflows.
-
-## Admin Identity Hardening
-
-The admin stack now uses:
-
-- local email/password as a platform-owned login path
-- Microsoft OIDC as an SSO login path
-- local resolution to the shared platform user model
-- local enforcement of admin `role` and `status`
-- TOTP after successful local user verification or identity mapping
-
-The critical architectural boundary remains:
-
-- primary authentication answers either who verified with local credentials or who authenticated with Microsoft
-- local platform authorization answers whether that identity may enter Admin Web
-
-This means neither successful local password verification nor successful Microsoft login is enough by itself for admin access. `admin-api` must still resolve the login to a local user and confirm:
-
-- `role = admin`
-- `status = active`
-
-If the mapped admin has TOTP enabled, the session remains `pending_tfa` until a valid code upgrades it to `authenticated_admin`.
-
-This keeps Admin Web admission locally revocable and provider-agnostic while leaving room for later providers such as Google without redesigning the platform user model or removing the local login path.
-
-This implementation does not change:
-
-- the student-facing VS Code extension
-- the student-facing Node/TypeScript API
-- the judge worker
-- the submission lifecycle
-
-The extension remains student-only after admin auth hardening.
+See [runtime-metrics.md](./runtime-metrics.md) for the measurement and propagation rules.

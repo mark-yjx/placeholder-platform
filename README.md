@@ -1,97 +1,39 @@
-# Placeholder Practice
-
-Placeholder Practice is a local-first Online Judge built around a real VS Code workflow. Students log in from the extension, browse imported problems, open starter files in the workspace, submit Python code to the HTTP API, and receive judged results produced by a Postgres-backed worker and Docker sandbox.
+# Online Judge Platform
 
 ## Project Overview
 
-This repository contains the full local stack:
+This repository contains a local-first Online Judge with separate student and admin
+surfaces.
 
-- a VS Code extension client
-- an HTTP API server
-- a Postgres persistence layer
-- a judge worker
-- a Docker-based local environment
-- a manifest-driven problem import pipeline
+- Students use the VS Code extension to browse problems, open starter files,
+  run public tests locally, submit Python code, and inspect results.
+- Administrators use Admin Web and `admin-api` for problem management,
+  admin-only test data, submission oversight, analytics, and user management.
+- The judge worker executes student code in Docker and persists verdicts,
+  lifecycle state, and runtime metrics in Postgres.
 
-The system is not a fake extension-only simulator. Submissions move through a real backend lifecycle and are judged against imported public and hidden tests.
+The repository also includes the problem import pipeline, shared domain and
+application packages, and local development scripts for the full stack.
 
-## Key Features
-
-- Local-first end-to-end workflow with real API, database, and worker services
-- VS Code extension for login, problem browsing, coding, submission, and result review
-- Problem import pipeline based on source-controlled folders under `problems/`
-- Postgres persistence for problems, submissions, queue state, and judge results
-- Docker sandbox execution for student Python submissions
-- Runtime metrics support with explicit measured vs unavailable semantics
-- Hidden-test judging without exposing hidden cases to student-facing surfaces
-
-## UI Layout Overview
-
-Current extension UI architecture:
-
-- Account: status bar icon plus account/login webview window
-- Problems: sidebar tree
-- Problem Detail: editor/split-view webview
-- Submissions: bottom panel tree
-- Submission Detail: bottom panel detail webview
-
-Typical student flow:
-
-1. Click the account icon in the status bar.
-2. Log in from the account webview.
-3. Refresh the `Problems` sidebar.
-4. Select a problem to open `Problem Detail`.
-5. Open or create `.oj/problems/<problemId>.py`.
-6. Submit from the current file or from the problem detail view.
-7. Watch the submission transition through `queued -> running -> finished | failed`.
-8. Inspect verdict, time, memory, and failure details in the panel.
-
-## Architecture Diagram
+## Architecture Summary
 
 ```text
-                   +----------------------------------+
-                   |         VS Code Extension        |
-                   |----------------------------------|
-                   | Status Bar  | Sidebar  | Panel   |
-                   | Account     | Problems | Results |
-                   +-------------------+--------------+
-                                       |
-                                       | HTTP
-                                       v
-                   +----------------------------------+
-                   |            API Server            |
-                   |----------------------------------|
-                   | Auth | Problems | Submissions    |
-                   | Results | Admin | Import APIs    |
-                   +-------------------+--------------+
-                                       |
-                         reads/writes  |  enqueues
-                                       v
-                   +----------------------------------+
-                   |             Postgres             |
-                   |----------------------------------|
-                   | problems | versions | tests      |
-                   | submissions | judge_jobs         |
-                   | judge_results | users            |
-                   +-------------------+--------------+
-                                       ^
-                                       | claims jobs / saves results
-                                       |
-                   +----------------------------------+
-                   |           Judge Worker           |
-                   |----------------------------------|
-                   | load config | build judged code  |
-                   | run sandbox | persist verdicts   |
-                   +-------------------+--------------+
-                                       |
-                                       | docker run
-                                       v
-                   +----------------------------------+
-                   |        Docker Sandbox Run        |
-                   |----------------------------------|
-                   | Python process + cgroup metrics  |
-                   +----------------------------------+
+Student workflow:
+  apps/vscode-extension -> apps/api -> Postgres -> apps/judge-worker -> Docker
+
+Admin workflow:
+  apps/admin-web -> apps/admin-api -> Postgres
+
+Problem authoring:
+  problems/* -> tools/scripts/import-problems.mjs -> Postgres
 ```
+
+Key product boundaries:
+
+- `apps/vscode-extension` is student-only.
+- `apps/admin-web` and `apps/admin-api` are admin-only.
+- Hidden tests never leave the server-side judge path.
+- Runtime metrics keep the distinction between measured values and unavailable values.
 
 ## Quick Start
 
@@ -101,138 +43,43 @@ Install dependencies:
 npm install
 ```
 
-Start the local runtime:
+Start the local stack:
 
 ```bash
 npm run local:up
-```
-
-Apply migrations and seed baseline data:
-
-```bash
 npm run local:db:setup
-```
-
-Import source-controlled problems:
-
-```bash
 npm run import:problems -- --dir problems
 ```
 
-Verify the stack:
-
-```bash
-npm run local:ps
-docker compose -f deploy/local/docker-compose.yml ps
-curl http://localhost:3100/healthz
-curl http://localhost:3100/readyz
-```
-
-Package the extension:
+Package and install the extension:
 
 ```bash
 npm run extension:package
-```
-
-Install the packaged VSIX:
-
-```bash
 code --install-extension dist/placeholder-extension.vsix
 ```
 
-## Local Setup
+The student API runs on `http://localhost:3100` in the standard local setup.
 
-Recommended local settings in VS Code:
+For the full developer workflow, including Admin Web and `admin-api`, see
+[docs/local-development.md](./docs/local-development.md).
 
-```json
-{
-  "oj.apiBaseUrl": "http://localhost:3100",
-  "oj.requestTimeoutMs": 10000
-}
-```
-
-Useful local commands:
-
-```bash
-npm run typecheck
-npm run -ws --if-present test
-npm run -ws --if-present build
-npm run smoke:local
-```
-
-`npm run smoke:local` is the supported one-command local demo. It builds and exercises the extension HTTP client path, imports sample problems from `problems`, verifies the extension `entryFunction` submit contract, and covers the `queued -> running -> finished|failed` flow.
-
-For normal local verification:
-
-- the compose `api` service is the real API runtime on `http://localhost:3100`
-- the compose `worker` service is the only supported judge worker path
-- do not start an extra host-side `npm run api:start` or `npm run worker:start`
-
-## Extension Usage
-
-- Use the status bar account icon to open the account window and log in.
-- Use the `Problems` sidebar refresh action to fetch published problems.
-- Select a problem to populate `Problem Detail`.
-- Open the starter-backed coding file at `.oj/problems/<problemId>.py`.
-- Submit via `Submit`, `Placeholder Practice: Submit Code`, or `Placeholder Practice: Submit Current File`.
-- Use the `Submissions` panel and `Submission Detail` view to inspect current and previous results.
-
-See [docs/extension-usage.md](./docs/extension-usage.md) for the step-by-step workflow.
-
-## Runtime Metrics Note
-
-Runtime metrics are intentionally not flattened to zero.
-
-- `timeMs` and `memoryKb` may be unavailable
-- unavailable metrics must not be stored or displayed as `0`
-- the extension renders unavailable memory as `N/A`
-- hidden tests never expose hidden inputs or expected outputs in student-facing views
-
-Current local memory measurement attempts to read cgroup peak-memory data from the sandbox container, using the Docker/cgroup v2 path `/sys/fs/cgroup/memory.peak` when available.
-
-See [docs/runtime-metrics.md](./docs/runtime-metrics.md) for details.
-
-## Repository Structure
-
-```text
-apps/
-  api/                HTTP API runtime
-  judge-worker/       queue consumer and sandbox executor
-  vscode-extension/   VS Code extension client
-
-packages/
-  application/        use-case orchestration
-  config/             env/runtime validation inputs
-  contracts/          shared contract types
-  domain/             business rules and lifecycle models
-  infrastructure/     Postgres repositories and adapters
-
-deploy/
-  local/              docker-compose stack, SQL migrations, seeds
-
-tools/
-  scripts/            local setup, import, smoke, and verification scripts
-
-docs/
-  *.md                developer and operator documentation
-
-.specify/
-  specs/              tracked implementation phases and tasks
-
-problems/
-  <problemId>/        source-controlled problem definitions
-```
-
-## Further Reading
+## Documentation Map
 
 - [Architecture](./docs/architecture.md)
 - [Judge Pipeline](./docs/judge-pipeline.md)
 - [Problem Format](./docs/problem-format.md)
-- [Local Development](./docs/local-development.md)
+- [Admin Web](./docs/admin-web.md)
 - [Extension Usage](./docs/extension-usage.md)
-- [Placeholder Practice Demo Checklist](./docs/extension-demo-checklist.md)
-- [Release Runbook](./docs/release-runbook.md)
 - [Runtime Metrics](./docs/runtime-metrics.md)
+- [Local Development](./docs/local-development.md)
 - [Roadmap](./docs/roadmap.md)
 
-Release troubleshooting checks live in the release docs above.
+Implementation planning and product-boundary specs live under
+[`.specify/specs/`](./.specify/specs/):
+
+- [Technical Plan](./.specify/specs/plan.md)
+- [Tasks](./.specify/specs/tasks.md)
+- [Problem Manifest](./.specify/specs/problem-manifest.md)
+- [Submission Feedback](./.specify/specs/submission-feedback.md)
+- [Admin Auth](./.specify/specs/admin-auth.md)
+- [Student Auth](./.specify/specs/student-auth.md)

@@ -1,179 +1,76 @@
-# Admin Web MVP
+# Admin Web
 
-## Overview
+## Purpose
 
-Admin Web is the browser-based administration surface for the Online Judge.
+Admin Web is the browser-based operational surface for staff and platform operators.
+It exists to keep admin workflows out of the student extension while still sharing the
+same imported problem data and submission history stored in Postgres.
 
-It exists so staff and operators can manage platform content and inspect admin-only data without overloading the student workflow inside the VS Code extension.
+## Admin System Boundaries
 
-Primary audience:
+| Area | Owner | Notes |
+| --- | --- | --- |
+| Admin UI | `apps/admin-web` | Browser-based React frontend for admin operators |
+| Admin API | `apps/admin-api` | FastAPI backend for admin-only auth and operational routes |
+| Shared storage | Postgres | Shared durable store with the student-facing stack |
+| Student surface | `apps/vscode-extension` | Explicitly out of scope for admin operations |
 
-- teaching staff
-- problem authors
-- platform operators
+## Core Capabilities
 
-Admin Web is intentionally separate from the extension because the extension is optimized for student practice, submission, and result review, while admin work needs different pages, different data visibility, and different access controls.
+The current admin system is responsible for:
 
-## Why A Separate Admin Frontend Exists
-
-The student workflow and the admin workflow have different constraints:
-
-- students use the VS Code extension to log in, browse published problems, work on starter files, submit code, and inspect their own results
-- admins need browser-based operational pages for content editing, admin-only test data, and cross-user submission inspection
-
-Keeping those flows separate reduces accidental coupling:
-
-- student-facing UX stays focused on practice and submission
-- admin-only data does not have to be exposed through student-facing routes
-- hidden tests remain admin-only
-
-## Architecture
-
-### Student Side
-
-- frontend: VS Code extension in `apps/vscode-extension`
-- API layer: existing Node/TypeScript API in `apps/api`
-
-Student-facing routes and payloads remain focused on published content and student-owned activity. They must not expose hidden tests or other admin-only operational data.
-
-### Admin Side
-
-- frontend: Admin Web in `apps/admin-web`
-- API layer: FastAPI `admin-api` in `apps/admin-api`
-
-Admin Web authenticates against `admin-api` and uses admin-only routes for management and inspection tasks. This stack is separate from the student-facing Node/TypeScript API rather than replacing it.
-
-### Shared Backend
-
-- Postgres remains the shared system of record
-- the judge worker remains unchanged
-- submission lifecycle terminology remains `queued -> running -> finished | failed`
-
-The student API and the admin API read from and write to the same durable backend ecosystem, but they serve different operational purposes.
-
-## MVP Scope
-
-The Admin Web MVP is the first practical browser-based admin surface. Its scope is:
-
+- admin authentication
 - analytics overview
-- admin login
-- problems list
-- problem detail/edit
-- tests management
-- submissions list/detail
+- problem list and problem detail editing
+- public and hidden test management
+- cross-user submission inspection
+- platform user management
 
-Implementation status at the time of this document:
+The admin system does not replace the student API or the student extension.
 
-- implemented: Microsoft OIDC admin login with local user mapping and TOTP hardening
-- implemented: analytics overview
-- implemented: problems list
-- implemented: problem detail/edit
-- implemented: tests management
-- implemented: submissions list/detail
-- implemented: platform user management
+## Authentication Boundary
 
-### Student-Facing vs Admin-Facing Operations
+Admin access is separate from student auth.
 
-Student-facing operations:
+- Primary admin login may use local email/password or Microsoft OIDC.
+- Successful primary authentication is not sufficient on its own.
+- Access still requires a local platform user with `role = admin` and `status = active`.
+- TOTP is enforced after local user verification or identity mapping when enabled.
 
-- browse published problems
-- open starter-backed files
-- submit code
-- inspect student-facing results and metrics
-
-Admin-facing operations:
-
-- inspect and edit problem metadata and content
-- inspect and edit admin-visible public and hidden tests
-- inspect submissions across users for operational review
-- manage platform users, including role, status, and password reset
-
-Hidden tests must remain admin-only. They may influence verdicts, but their raw inputs and expected outputs must not appear in student-facing routes, extension payloads, or student-focused documentation.
-
-## Out Of Scope For This MVP
-
-The Admin Web MVP does not include:
-
-- contest features
-- broad replacement of the student-facing Node/TypeScript API
-- Google OIDC provider support
-- recovery-code or helpdesk recovery workflows
-
-It also does not change the judge pipeline, submission-state model, or the role of the VS Code extension as the student-facing client.
-
-## Future Evolution
-
-Likely future admin-facing expansions include:
-
-- richer submissions operations such as rejudge actions
-- 2FA / authenticator-based admin hardening
-- richer dashboard and analytics views
-- stronger deployment and operational hardening
-
-Those are later expansions, not guarantees of current implementation.
-
-## Admin Identity Hardening
-
-Admin Web now supports two admin-only login modes:
-
-- local email/password
-- Microsoft OIDC
-
-Both login modes converge into the same local admin authorization model:
-
-- `admin-api` verifies either local credentials or the OIDC callback identity
-- the login attempt must resolve to a local platform user
-- local access still requires `role = admin` and `status = active`
-- TOTP is enforced after local user verification or identity mapping, not before it
-
-The student-facing VS Code extension remains student-only and does not participate in this admin login flow.
-
-Current local login sequence:
-
-`local email/password -> local user verification -> admin role/status check -> TOTP (if enabled) -> admin session`
-
-Current Microsoft login sequence:
-
-`Microsoft OIDC -> callback -> local user mapping -> admin role/status check -> TOTP (if enabled) -> admin session`
-
-Current auth states exposed to Admin Web:
+Session states:
 
 - `unauthenticated`
 - `pending_tfa`
 - `authenticated_admin`
 
-Current denial states include:
+## Data Visibility Rules
 
-- invalid local credentials
-- Microsoft login failed
-- callback invalid or expired
-- external identity is not mapped to a local admin user
-- mapped local user is disabled
-- mapped local user is not an admin
-- invalid or expired TOTP verification
+Admin surfaces can inspect data that must never be exposed to the student path:
 
-## Local Mock OIDC Setup
+- hidden tests
+- cross-user submission history
+- admin-only analytics
+- platform user-management operations
 
-For local development, `admin-api` supports a mock Microsoft OIDC mode so the full admin flow can be exercised without a live provider tenant.
+The student-facing API and extension remain restricted to student-visible content and
+student-owned submission feedback.
 
-Required `admin-api` env vars:
+## Relationship To The Judge Pipeline
 
-- `ADMIN_SESSION_SECRET`
-- `ADMIN_WEB_BASE_URL`
-- `ADMIN_MICROSOFT_CLIENT_ID`
-- `ADMIN_MICROSOFT_REDIRECT_URI`
-- `ADMIN_MICROSOFT_OIDC_MODE`
-- `DATABASE_URL`
+Admin Web does not execute code. It reads operational data produced elsewhere:
 
-Optional mock-mode env vars:
+- imported problem versions from the importer
+- submission lifecycle state and terminal results from the judge path
+- user and admin-session state from shared persistence
 
-- `ADMIN_MICROSOFT_MOCK_EMAIL`
-- `ADMIN_MICROSOFT_MOCK_SUBJECT`
-- `ADMIN_MICROSOFT_TENANT_ID`
-- `ADMIN_TOTP_ISSUER`
+The judge worker remains the execution authority for both student and admin-observed outcomes.
 
-Admin Web runtime env:
+## Local Development Notes
 
-- `VITE_ADMIN_API_BASE_URL`
+The standard local setup keeps Admin Web separate from the compose-managed student stack:
 
-When `ADMIN_MICROSOFT_OIDC_MODE=mock`, the sign-in button still follows the full redirect/callback contract, but the provider exchange is resolved locally by `admin-api`.
+- run `admin-api` independently
+- run Admin Web with the local `VITE_ADMIN_API_BASE_URL`
+- use the mock OIDC mode when you need a provider-free local flow
+
+See [local-development.md](./local-development.md) for commands and environment variables.

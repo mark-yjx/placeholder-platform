@@ -1,174 +1,99 @@
 # Problem Format
 
-Problems are authored in the repository under `problems/` and imported into Postgres with the problem importer.
+## Canonical Problem Folder
 
-## Problem Folder Layout
-
-Each problem directory must contain:
+Each repository-authored problem lives under:
 
 ```text
-problems/
-  <problemId>/
-    manifest.json
-    statement.md
-    starter.py
-    hidden.json
-```
-
-Example:
-
-```text
-problems/
-  collapse/
-    manifest.json
-    statement.md
-    starter.py
-    hidden.json
+problems/<problemId>/
+  manifest.json
+  statement.md
+  starter.py
+  hidden.json
 ```
 
 ## `manifest.json`
 
-`manifest.json` is the single source of metadata and public authoring-facing test data.
+`manifest.json` is the student-visible metadata and public test contract for a problem version.
 
 Required fields:
 
-- `problemId`
-- `title`
-- `language`
-- `entryFunction`
-- `timeLimitMs`
-- `memoryLimitKb`
-- `visibility`
-- `publicTests`
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `problemId` | string | Stable repository and runtime identifier |
+| `title` | string | Student-facing problem title |
+| `entryFunction` | string | Python function the judge and public-test runner call |
+| `language` | string | Current repository contract is Python |
+| `timeLimitMs` | number | Judge time limit |
+| `memoryLimitKb` | number | Judge memory limit |
+| `visibility` | string | Publication state, typically `public` |
+| `examples` | array | Student-visible examples used in statements and clients |
+| `publicTests` | array | Student-visible executable public tests |
 
-Supported optional fields:
+Common optional fields:
 
 - `difficulty`
 - `tags`
 - `version`
 - `author`
 
-Current field expectations:
-
-- `problemId`: non-empty string
-- `title`: non-empty string
-- `language`: must be `"python"` for the current platform
-- `entryFunction`: non-empty valid Python identifier
-- `timeLimitMs`: positive integer
-- `memoryLimitKb`: positive integer
-- `visibility`: must be `"public"` or `"private"`
-- `publicTests`: array of `{ input: <json>, output: <json> }`
-
-Example:
-
-```json
-{
-  "problemId": "collapse",
-  "title": "Collapse Identical Digits",
-  "language": "python",
-  "entryFunction": "collapse",
-  "timeLimitMs": 2000,
-  "memoryLimitKb": 262144,
-  "visibility": "public",
-  "publicTests": [
-    { "input": 112233, "output": 123 }
-  ]
-}
-```
-
 ## `statement.md`
 
-`statement.md` contains only the human-readable problem statement.
+`statement.md` is the authoritative student-facing problem statement.
 
-It should contain:
+It should document:
 
-- the task description
-- constraints or clarifications
-- narrative explanation intended for students
-
-It must not contain:
-
-- hidden tests
-- embedded judge-only fixtures
-- implementation-only metadata
+- the task definition
+- input/output expectations
+- examples aligned with the manifest examples
+- constraints that matter to the student solution
 
 ## `starter.py`
 
-`starter.py` is the starter file materialized for students.
+`starter.py` is the student editing baseline.
 
-It must:
+It should:
 
-- define the function named by `entryFunction`
-- contain no doctest
-- contain no embedded tests
-- contain only function signatures, docstrings, and comments appropriate for starter code
-
-Example:
-
-```python
-def collapse(number: int) -> int:
-    """Collapse identical digits."""
-    # Write your code here.
-```
-
-Important:
-
-- there is no fixed `solve()` assumption at the authoring layer
-- the configured `entryFunction` is the canonical function contract
-- the extension and worker must preserve that explicit function contract
+- define the configured `entryFunction`
+- be safe to copy into `.oj/problems/<problemId>.py`
+- contain the starter implementation shape expected by the problem
 
 ## `hidden.json`
 
-`hidden.json` contains hidden judge-only tests.
+`hidden.json` contains judge-only test coverage.
 
-Shape:
-
-```json
-[
-  { "input": 111122223333, "output": 123 }
-]
-```
-
-These tests:
+Those tests:
 
 - are imported into Postgres
-- are executed by the worker
-- affect final verdicts
-- must never be exposed through student-facing APIs or the extension UI
+- are executed by the worker during real judging
+- are never returned through the student API
+- are never rendered in the extension
 
-## Public Tests vs Hidden Tests
+## Public Vs Hidden Tests
 
-Public tests now live inside `manifest.json`.
+The visibility split is intentional:
 
-That means:
+- `examples` and `publicTests` are student-visible
+- hidden tests are judge-only
 
-- there is no standalone `public.json` in the canonical format
-- public tests are defined in `manifest.json`
-- hidden tests remain isolated in `hidden.json`
+This lets the extension run public tests locally while preserving a real backend verdict path.
 
 ## Import Behavior
 
-The importer reads each problem directory in this order:
+`tools/scripts/import-problems.mjs` reads repository-authored problem folders and produces the
+runtime problem version used by both the student API and the judge worker.
 
-1. `manifest.json`
-2. `statement.md`
-3. `starter.py`
-4. `hidden.json`
+The importer is responsible for:
 
-It then:
+- validating `manifest.json`
+- loading statement, starter, and hidden tests
+- computing a stable content digest
+- writing canonical problem versions and tests to Postgres
 
-- validates the manifest
-- validates `publicTests`
-- validates `hidden.json`
-- computes a content digest
-- creates or appends a Postgres problem version
-- persists metadata, statement, starter code, public tests, and hidden tests
+## Authoring Checklist
 
-## Authoring Guidelines
-
-- Keep `entryFunction` and `starter.py` aligned.
-- Keep `statement.md` purely student-facing.
-- Put public transparent checks in `publicTests`.
-- Put judge-only coverage in `hidden.json`.
-- Keep `starter.py` free of doctest and embedded test code.
-- Prefer stable, source-controlled problem content over manual database edits.
+- Keep `problemId` stable over time.
+- Keep `entryFunction` aligned across `manifest.json`, `starter.py`, and judged execution.
+- Keep student-visible examples in sync with the statement.
+- Keep hidden tests server-side only.
+- Re-import problems after authored changes so the runtime store matches repository content.
