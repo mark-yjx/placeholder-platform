@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { LeaderboardView, StudentStatsView } from '../api/EngagementApiClient';
 import { AuthClient } from '../auth/AuthClient';
 import { AuthCommands } from '../auth/AuthCommands';
 import { BrowserAuthFlowLike, BrowserAuthUriLike } from '../auth/BrowserAuthFlow';
@@ -136,6 +137,63 @@ class FakePanel {
   }
 }
 
+class FakeStatsLoader {
+  async getMyStats(): Promise<StudentStatsView> {
+    return {
+      userId: 'student-1',
+      displayName: 'Student One',
+      solvedCount: 3,
+      solvedByDifficulty: [
+        { key: 'easy', count: 1 },
+        { key: 'medium', count: 1 },
+        { key: 'hard', count: 1 }
+      ],
+      submissionCount: 6,
+      acceptedCount: 4,
+      acceptanceRate: 66.7,
+      activeDays: 6,
+      currentStreak: 2,
+      longestStreak: 4,
+      languageBreakdown: [{ key: 'python', count: 6 }],
+      tagBreakdown: [
+        { key: 'array', count: 1 },
+        { key: 'graphs', count: 1 }
+      ],
+      badges: [
+        {
+          id: 'first_ac',
+          title: 'First AC',
+          description: 'Earn your first accepted submission.',
+          earned: true
+        }
+      ]
+    };
+  }
+
+  async getLeaderboard(_scope: 'all-time'): Promise<LeaderboardView> {
+    return {
+      scope: 'all-time',
+      title: 'All-Time Leaderboard',
+      formula: 'Ranked by solvedCount desc, acceptedCount desc, submissionCount asc.',
+      generatedAt: '2026-03-10T13:00:00.000Z',
+      entries: [
+        {
+          rank: 1,
+          userId: 'student-1',
+          displayName: 'Student One',
+          solvedCount: 3,
+          acceptedCount: 4,
+          submissionCount: 6,
+          currentStreak: 2,
+          longestStreak: 4,
+          score: 3,
+          scoreLabel: 'Solved'
+        }
+      ]
+    };
+  }
+}
+
 test('account webview panel browser sign-in path remains functional', async () => {
   const panel = new FakePanel();
   const tokenStore = new SessionTokenStore(new FakeSecretStorage());
@@ -161,7 +219,8 @@ test('account webview panel browser sign-in path remains functional', async () =
     () => panel,
     () => {
       sessionChangeCount += 1;
-    }
+    },
+    new FakeStatsLoader()
   );
 
   webviewPanel.show();
@@ -174,6 +233,8 @@ test('account webview panel browser sign-in path remains functional', async () =
   });
   assert.deepEqual(browserAuthFlow.startedModes, ['sign-in']);
   assert.match(panel.webview.html, /Logged in as <strong>student@example\.com<\/strong>/);
+  assert.match(panel.webview.html, /Current progress/);
+  assert.match(panel.webview.html, /All-Time Leaderboard/);
   assert.equal(sessionChangeCount, 1);
   assert.deepEqual(infoMessages, []);
 });

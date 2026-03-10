@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
+    analytics_router,
     auth_router,
     health_router,
     problems_router,
@@ -12,12 +13,14 @@ from app.api.routes import (
     users_router,
 )
 from app.services import (
+    AdminAnalyticsService,
     AdminAuthService,
     AdminProblemService,
     AdminProblemTestService,
     AdminSubmissionService,
     AdminUserService,
     MicrosoftOidcService,
+    PsycopgAdminAnalyticsService,
     PsycopgAdminAuthService,
     PsycopgAdminProblemTestService,
     PsycopgAdminSubmissionService,
@@ -43,6 +46,7 @@ def create_app(
     problem_test_service: AdminProblemTestService | None = None,
     submission_service: AdminSubmissionService | None = None,
     user_service: AdminUserService | None = None,
+    analytics_service: AdminAnalyticsService | None = None,
 ) -> FastAPI:
     app = FastAPI(title="admin-api", version="0.1.0")
     app.add_middleware(
@@ -65,12 +69,14 @@ def create_app(
             app.state.auth_service = PsycopgAdminAuthService.from_env(oidc_service)
         except AdminAuthConfigError as exc:
             app.state.auth_service = UnconfiguredAdminAuthService(str(exc))
+    app.state.analytics_service = analytics_service or PsycopgAdminAnalyticsService.from_env()
     app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(problems_router)
     app.include_router(submissions_router)
     app.include_router(tests_router)
     app.include_router(users_router)
+    app.include_router(analytics_router)
     return app
 
 

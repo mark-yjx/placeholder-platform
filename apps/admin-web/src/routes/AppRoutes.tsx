@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
+import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
 import { ProblemCreatePage } from '../pages/ProblemCreatePage';
 import { ProblemEditPage } from '../pages/ProblemEditPage';
@@ -51,6 +52,7 @@ export function AppRoutes() {
       <Route path="/verify-totp" element={<TotpRoute />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<ProblemsListPage />} />
+        <Route path="/admin/overview" element={<DashboardPage />} />
         <Route path="/admin/problems" element={<ProblemsListPage />} />
         <Route path="/admin/problems/create" element={<ProblemCreatePage />} />
         <Route path="/admin/problems/:problemId" element={<ProblemEditPage />} />

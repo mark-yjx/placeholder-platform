@@ -71,13 +71,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const accountStatusBar = new AccountStatusBarController(
     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
   );
-  const refreshAccountUi = () => {
-    accountPanel.refresh();
+  let accountPanel: AccountWebviewPanel | null = null;
+  const refreshAccountStatus = () => {
     const session = tokenStore.getSessionIdentity();
     accountStatusBar.refresh({
       isAuthenticated: tokenStore.isAuthenticated(),
       email: session.email
     });
+  };
+  const refreshAccountUi = () => {
+    accountPanel?.refresh();
+    refreshAccountStatus();
   };
   const browserAuthFlow = new BrowserAuthFlow(
     authCommands,
@@ -92,7 +96,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       onSessionChanged: refreshAccountUi
     }
   );
-  const accountPanel = new AccountWebviewPanel(
+  accountPanel = new AccountWebviewPanel(
     browserAuthFlow,
     authCommands,
     tokenStore,
@@ -101,7 +105,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.window.createWebviewPanel('ojAccountPanel', 'OJ Account', vscode.ViewColumn.Beside, {
         enableScripts: true
       }),
-    refreshAccountUi
+    refreshAccountStatus,
+    engagementCommands
   );
   const practiceViews = new PracticeTreeViews(
     vscode.window,
@@ -188,7 +193,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   output.appendLine(`API base URL: ${apiBaseUrl}`);
   output.appendLine(`Request timeout: ${requestTimeoutMs}ms`);
   output.appendLine(describeTokenStorageBehavior());
-  refreshAccountUi();
+  refreshAccountStatus();
   await restorePracticeStateOnStartup({
     apiBaseUrl,
     tokenStore,

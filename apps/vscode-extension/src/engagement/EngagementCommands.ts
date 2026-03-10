@@ -1,9 +1,11 @@
 import {
   EngagementApiClient,
+  LeaderboardEntryView,
+  LeaderboardScope,
+  LeaderboardView,
   ProblemReview,
-  PublicRankingEntry,
-  PublicStatsView,
-  ReviewSentiment
+  ReviewSentiment,
+  StudentStatsView
 } from '../api/EngagementApiClient';
 import { SessionTokenStore } from '../auth/SessionTokenStore';
 import { runProtectedCommand } from '../commands/ProtectedCommands';
@@ -43,18 +45,25 @@ export class EngagementCommands {
     });
   }
 
-  async showPublicStats(): Promise<string> {
-    const stats = await runProtectedCommand(this.tokenStore, async () =>
-      this.apiClient.getPublicStats(this.requireAccessToken())
+  async getMyStats(): Promise<StudentStatsView> {
+    return runProtectedCommand(this.tokenStore, async () =>
+      this.apiClient.getMyStats(this.requireAccessToken())
     );
-    return formatStats(stats);
+  }
+
+  async getLeaderboard(scope: LeaderboardScope): Promise<LeaderboardView> {
+    return runProtectedCommand(this.tokenStore, async () =>
+      this.apiClient.getLeaderboard(this.requireAccessToken(), scope)
+    );
+  }
+
+  async showPublicStats(): Promise<string> {
+    return formatStats(await this.getMyStats());
   }
 
   async showPublicRanking(): Promise<readonly string[]> {
-    const ranking = await runProtectedCommand(this.tokenStore, async () =>
-      this.apiClient.getPublicRanking(this.requireAccessToken())
-    );
-    return ranking.map((entry, index) => formatRankingEntry(index + 1, entry));
+    const ranking = await this.getLeaderboard('all-time');
+    return ranking.entries.map((entry) => formatRankingEntry(entry));
   }
 
   private requireAccessToken(): string {
@@ -66,10 +75,14 @@ export class EngagementCommands {
   }
 }
 
-export function formatStats(stats: PublicStatsView): string {
-  return `judged=${stats.totalJudgedSubmissions}, accepted=${stats.totalAcceptedSubmissions}, rate=${stats.acceptanceRatePercent}%`;
+export function formatStats(stats: StudentStatsView): string {
+  return `solved=${stats.solvedCount}, accepted=${stats.acceptedCount}/${stats.submissionCount}, rate=${stats.acceptanceRate}%, streak=${stats.currentStreak}/${stats.longestStreak}`;
 }
 
-export function formatRankingEntry(rank: number, entry: PublicRankingEntry): string {
-  return `#${rank} ${entry.userId} score=${entry.compositeScore} solved=${entry.solvedCount} acceptedTimeMs=${entry.totalAcceptedTimeMs}`;
+export function formatRankingEntry(entry: LeaderboardEntryView): string {
+  const scoreKey =
+    entry.scoreLabel === 'Solved'
+      ? 'solved'
+      : entry.scoreLabel.toLowerCase().replaceAll(/\s+/g, '_');
+  return `#${entry.rank} ${entry.displayName} ${scoreKey}=${entry.score} accepted=${entry.acceptedCount} submissions=${entry.submissionCount}`;
 }

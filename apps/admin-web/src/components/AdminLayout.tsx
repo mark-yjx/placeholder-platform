@@ -10,6 +10,7 @@ type AdminLayoutProps = PropsWithChildren<{
 }>;
 
 const NAV_ITEMS = [
+  { label: 'Overview', to: '/admin/overview' },
   { label: 'Problems', to: '/admin/problems' },
   { label: 'Users', to: '/admin/users' },
   { label: 'Submissions', to: '/submissions' },

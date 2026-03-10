@@ -214,7 +214,7 @@ test('http practice client preserves running submission state without inventing 
   }
 });
 
-test('http engagement client uses live favorites and reviews endpoints', async () => {
+test('http engagement client uses live favorites, reviews, stats, and leaderboard endpoints', async () => {
   const originalFetch = globalThis.fetch;
   const seenPaths: string[] = [];
 
@@ -256,6 +256,61 @@ test('http engagement client uses live favorites and reviews endpoints', async (
       });
     }
 
+    if (path === '/me/stats') {
+      return createJsonResponse({
+        userId: 'student-1',
+        displayName: 'Student One',
+        solvedCount: 3,
+        solvedByDifficulty: [
+          { key: 'easy', count: 1 },
+          { key: 'medium', count: 1 },
+          { key: 'hard', count: 1 }
+        ],
+        submissionCount: 6,
+        acceptedCount: 4,
+        acceptanceRate: 66.7,
+        activeDays: 6,
+        currentStreak: 2,
+        longestStreak: 4,
+        languageBreakdown: [{ key: 'python', count: 6 }],
+        tagBreakdown: [
+          { key: 'array', count: 1 },
+          { key: 'graphs', count: 1 }
+        ],
+        badges: [
+          {
+            id: 'first_ac',
+            title: 'First AC',
+            description: 'Earn your first accepted submission.',
+            earned: true
+          }
+        ]
+      });
+    }
+
+    if (path === '/leaderboards/all-time') {
+      return createJsonResponse({
+        scope: 'all-time',
+        title: 'All-Time Leaderboard',
+        formula: 'Ranked by solvedCount desc, acceptedCount desc, submissionCount asc.',
+        generatedAt: '2026-03-10T13:00:00.000Z',
+        entries: [
+          {
+            rank: 1,
+            userId: 'student-1',
+            displayName: 'Student One',
+            solvedCount: 3,
+            acceptedCount: 4,
+            submissionCount: 6,
+            currentStreak: 2,
+            longestStreak: 4,
+            score: 3,
+            scoreLabel: 'Solved'
+          }
+        ]
+      });
+    }
+
     return createJsonResponse({ error: { code: 'NOT_FOUND', message: 'Not Found' } }, { status: 404 });
   };
 
@@ -277,11 +332,62 @@ test('http engagement client uses live favorites and reviews endpoints', async (
         sentiment: 'like'
       }
     );
+    assert.deepEqual(await client.getMyStats('student-token'), {
+      userId: 'student-1',
+      displayName: 'Student One',
+      solvedCount: 3,
+      solvedByDifficulty: [
+        { key: 'easy', count: 1 },
+        { key: 'medium', count: 1 },
+        { key: 'hard', count: 1 }
+      ],
+      submissionCount: 6,
+      acceptedCount: 4,
+      acceptanceRate: 66.7,
+      activeDays: 6,
+      currentStreak: 2,
+      longestStreak: 4,
+      languageBreakdown: [{ key: 'python', count: 6 }],
+      tagBreakdown: [
+        { key: 'array', count: 1 },
+        { key: 'graphs', count: 1 }
+      ],
+      badges: [
+        {
+          id: 'first_ac',
+          title: 'First AC',
+          description: 'Earn your first accepted submission.',
+          earned: true
+        }
+      ]
+    });
+    assert.deepEqual(await client.getLeaderboard('student-token', 'all-time'), {
+      scope: 'all-time',
+      title: 'All-Time Leaderboard',
+      formula: 'Ranked by solvedCount desc, acceptedCount desc, submissionCount asc.',
+      generatedAt: '2026-03-10T13:00:00.000Z',
+      entries: [
+        {
+          rank: 1,
+          userId: 'student-1',
+          displayName: 'Student One',
+          solvedCount: 3,
+          acceptedCount: 4,
+          submissionCount: 6,
+          currentStreak: 2,
+          longestStreak: 4,
+          score: 3,
+          scoreLabel: 'Solved'
+        }
+      ]
+    });
     assert.deepEqual(seenPaths, [
       'PUT /favorites/problem-1',
       'DELETE /favorites/problem-1',
       'GET /favorites',
-      'PUT /reviews/problem-1'
+      'PUT /reviews/problem-1',
+      'GET /me/stats',
+      'GET /leaderboards/all-time'
     ]);
   } finally {
     globalThis.fetch = originalFetch;

@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   EngagementApiClient,
+  LeaderboardView,
   ProblemReview,
-  PublicRankingEntry,
-  PublicStatsView,
-  ReviewSentiment
+  ReviewSentiment,
+  StudentStatsView
 } from '../api/EngagementApiClient';
 import { AuthClient } from '../auth/AuthClient';
 import { AuthCommands } from '../auth/AuthCommands';
@@ -13,16 +13,16 @@ import { SessionTokenStore } from '../auth/SessionTokenStore';
 import { EngagementCommands } from '../engagement/EngagementCommands';
 
 class FakeAuthClient implements AuthClient {
-  async login(): Promise<{ accessToken: string }> {
-    return { accessToken: 'student-token' };
+  async login(): Promise<{ accessToken: string; email?: string; role?: 'student' | 'admin' }> {
+    return { accessToken: 'student-token', email: 'student@example.com', role: 'student' };
   }
 
   getBrowserAuthUrl(): string {
     return 'http://oj.test/auth/sign-in';
   }
 
-  async exchangeBrowserCode(): Promise<{ accessToken: string }> {
-    return { accessToken: 'student-token' };
+  async exchangeBrowserCode(): Promise<{ accessToken: string; email?: string; role?: 'student' | 'admin' }> {
+    return { accessToken: 'student-token', email: 'student@example.com', role: 'student' };
   }
 }
 
@@ -64,19 +64,71 @@ class FakeEngagementApiClient implements EngagementApiClient {
     return this.reviewsByProblem.get(problemId) ?? [];
   }
 
-  async getPublicStats(_accessToken: string): Promise<PublicStatsView> {
+  async getMyStats(_accessToken: string): Promise<StudentStatsView> {
     return {
-      totalJudgedSubmissions: 12,
-      totalAcceptedSubmissions: 9,
-      acceptanceRatePercent: 75
+      userId: 'student-1',
+      displayName: 'Student One',
+      solvedCount: 3,
+      solvedByDifficulty: [
+        { key: 'easy', count: 1 },
+        { key: 'medium', count: 1 },
+        { key: 'hard', count: 1 }
+      ],
+      submissionCount: 6,
+      acceptedCount: 4,
+      acceptanceRate: 66.7,
+      activeDays: 6,
+      currentStreak: 2,
+      longestStreak: 4,
+      languageBreakdown: [{ key: 'python', count: 6 }],
+      tagBreakdown: [
+        { key: 'array', count: 1 },
+        { key: 'graphs', count: 1 }
+      ],
+      badges: [
+        {
+          id: 'first_ac',
+          title: 'First AC',
+          description: 'Earn your first accepted submission.',
+          earned: true
+        }
+      ]
     };
   }
 
-  async getPublicRanking(_accessToken: string): Promise<readonly PublicRankingEntry[]> {
-    return [
-      { userId: 'student-a', compositeScore: 1_999_800, solvedCount: 2, totalAcceptedTimeMs: 200 },
-      { userId: 'student-b', compositeScore: 999_850, solvedCount: 1, totalAcceptedTimeMs: 150 }
-    ];
+  async getLeaderboard(_accessToken: string, scope: 'all-time'): Promise<LeaderboardView> {
+    return {
+      scope,
+      title: 'All-Time Leaderboard',
+      formula: 'Ranked by solvedCount desc, acceptedCount desc, submissionCount asc.',
+      generatedAt: '2026-03-10T13:00:00.000Z',
+      entries: [
+        {
+          rank: 1,
+          userId: 'student-1',
+          displayName: 'Student One',
+          solvedCount: 3,
+          acceptedCount: 4,
+          submissionCount: 6,
+          currentStreak: 2,
+          longestStreak: 4,
+          score: 3,
+          scoreLabel: 'Solved'
+        },
+        {
+          rank: 2,
+          userId: 'student-2',
+          displayName: 'Student Two',
+          solvedCount: 2,
+          acceptedCount: 2,
+          submissionCount: 3,
+          currentStreak: 1,
+          longestStreak: 2,
+          score: 2,
+          scoreLabel: 'Solved'
+        }
+      ]
+    };
   }
 }
 
@@ -102,11 +154,11 @@ test('favorite and review actions persist and stats/ranking views display api da
   assert.equal(reviews[0]?.sentiment, 'like');
 
   const stats = await engagementCommands.showPublicStats();
-  assert.equal(stats, 'judged=12, accepted=9, rate=75%');
+  assert.equal(stats, 'solved=3, accepted=4/6, rate=66.7%, streak=2/4');
 
   const ranking = await engagementCommands.showPublicRanking();
   assert.deepEqual(ranking, [
-    '#1 student-a score=1999800 solved=2 acceptedTimeMs=200',
-    '#2 student-b score=999850 solved=1 acceptedTimeMs=150'
+    '#1 Student One solved=3 accepted=4 submissions=6',
+    '#2 Student Two solved=2 accepted=2 submissions=3'
   ]);
 });

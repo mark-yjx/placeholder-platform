@@ -1,5 +1,6 @@
 """Service helpers for admin-api."""
 
+from .analytics import AdminAnalyticsService, PsycopgAdminAnalyticsService
 from .admin_auth import (
     AdminAuthService,
     AdminOidcError,
@@ -19,6 +20,7 @@ from .users import (
 )
 
 __all__ = [
+    "AdminAnalyticsService",
     "AdminAuthService",
     "AdminProblemListService",
     "AdminProblemService",
@@ -28,6 +30,7 @@ __all__ = [
     "AdminUserService",
     "MicrosoftOidcService",
     "PsycopgAdminAuthService",
+    "PsycopgAdminAnalyticsService",
     "PsycopgAdminProblemTestService",
     "PsycopgAdminSubmissionService",
     "PsycopgAdminUserService",

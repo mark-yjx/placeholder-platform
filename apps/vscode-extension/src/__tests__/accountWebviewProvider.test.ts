@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { LeaderboardView, StudentStatsView } from '../api/EngagementApiClient';
 import { AuthClient } from '../auth/AuthClient';
 import { BrowserAuthFlowLike, BrowserAuthUriLike } from '../auth/BrowserAuthFlow';
 import {
@@ -128,6 +129,63 @@ class FakeWebview {
   }
 }
 
+class FakeStatsLoader {
+  async getMyStats(): Promise<StudentStatsView> {
+    return {
+      userId: 'student-1',
+      displayName: 'Student One',
+      solvedCount: 3,
+      solvedByDifficulty: [
+        { key: 'easy', count: 1 },
+        { key: 'medium', count: 1 },
+        { key: 'hard', count: 1 }
+      ],
+      submissionCount: 6,
+      acceptedCount: 4,
+      acceptanceRate: 66.7,
+      activeDays: 6,
+      currentStreak: 2,
+      longestStreak: 4,
+      languageBreakdown: [{ key: 'python', count: 6 }],
+      tagBreakdown: [
+        { key: 'array', count: 1 },
+        { key: 'graphs', count: 1 }
+      ],
+      badges: [
+        {
+          id: 'first_ac',
+          title: 'First AC',
+          description: 'Earn your first accepted submission.',
+          earned: true
+        }
+      ]
+    };
+  }
+
+  async getLeaderboard(_scope: 'all-time'): Promise<LeaderboardView> {
+    return {
+      scope: 'all-time',
+      title: 'All-Time Leaderboard',
+      formula: 'Ranked by solvedCount desc, acceptedCount desc, submissionCount asc.',
+      generatedAt: '2026-03-10T13:00:00.000Z',
+      entries: [
+        {
+          rank: 1,
+          userId: 'student-1',
+          displayName: 'Student One',
+          solvedCount: 3,
+          acceptedCount: 4,
+          submissionCount: 6,
+          currentStreak: 2,
+          longestStreak: 4,
+          score: 3,
+          scoreLabel: 'Solved'
+        }
+      ]
+    };
+  }
+}
+
 test('account panel renders browser auth actions when unauthenticated', () => {
   const html = createAccountHtml(
     createAccountViewModel({
@@ -184,7 +242,9 @@ test('account panel handles successful browser sign-in flow', async () => {
       showInputBox: async () => undefined,
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errorMessages.push(message)
-    }
+    },
+    undefined,
+    new FakeStatsLoader()
   );
 
   provider.resolveWebviewView({ webview } as never);
@@ -198,6 +258,10 @@ test('account panel handles successful browser sign-in flow', async () => {
   assert.deepEqual(browserAuthFlow.startedModes, ['sign-in']);
   assert.match(webview.html, /Logged in as <strong>student@example\.com<\/strong>/);
   assert.match(webview.html, /Role: <code>student<\/code>/);
+  assert.match(webview.html, /Current progress/);
+  assert.match(webview.html, /Difficulty breakdown/);
+  assert.match(webview.html, /First AC/);
+  assert.match(webview.html, /All-Time Leaderboard/);
   assert.match(webview.html, /data-command="logout"/);
   assert.doesNotMatch(webview.html, /data-command="fetchProblems"/);
   assert.deepEqual(errorMessages, []);

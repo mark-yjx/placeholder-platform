@@ -1,6 +1,12 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 import type { Role } from '@packages/domain/src/identity';
+import type {
+  AdminAnalyticsOverviewView,
+  LeaderboardView,
+  StatsLeaderboardScope,
+  StudentStatsView
+} from './stats/StatsRankingService';
 import { createApiRequestContext } from './observability/requestContext';
 import { createHealthRoutes } from './routes/healthRoutes';
 import { createLocalPostgresSqlClient } from './runtime/localPostgresSqlClient';
@@ -45,6 +51,11 @@ type LocalApiRuntime = {
     exchangeBrowserCode: (input: {
       code: string;
     }) => Promise<{ accessToken: string; email: string; role: 'student' }>;
+  };
+  stats: {
+    getStudentStats: (userId: string) => Promise<StudentStatsView>;
+    getLeaderboard: (scope: StatsLeaderboardScope) => Promise<LeaderboardView>;
+    getAdminOverview: () => Promise<AdminAnalyticsOverviewView>;
   };
   persistence: {
     problemAdmin: {
@@ -296,6 +307,7 @@ function createLocalApiRuntime(): LocalApiRuntime {
   const { PasswordCredentialAuthService } = require('@packages/application/src/auth/PasswordCredentialAuthService') as typeof import('@packages/application/src/auth/PasswordCredentialAuthService');
   const { PostgresCredentialRepository } = require('@packages/infrastructure/src/postgres/identity/PostgresCredentialRepository') as typeof import('@packages/infrastructure/src/postgres/identity/PostgresCredentialRepository');
   const { BrowserStudentAuthService, InMemoryBrowserAuthCodeStore, PostgresStudentAuthUserRepository } = require('./studentAuth/BrowserStudentAuthService') as typeof import('./studentAuth/BrowserStudentAuthService');
+  const { PostgresStatsRankingRepository, StatsRankingService } = require('./stats/StatsRankingService') as typeof import('./stats/StatsRankingService');
   const { createLocalPersistenceServices } = require('./runtime/localPersistenceWiring') as typeof import('./runtime/localPersistenceWiring');
   const sqlClient = createLocalPostgresSqlClient();
   const sessionSecret = process.env.JWT_SECRET?.trim() || 'local-dev-jwt-secret';
@@ -316,6 +328,7 @@ function createLocalApiRuntime(): LocalApiRuntime {
       browserSignUp: browserAuthService.signUp.bind(browserAuthService),
       exchangeBrowserCode: browserAuthService.exchange.bind(browserAuthService)
     },
+    stats: new StatsRankingService(new PostgresStatsRankingRepository(sqlClient)),
     persistence: createLocalPersistenceServices({
       mode: 'postgres',
       sqlClients: {
@@ -371,6 +384,65 @@ export function createApiRequestHandler(
     }
 
     const { persistence } = localRuntime;
+
+    if ((path === '/me/stats' || path === '/stats') && method === 'GET') {
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string'
+              ? request.headers.authorization
+              : undefined,
+            sessionSecret
+          )
+        );
+        ensureRole(actor, 'student');
+        sendJson(response, 200, await localRuntime.stats.getStudentStats(actor.userId));
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
+
+    const leaderboardMatch = path.match(/^\/leaderboards\/(all-time|weekly|monthly|streak)$/);
+    if (leaderboardMatch && method === 'GET') {
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string'
+              ? request.headers.authorization
+              : undefined,
+            sessionSecret
+          )
+        );
+        ensureRole(actor, 'student');
+        sendJson(
+          response,
+          200,
+          await localRuntime.stats.getLeaderboard(leaderboardMatch[1] as StatsLeaderboardScope)
+        );
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
+
+    if (path === '/ranking' && method === 'GET') {
+      try {
+        const actor = requireAuthenticatedActor(
+          resolveActorFromAuthorizationHeader(
+            typeof request.headers.authorization === 'string'
+              ? request.headers.authorization
+              : undefined,
+            sessionSecret
+          )
+        );
+        ensureRole(actor, 'student');
+        sendJson(response, 200, await localRuntime.stats.getLeaderboard('all-time'));
+      } catch (error) {
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
 
     if (path === '/auth/sign-in' && method === 'GET') {
       try {

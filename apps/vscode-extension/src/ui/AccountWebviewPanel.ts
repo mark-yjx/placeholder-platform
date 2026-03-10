@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
+import { LeaderboardView, StudentStatsView } from '../api/EngagementApiClient';
 import { AuthCommands } from '../auth/AuthCommands';
-import { BrowserAuthFlowLike } from '../auth/BrowserAuthFlow';
+import { BrowserAuthFlowLike, BrowserAuthUriLike } from '../auth/BrowserAuthFlow';
 import { SessionTokenStore } from '../auth/SessionTokenStore';
 import { mapExtensionError } from '../errors/ExtensionErrorMapper';
 import { createAccountHtml, createAccountViewModel } from './AccountViewModel';
@@ -28,9 +29,19 @@ export type AccountWebviewPanelLike = {
 
 type AccountWindowLike = Pick<typeof vscode.window, 'showErrorMessage' | 'showInformationMessage' | 'showInputBox'>;
 
+type AccountStatsLoader = {
+  getMyStats: () => Promise<StudentStatsView>;
+  getLeaderboard: (scope: 'all-time') => Promise<LeaderboardView>;
+};
+
 export class AccountWebviewPanel {
   private currentPanel: AccountWebviewPanelLike | null = null;
   private errorMessage: string | null = null;
+  private statsErrorMessage: string | null = null;
+  private isLoadingStats = false;
+  private stats: StudentStatsView | null = null;
+  private leaderboard: LeaderboardView | null = null;
+  private statsLoadId = 0;
 
   constructor(
     private readonly browserAuthFlow: BrowserAuthFlowLike,
@@ -38,13 +49,15 @@ export class AccountWebviewPanel {
     private readonly tokenStore: SessionTokenStore,
     private readonly window: AccountWindowLike,
     private readonly createPanel: () => AccountWebviewPanelLike,
-    private readonly onSessionChanged?: () => void
+    private readonly onSessionChanged?: () => void,
+    private readonly statsLoader?: AccountStatsLoader
   ) {}
 
   show(): void {
     if (this.currentPanel) {
       this.currentPanel.reveal();
       this.render();
+      void this.loadStatsAndRender();
       return;
     }
 
@@ -58,10 +71,11 @@ export class AccountWebviewPanel {
       this.currentPanel = null;
     });
     this.render();
+    void this.loadStatsAndRender();
   }
 
   refresh(): void {
-    this.render();
+    void this.loadStatsAndRender();
   }
 
   private async handleMessage(message: unknown): Promise<void> {
@@ -89,7 +103,7 @@ export class AccountWebviewPanel {
       this.errorMessage = null;
       await this.browserAuthFlow.start(mode);
       this.onSessionChanged?.();
-      this.render();
+      await this.loadStatsAndRender();
     } catch (error) {
       const message = this.resolvePanelErrorMessage(error);
       this.errorMessage = message;
@@ -101,6 +115,7 @@ export class AccountWebviewPanel {
   private async logout(): Promise<void> {
     await this.authCommands.logout();
     this.errorMessage = null;
+    this.resetStatsState();
     this.onSessionChanged?.();
     this.render();
     this.window.showInformationMessage('Logged out of OJ.');
@@ -114,7 +129,7 @@ export class AccountWebviewPanel {
         return;
       }
       this.onSessionChanged?.();
-      this.render();
+      await this.loadStatsAndRender();
     } catch (error) {
       const message = this.resolvePanelErrorMessage(error);
       this.errorMessage = message;
@@ -138,6 +153,54 @@ export class AccountWebviewPanel {
     );
   }
 
+  private async loadStatsAndRender(): Promise<void> {
+    const session = this.tokenStore.getSessionIdentity();
+    const isAuthenticated = this.tokenStore.isAuthenticated() && isCompleteAccountIdentity(session);
+    const loadId = ++this.statsLoadId;
+
+    if (!isAuthenticated || !this.statsLoader) {
+      this.resetStatsState();
+      this.render();
+      return;
+    }
+
+    this.isLoadingStats = true;
+    this.statsErrorMessage = null;
+    this.render();
+
+    try {
+      const [stats, leaderboard] = await Promise.all([
+        this.statsLoader.getMyStats(),
+        this.statsLoader.getLeaderboard('all-time')
+      ]);
+      if (loadId !== this.statsLoadId) {
+        return;
+      }
+      this.stats = stats;
+      this.leaderboard = leaderboard;
+    } catch (error) {
+      if (loadId !== this.statsLoadId) {
+        return;
+      }
+      this.stats = null;
+      this.leaderboard = null;
+      this.statsErrorMessage = mapExtensionError(error).userMessage;
+    } finally {
+      if (loadId !== this.statsLoadId) {
+        return;
+      }
+      this.isLoadingStats = false;
+      this.render();
+    }
+  }
+
+  private resetStatsState(): void {
+    this.stats = null;
+    this.leaderboard = null;
+    this.statsErrorMessage = null;
+    this.isLoadingStats = false;
+  }
+
   private render(): void {
     if (!this.currentPanel) {
       return;
@@ -149,7 +212,11 @@ export class AccountWebviewPanel {
         isAuthenticated: this.tokenStore.isAuthenticated() && isCompleteAccountIdentity(session),
         email: session.email,
         role: session.role,
-        errorMessage: this.errorMessage
+        errorMessage: this.errorMessage,
+        statsErrorMessage: this.statsErrorMessage,
+        isLoadingStats: this.isLoadingStats,
+        stats: this.stats,
+        leaderboard: this.leaderboard
       })
     );
   }
@@ -172,3 +239,7 @@ function isCompleteAccountIdentity(input: { email?: string | null; role?: string
   const role = input.role?.trim() ?? '';
   return Boolean(email && role);
 }
+
+export type AccountBrowserAuthFlowLike = BrowserAuthFlowLike & {
+  handleUri?: (uri: BrowserAuthUriLike) => Promise<void>;
+};

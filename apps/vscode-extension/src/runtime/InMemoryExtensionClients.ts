@@ -1,4 +1,10 @@
-import { EngagementApiClient, ProblemReview, PublicRankingEntry, PublicStatsView } from '../api/EngagementApiClient';
+import {
+  EngagementApiClient,
+  LeaderboardScope,
+  LeaderboardView,
+  ProblemReview,
+  StudentStatsView
+} from '../api/EngagementApiClient';
 import { AuthClient, BrowserAuthMode, BrowserAuthUrlInput, LoginRequest, LoginResponse } from '../auth/AuthClient';
 import {
   CreateSubmissionRequest,
@@ -156,22 +162,68 @@ export class InMemoryEngagementApiClient implements EngagementApiClient {
     return this.reviews.get(problemId) ?? [];
   }
 
-  async getPublicStats(_accessToken: string): Promise<PublicStatsView> {
+  async getMyStats(_accessToken: string): Promise<StudentStatsView> {
     return {
-      totalJudgedSubmissions: 12,
-      totalAcceptedSubmissions: 9,
-      acceptanceRatePercent: 75
+      userId: 'student-1',
+      displayName: 'Student One',
+      solvedCount: 3,
+      solvedByDifficulty: [
+        { key: 'easy', count: 1 },
+        { key: 'medium', count: 1 },
+        { key: 'hard', count: 1 }
+      ],
+      submissionCount: 5,
+      acceptedCount: 3,
+      acceptanceRate: 60,
+      activeDays: 3,
+      currentStreak: 2,
+      longestStreak: 4,
+      languageBreakdown: [{ key: 'python', count: 5 }],
+      tagBreakdown: [
+        { key: 'array', count: 1 },
+        { key: 'graphs', count: 1 },
+        { key: 'strings', count: 1 }
+      ],
+      badges: [
+        {
+          id: 'first_ac',
+          title: 'First AC',
+          description: 'Earn your first accepted submission.',
+          earned: true
+        },
+        {
+          id: 'solved_10',
+          title: 'Solved 10',
+          description: 'Solve 10 unique problems.',
+          earned: false
+        }
+      ]
     };
   }
 
-  async getPublicRanking(_accessToken: string): Promise<readonly PublicRankingEntry[]> {
-    return [
-      {
-        userId: 'student-a',
-        compositeScore: 1_999_800,
-        solvedCount: 2,
-        totalAcceptedTimeMs: 200
-      }
-    ];
+  async getLeaderboard(
+    _accessToken: string,
+    scope: LeaderboardScope
+  ): Promise<LeaderboardView> {
+    return {
+      scope,
+      title: 'All-Time Leaderboard',
+      formula: 'Ranked by solvedCount desc, acceptedCount desc, submissionCount asc.',
+      generatedAt: '2026-03-10T13:00:00.000Z',
+      entries: [
+        {
+          rank: 1,
+          userId: 'student-1',
+          displayName: 'Student One',
+          solvedCount: 3,
+          acceptedCount: 3,
+          submissionCount: 5,
+          currentStreak: 2,
+          longestStreak: 4,
+          score: 3,
+          scoreLabel: 'Solved'
+        }
+      ]
+    };
   }
 }

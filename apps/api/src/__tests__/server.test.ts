@@ -88,6 +88,85 @@ function createRuntime() {
         return match;
       }
     },
+    stats: {
+      async getStudentStats(userId: string) {
+        return {
+          userId,
+          displayName: 'Student One',
+          solvedCount: 3,
+          solvedByDifficulty: [
+            { key: 'easy', count: 1 },
+            { key: 'medium', count: 1 },
+            { key: 'hard', count: 1 }
+          ],
+          submissionCount: 5,
+          acceptedCount: 3,
+          acceptanceRate: 60,
+          activeDays: 3,
+          currentStreak: 2,
+          longestStreak: 4,
+          languageBreakdown: [{ key: 'python', count: 5 }],
+          tagBreakdown: [
+            { key: 'array', count: 1 },
+            { key: 'graphs', count: 1 },
+            { key: 'strings', count: 1 }
+          ],
+          badges: [
+            {
+              id: 'first_ac',
+              title: 'First AC',
+              description: 'Earn your first accepted submission.',
+              earned: true
+            },
+            {
+              id: 'solved_10',
+              title: 'Solved 10',
+              description: 'Solve 10 unique problems.',
+              earned: false
+            }
+          ]
+        };
+      },
+      async getLeaderboard(scope: 'all-time' | 'weekly' | 'monthly' | 'streak') {
+        return {
+          scope,
+          title:
+            scope === 'all-time'
+              ? 'All-Time Leaderboard'
+              : scope === 'weekly'
+                ? 'Weekly Leaderboard'
+                : scope === 'monthly'
+                  ? 'Monthly Leaderboard'
+                  : 'Streak Leaderboard',
+          formula: 'Deterministic leaderboard formula.',
+          generatedAt: '2026-03-10T13:00:00.000Z',
+          entries: [
+            {
+              rank: 1,
+              userId: 'student-1',
+              displayName: 'Student One',
+              solvedCount: 3,
+              acceptedCount: 3,
+              submissionCount: 5,
+              currentStreak: 2,
+              longestStreak: 4,
+              score: scope === 'streak' ? 2 : 3,
+              scoreLabel: scope === 'streak' ? 'Current streak' : 'Solved'
+            }
+          ]
+        };
+      },
+      async getAdminOverview() {
+        return {
+          totalUsers: 3,
+          activeUsers: 1,
+          activeWindowDays: 30,
+          totalSubmissions: 5,
+          totalAcceptedSubmissions: 3,
+          uniqueProblemSolves: 2
+        };
+      }
+    },
     persistence: {
       problemAdmin: { async create() {} },
       problemPublication: { async publish() {} },
@@ -577,6 +656,96 @@ test('student browser auth exchange returns a student session token for the exte
     email: 'student1@example.com',
     role: 'student'
   });
+});
+
+test('student stats and leaderboard endpoints expose the stats ranking mvp contracts', async () => {
+  const runtime = createRuntime();
+  const studentToken = await loginAs(runtime, {
+    email: 'student1@example.com',
+    password: 'secret'
+  });
+
+  const stats = await invoke({
+    path: '/me/stats',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(stats.statusCode, 200);
+  assert.deepEqual(stats.body, {
+    userId: 'student-1',
+    displayName: 'Student One',
+    solvedCount: 3,
+    solvedByDifficulty: [
+      { key: 'easy', count: 1 },
+      { key: 'medium', count: 1 },
+      { key: 'hard', count: 1 }
+    ],
+    submissionCount: 5,
+    acceptedCount: 3,
+    acceptanceRate: 60,
+    activeDays: 3,
+    currentStreak: 2,
+    longestStreak: 4,
+    languageBreakdown: [{ key: 'python', count: 5 }],
+    tagBreakdown: [
+      { key: 'array', count: 1 },
+      { key: 'graphs', count: 1 },
+      { key: 'strings', count: 1 }
+    ],
+    badges: [
+      {
+        id: 'first_ac',
+        title: 'First AC',
+        description: 'Earn your first accepted submission.',
+        earned: true
+      },
+      {
+        id: 'solved_10',
+        title: 'Solved 10',
+        description: 'Solve 10 unique problems.',
+        earned: false
+      }
+    ]
+  });
+
+  const legacyStats = await invoke({
+    path: '/stats',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(legacyStats.statusCode, 200);
+  assert.deepEqual(legacyStats.body, stats.body);
+
+  const weeklyLeaderboard = await invoke({
+    path: '/leaderboards/weekly',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(weeklyLeaderboard.statusCode, 200);
+  assert.equal((weeklyLeaderboard.body as { scope: string }).scope, 'weekly');
+  assert.equal((weeklyLeaderboard.body as { title: string }).title, 'Weekly Leaderboard');
+  assert.deepEqual((weeklyLeaderboard.body as { entries: unknown[] }).entries, [
+    {
+      rank: 1,
+      userId: 'student-1',
+      displayName: 'Student One',
+      solvedCount: 3,
+      acceptedCount: 3,
+      submissionCount: 5,
+      currentStreak: 2,
+      longestStreak: 4,
+      score: 3,
+      scoreLabel: 'Solved'
+    }
+  ]);
+
+  const legacyRanking = await invoke({
+    path: '/ranking',
+    headers: { authorization: `Bearer ${studentToken}` },
+    runtime
+  });
+  assert.equal(legacyRanking.statusCode, 200);
+  assert.equal((legacyRanking.body as { scope: string }).scope, 'all-time');
 });
 
 test('protected endpoints return 401 for missing or invalid tokens and 403 for insufficient role', async () => {

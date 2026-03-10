@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { EngagementApiClient, ProblemReview, PublicRankingEntry, PublicStatsView } from '../api/EngagementApiClient';
+import {
+  EngagementApiClient,
+  LeaderboardScope,
+  LeaderboardView,
+  ProblemReview,
+  StudentStatsView
+} from '../api/EngagementApiClient';
 import {
   CreateSubmissionRequest,
   CreateSubmissionResponse,
@@ -251,14 +257,14 @@ export class HttpEngagementApiClient implements EngagementApiClient {
     }));
   }
 
-  async getPublicStats(accessToken: string): Promise<PublicStatsView> {
-    return requestJson<PublicStatsView>(this.config, '/stats', {
+  async getMyStats(accessToken: string): Promise<StudentStatsView> {
+    return requestJson<StudentStatsView>(this.config, '/me/stats', {
       accessToken
     });
   }
 
-  async getPublicRanking(accessToken: string): Promise<readonly PublicRankingEntry[]> {
-    return requestJson<readonly PublicRankingEntry[]>(this.config, '/ranking', {
+  async getLeaderboard(accessToken: string, scope: LeaderboardScope): Promise<LeaderboardView> {
+    return requestJson<LeaderboardView>(this.config, `/leaderboards/${scope}`, {
       accessToken
     });
   }
