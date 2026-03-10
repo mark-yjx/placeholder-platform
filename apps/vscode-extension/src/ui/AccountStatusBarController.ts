@@ -6,6 +6,11 @@ export type AccountStatusBarItemLike = {
   dispose(): void;
 };
 
+export type AccountStatusBarState = {
+  isAuthenticated: boolean;
+  email?: string | null;
+};
+
 export class AccountStatusBarController {
   static readonly commandId = 'oj.account.show';
 
@@ -13,9 +18,17 @@ export class AccountStatusBarController {
     this.item.command = AccountStatusBarController.commandId;
   }
 
-  refresh(): void {
-    this.item.text = '$(account)';
-    this.item.tooltip = 'Open OJ account';
+  refresh(input?: AccountStatusBarState): void {
+    const email = input?.email?.trim() ?? '';
+
+    if (input?.isAuthenticated && email) {
+      this.item.text = `$(account) ${email}`;
+      this.item.tooltip = `Signed in as ${email}. Open OJ account`;
+    } else {
+      this.item.text = '$(account) Sign in';
+      this.item.tooltip = 'Sign in to OJ';
+    }
+
     this.item.show();
   }
 

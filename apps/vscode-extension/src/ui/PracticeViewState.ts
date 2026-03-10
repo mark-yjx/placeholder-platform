@@ -163,6 +163,17 @@ export class PracticeViewState {
   private readonly pendingSubmissions = new Map<string, PendingSubmission>();
   private readonly results = new Map<string, SubmissionResult>();
 
+  getProblemCount(): number {
+    return this.problems.length;
+  }
+
+  clear(): void {
+    this.problems = [];
+    this.selectedProblemId = null;
+    this.pendingSubmissions.clear();
+    this.results.clear();
+  }
+
   setProblems(problems: readonly PublishedProblem[]): void {
     const existingById = new Map(this.problems.map((problem) => [problem.problemId, problem]));
     this.problems = problems.map((problem) => ({

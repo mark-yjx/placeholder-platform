@@ -16,49 +16,46 @@ test('fetched problem detail renders expected fields', () => {
   const html = createProblemDetailHtml(viewModel);
 
   assert.equal(viewModel.entryFunction, 'collapse');
+  assert.equal(viewModel.summary, 'Collapse duplicate digits.');
   assert.match(html, /<h2>Collapse Identical Digits<\/h2>/);
+  assert.match(html, /<p class="hero-copy">Collapse duplicate digits\.<\/p>/);
   assert.match(html, /Problem ID:<\/strong> <code>collapse<\/code>/);
-  assert.match(html, /What the problem is asking/);
-  assert.match(html, /Expected input format/);
-  assert.match(html, /Expected output format/);
-  assert.match(html, /Input and output contract/);
-  assert.match(html, /class="format-panel"/);
-  assert.match(html, /Student-visible examples/);
-  assert.match(html, /class="action-cluster"/);
+  assert.match(html, /<h3>Description<\/h3>/);
+  assert.match(html, /<h3>Input<\/h3>/);
+  assert.match(html, /<h3>Output<\/h3>/);
+  assert.match(html, /<h3>Examples<\/h3>/);
+  assert.match(html, /class="io-grid"/);
+  assert.match(html, /class="problem-actions"/);
   assert.match(html, /class="secondary-actions"/);
   assert.match(html, /class="primary-action"/);
   assert.doesNotMatch(html, /Entry Function:/);
   assert.doesNotMatch(html, /Language:/);
-  assert.match(html, /<h1>Collapse Identical Digits<\/h1>/);
   assert.match(html, /<p>Collapse duplicate digits\.<\/p>/);
   assert.match(html, /<ul><li>Keep the sign<\/li><li>Keep the order<\/li><\/ul>/);
   assert.match(html, /Use <code>collapse\(number\)<\/code>\./);
   assert.doesNotMatch(html, /<pre style="white-space: pre-wrap;">/);
-  assert.match(html, /max-width: 720px/);
-  assert.match(html, /font-size: 0\.92rem/);
-  assert.match(html, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/);
-  assert.match(html, /font-size: 0\.86rem/);
-  assert.match(html, /width: 100%/);
+  assert.match(html, /max-width: 760px/);
+  assert.match(html, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(html, /Starter File:<\/strong> <code>collapse\.py<\/code>/);
   assert.doesNotMatch(html, /\/home\/mark\/src\/oj-vscode\/\.oj\/problems\/collapse\.py/);
-  assert.match(html, /<vscode-button data-command="openStarter">Open Coding File<\/vscode-button>/);
+  assert.match(html, /<vscode-button appearance="primary" data-command="openStarter">Open Coding File<\/vscode-button>/);
   assert.match(html, /<vscode-button data-command="runPublicTests">Run Public Tests<\/vscode-button>/);
-  assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile">Submit<\/vscode-button>/);
+  assert.match(html, /<vscode-button data-command="submitCurrentFile">Submit<\/vscode-button>/);
   assert.doesNotMatch(html, /Refresh/);
 });
 
 test('empty state shows friendly placeholder instead of blank panel', () => {
   const html = createProblemDetailHtml(createProblemDetailViewModel(null, null));
 
-  assert.match(html, /<h2>Problem Detail<\/h2>/);
+  assert.match(html, /<h2>Choose a problem<\/h2>/);
+  assert.match(html, /Pick a problem from the list to read the prompt, inspect examples, and start solving\./);
   assert.match(html, /Select a problem from the Problems list to view details\./);
-  assert.match(html, /<strong>Problem ID:<\/strong> <code>No problem selected yet\.<\/code>/);
-  assert.match(html, /No problem selected yet\./);
-  assert.match(html, /<strong>Starter File:<\/strong> <code>No problem selected yet\.<\/code>/);
+  assert.doesNotMatch(html, /Problem ID:/);
+  assert.doesNotMatch(html, /Starter File:/);
   assert.match(html, /Examples will appear after you select a problem\./);
-  assert.match(html, /<vscode-button data-command="openStarter" disabled>Open Coding File<\/vscode-button>/);
+  assert.match(html, /<vscode-button appearance="primary" data-command="openStarter" disabled>Open Coding File<\/vscode-button>/);
   assert.match(html, /<vscode-button data-command="runPublicTests" disabled>Run Public Tests<\/vscode-button>/);
-  assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile" disabled>Submit<\/vscode-button>/);
+  assert.match(html, /<vscode-button data-command="submitCurrentFile" disabled>Submit<\/vscode-button>/);
 });
 
 test('problem detail falls back safely when optional fields are missing', () => {
@@ -75,6 +72,7 @@ test('problem detail falls back safely when optional fields are missing', () => 
   assert.equal(viewModel.entryFunction, 'Unknown');
   assert.match(html, /<h2>Untitled problem<\/h2>/);
   assert.doesNotMatch(html, /Entry Function:/);
+  assert.match(html, /<p class="hero-copy">No statement available\.<\/p>/);
   assert.match(html, /Starter File:<\/strong> <code>legacy-problem\.py<\/code>/);
   assert.doesNotMatch(html, /\/tmp\/workspace\/\.oj\/problems\/legacy-problem\.py/);
   assert.match(html, /No statement available\./);
@@ -127,3 +125,79 @@ test('problem detail renders manifest examples as rows inside one shared panel',
   assert.doesNotMatch(html, /class="field-label">Input<\/p>/);
 });
 
+test('problem detail recognizes input format and output format headings', () => {
+  const html = createProblemDetailHtml(
+    createProblemDetailViewModel(
+      {
+        problemId: 'formatted-problem',
+        versionId: 'formatted-problem-v1',
+        title: 'Formatted Problem',
+        statementMarkdown:
+          '# Formatted Problem\n\nMain description.\n\n## Input Format\n\nOne integer per line.\n\n## Output Format\n\nReturn the collapsed value.\n\n## Notes\n\nKeep the sign.',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n'
+      },
+      '/home/mark/src/oj-vscode/.oj/problems/formatted-problem.py'
+    )
+  );
+
+  assert.match(html, /<h3>Input<\/h3>/);
+  assert.match(html, /<h3>Output<\/h3>/);
+  assert.match(html, /One integer per line\./);
+  assert.match(html, /Return the collapsed value\./);
+  assert.match(html, /<h2>Notes<\/h2>/);
+  assert.match(html, /Keep the sign\./);
+  assert.doesNotMatch(html, /Input Format/);
+  assert.doesNotMatch(html, /Output Format/);
+});
+
+test('problem detail preserves example markdown alongside structured examples', () => {
+  const html = createProblemDetailHtml(
+    createProblemDetailViewModel(
+      {
+        problemId: 'example-problem',
+        versionId: 'example-problem-v1',
+        title: 'Example Problem',
+        statementMarkdown:
+          '# Example Problem\n\nBase description.\n\n## Examples\n\nUse the examples below to verify edge cases.',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n',
+        examples: [{ input: 111122223333, output: 123 }]
+      },
+      '/home/mark/src/oj-vscode/.oj/problems/example-problem.py'
+    )
+  );
+
+  assert.match(html, /class="examples-copy"/);
+  assert.match(html, /Use the examples below to verify edge cases\./);
+  assert.match(html, /<h4 class="example-title">Example 1<\/h4>/);
+  assert.match(html, /111122223333/);
+  assert.match(html, /123/);
+});
+
+test('problem detail tolerates sparse example payloads without crashing', () => {
+  const html = createProblemDetailHtml(
+    createProblemDetailViewModel(
+      {
+        problemId: 'sparse-problem',
+        versionId: 'sparse-problem-v1',
+        title: 'Sparse Problem',
+        statementMarkdown: 'Handle incomplete example payloads.',
+        entryFunction: 'solve',
+        starterCode: 'def solve():\n    return 42\n',
+        examples: [
+          {
+            input: undefined as unknown as string,
+            output: 42
+          }
+        ]
+      },
+      '/home/mark/src/oj-vscode/.oj/problems/sparse-problem.py'
+    )
+  );
+
+  assert.match(html, /class="examples-panel"/);
+  assert.match(html, /<p class="example-field-label">Input<\/p>/);
+  assert.match(html, /<pre class="example-surface"><\/pre>/);
+  assert.match(html, /<pre class="example-surface">42<\/pre>/);
+});

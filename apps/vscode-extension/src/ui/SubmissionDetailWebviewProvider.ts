@@ -26,7 +26,7 @@ export class SubmissionDetailWebviewProvider implements vscode.WebviewViewProvid
     this.render();
   }
 
-  showSubmissionDetail(submission: SubmissionDetailState): void {
+  showSubmissionDetail(submission: SubmissionDetailState | null): void {
     this.currentSubmission = submission;
     this.render();
   }

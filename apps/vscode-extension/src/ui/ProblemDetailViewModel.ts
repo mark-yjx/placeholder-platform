@@ -5,6 +5,7 @@ import { createWebviewStyles, escapeHtml, formatCaseValue } from './WebviewTheme
 
 export type ProblemDetailViewModel = {
   title: string;
+  summary: string;
   problemId: string;
   statement: string;
   entryFunction: string;
@@ -21,8 +22,9 @@ export function createProblemDetailViewModel(
 ): ProblemDetailViewModel {
   if (!problem) {
     return {
-      title: 'Problem Detail',
-      problemId: 'No problem selected yet.',
+      title: 'Choose a problem',
+      summary: 'Pick a problem from the list to read the prompt, inspect examples, and start solving.',
+      problemId: '',
       statement: 'Select a problem from the Problems list to view details.',
       entryFunction: 'No problem selected yet.',
       language: null,
@@ -40,9 +42,11 @@ export function createProblemDetailViewModel(
   const starterFileLabel = starterFilePath?.trim()
     ? path.basename(starterFilePath)
     : `${problem.problemId}.py`;
+  const summary = extractProblemSummary(statement, title);
 
   return {
     title,
+    summary,
     problemId: problem.problemId,
     statement,
     entryFunction,
@@ -54,6 +58,32 @@ export function createProblemDetailViewModel(
   };
 }
 
+function stripMarkdownForSummary(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^[-*+]\s+/gm, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractProblemSummary(statement: string, title: string): string {
+  const paragraphs = statement
+    .split(/\n\s*\n/)
+    .map((paragraph) => stripMarkdownForSummary(paragraph))
+    .filter((paragraph) => paragraph.length > 0);
+
+  const normalizedTitle = title.trim().toLowerCase();
+  const summary =
+    paragraphs.find((paragraph) => paragraph.trim().toLowerCase() !== normalizedTitle) ??
+    paragraphs[0];
+
+  return summary || 'Read the prompt, inspect the examples, and solve the problem in your workspace.';
+}
+
 type StatementSections = {
   description: string;
   input: string;
@@ -61,8 +91,28 @@ type StatementSections = {
   examples: string;
 };
 
+const STATEMENT_SECTION_ALIASES: Record<keyof StatementSections, readonly string[]> = {
+  description: ['description'],
+  input: ['input', 'input format'],
+  output: ['output', 'output format'],
+  examples: ['example', 'examples']
+};
+
 function normalizeHeadingLabel(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function resolveStatementSection(headingLabel: string): keyof StatementSections | null {
+  for (const [section, aliases] of Object.entries(STATEMENT_SECTION_ALIASES) as [
+    keyof StatementSections,
+    readonly string[]
+  ][]) {
+    if (aliases.includes(headingLabel)) {
+      return section;
+    }
+  }
+
+  return null;
 }
 
 function splitStatementSections(markdown: string): StatementSections {
@@ -79,16 +129,9 @@ function splitStatementSections(markdown: string): StatementSections {
     const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
     if (headingMatch) {
       const headingLabel = normalizeHeadingLabel(headingMatch[2]);
-
-      if (
-        headingLabel === 'description' ||
-        headingLabel === 'input' ||
-        headingLabel === 'output' ||
-        headingLabel === 'example' ||
-        headingLabel === 'examples'
-      ) {
-        currentSection =
-          headingLabel === 'example' || headingLabel === 'examples' ? 'examples' : headingLabel;
+      const section = resolveStatementSection(headingLabel);
+      if (section) {
+        currentSection = section;
         continue;
       }
     }
@@ -210,8 +253,13 @@ function renderExamples(
     return '<p class="muted">Examples will appear after you select a problem.</p>';
   }
 
+  const renderedExamplesMarkdown = examplesMarkdown.trim()
+    ? `<div class="examples-copy">${renderSectionContent(examplesMarkdown, 'No examples provided yet.')}</div>`
+    : '';
+
   if (examples.length > 0) {
     return `
+      ${renderedExamplesMarkdown}
       <div class="examples-panel">
         ${examples
           .map(
@@ -241,8 +289,8 @@ function renderExamples(
 
 export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   const title = escapeHtml(input.title);
+  const summary = escapeHtml(input.summary);
   const problemId = escapeHtml(input.problemId);
-  const statement = escapeHtml(input.statement);
   const starterFilePath = escapeHtml(input.starterFilePath ?? 'No problem selected yet.');
   const openStarterAttributes = input.isEmpty ? ' data-command="openStarter" disabled' : ' data-command="openStarter"';
   const runPublicTestsAttributes = input.isEmpty
@@ -253,7 +301,7 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     : ' data-command="submitCurrentFile"';
   const statementSections = splitStatementSections(input.statement);
   const statementBody = input.isEmpty
-    ? `<p role="status" class="muted">${statement}</p>`
+    ? `<p role="status" class="muted">${escapeHtml(input.statement)}</p>`
     : renderSectionContent(statementSections.description || input.statement, 'No description available yet.');
   const inputSection = renderSectionContent(
     statementSections.input,
@@ -269,43 +317,46 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     input.isEmpty
   );
   const toolkitScript = 'https://unpkg.com/@vscode/webview-ui-toolkit@1.4.0/dist/toolkit.min.js';
-  const compactProblemDetailStyles = `
+  const practiceReadingStyles = `
     body {
       padding: 16px;
     }
 
     .problem-detail-shell {
-      max-width: 720px;
+      max-width: 760px;
       gap: 16px;
       font-size: 0.92rem;
     }
 
-    .problem-detail-shell .hero-card,
-    .problem-detail-shell .section-card,
-    .problem-detail-shell .case-card {
-      padding: 18px;
-    }
-
     .problem-detail-shell .hero-card h2 {
-      font-size: 1.45rem;
+      font-size: 1.55rem;
     }
 
     .problem-detail-shell .hero-copy,
-    .problem-detail-shell .inline-meta p,
     .problem-detail-shell .markdown-content,
     .problem-detail-shell pre {
       font-size: 0.9rem;
     }
 
-    .problem-detail-shell .field-grid {
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
+    .problem-detail-shell .problem-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
-    .problem-detail-shell .action-cluster {
+    .problem-detail-shell .problem-meta p {
+      color: var(--text-secondary);
+    }
+
+    .problem-detail-shell .problem-actions {
       display: grid;
       gap: 10px;
-      margin-top: 18px;
+      margin-top: 6px;
+    }
+
+    .problem-detail-shell .primary-action vscode-button,
+    .problem-detail-shell .secondary-actions vscode-button {
+      width: 100%;
     }
 
     .problem-detail-shell .secondary-actions {
@@ -314,61 +365,33 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
       gap: 10px;
     }
 
-    .problem-detail-shell .secondary-actions vscode-button,
-    .problem-detail-shell .primary-action vscode-button {
-      width: 100%;
+    .problem-detail-shell .problem-sections,
+    .problem-detail-shell .example-grid,
+    .problem-detail-shell .io-grid {
+      display: grid;
+      gap: 12px;
     }
 
-    .problem-detail-shell .secondary-actions vscode-button::part(control) {
-      justify-content: center;
-      min-height: 34px;
-      font-size: 0.82rem;
+    .problem-detail-shell .io-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .problem-detail-shell .primary-action vscode-button::part(control) {
       justify-content: center;
+      min-height: 40px;
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+
+    .problem-detail-shell .secondary-actions vscode-button::part(control) {
+      justify-content: center;
       min-height: 38px;
-      font-size: 0.86rem;
-      font-weight: 600;
+      font-size: 0.84rem;
     }
 
-    .problem-detail-shell .format-card {
-      overflow: hidden;
-    }
-
-    .problem-detail-shell .format-panel {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 14px;
+    .problem-detail-shell .io-card .markdown-content,
+    .problem-detail-shell .io-card .muted {
       margin-top: 2px;
-    }
-
-    .problem-detail-shell .format-column {
-      display: grid;
-      min-width: 0;
-      gap: 8px;
-    }
-
-    .problem-detail-shell .format-label {
-      display: block;
-      color: var(--text-secondary);
-      font-size: 0.76rem;
-      font-weight: 600;
-      letter-spacing: 0;
-      text-transform: none;
-    }
-
-    .problem-detail-shell .format-column h4 {
-      font-size: 0.86rem;
-      line-height: 1.3;
-      letter-spacing: 0;
-      color: var(--text-secondary);
-      font-weight: 600;
-    }
-
-    .problem-detail-shell .format-column .markdown-content,
-    .problem-detail-shell .format-column .muted {
-      margin-top: 0;
       padding: 12px 14px;
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -381,6 +404,10 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
       display: grid;
       gap: 12px;
       margin-top: 2px;
+    }
+
+    .problem-detail-shell .examples-copy {
+      margin-bottom: 12px;
     }
 
     .problem-detail-shell .example-card {
@@ -402,9 +429,7 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     }
 
     .problem-detail-shell .example-grid {
-      display: grid;
       grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-      gap: 12px;
     }
 
     .problem-detail-shell .example-field {
@@ -441,7 +466,7 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .problem-detail-shell .format-panel,
+      .problem-detail-shell .io-grid,
       .problem-detail-shell .example-grid {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -455,26 +480,32 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     <script type="module" src="${toolkitScript}"></script>
     <style>
       ${createWebviewStyles()}
-      ${compactProblemDetailStyles}
+      ${practiceReadingStyles}
     </style>
   </head>
   <body>
     <main class="webview-shell section-stack problem-detail-shell">
       <section class="hero-card">
-        <p class="eyebrow">Problem Detail</p>
+        <p class="eyebrow">OJ Practice</p>
         <h2>${title}</h2>
-        <p class="hero-copy">Open the starter file, run public tests locally, and submit from one focused view.</p>
-        <div class="inline-meta">
-          <p><strong>Problem ID:</strong> <code>${problemId}</code></p>
-          <p><strong>Starter File:</strong> <code>${starterFilePath}</code></p>
-        </div>
-        <div class="action-cluster">
-          <div class="secondary-actions">
-            <vscode-button${openStarterAttributes}>Open Coding File</vscode-button>
-            <vscode-button${runPublicTestsAttributes}>Run Public Tests</vscode-button>
-          </div>
+        <p class="hero-copy">${summary}</p>
+        ${
+          input.isEmpty
+            ? ''
+            : `
+              <div class="problem-meta">
+                <p><strong>Problem ID:</strong> <code>${problemId}</code></p>
+                <p><strong>Starter File:</strong> <code>${starterFilePath}</code></p>
+              </div>
+            `
+        }
+        <div class="problem-actions">
           <div class="primary-action">
-            <vscode-button appearance="primary"${submitAttributes}>Submit</vscode-button>
+            <vscode-button appearance="primary"${openStarterAttributes}>Open Coding File</vscode-button>
+          </div>
+          <div class="secondary-actions">
+            <vscode-button${runPublicTestsAttributes}>Run Public Tests</vscode-button>
+            <vscode-button${submitAttributes}>Submit</vscode-button>
           </div>
         </div>
       </section>
@@ -482,34 +513,32 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
       <section class="section-card">
         <div class="section-header">
           <p class="section-kicker">Description</p>
-          <h3>What the problem is asking</h3>
+          <h3>Description</h3>
         </div>
         ${statementBody}
       </section>
 
-      <section class="section-card format-card">
-        <div class="section-header">
-          <p class="section-kicker">Format</p>
-          <h3>Input and output contract</h3>
-        </div>
-        <div class="format-panel">
-          <article class="format-column">
-            <span class="format-label">Input</span>
-            <h4>Expected input format</h4>
+      <div class="io-grid">
+        <section class="section-card io-card">
+          <div class="section-header">
+            <p class="section-kicker">Input</p>
+            <h3>Input</h3>
+          </div>
             ${inputSection}
-          </article>
-          <article class="format-column">
-            <span class="format-label">Output</span>
-            <h4>Expected output format</h4>
+        </section>
+        <section class="section-card io-card">
+          <div class="section-header">
+            <p class="section-kicker">Output</p>
+            <h3>Output</h3>
+          </div>
             ${outputSection}
-          </article>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <section class="section-card">
         <div class="section-header">
           <p class="section-kicker">Examples</p>
-          <h3>Student-visible examples</h3>
+          <h3>Examples</h3>
         </div>
         ${examplesSection}
       </section>

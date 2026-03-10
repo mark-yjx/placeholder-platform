@@ -20,6 +20,8 @@ test('sidebar no longer registers account login as primary UI', () => {
 
   assert.doesNotMatch(extensionSource, /registerWebviewViewProvider\(\s*'ojAccount'/);
   assert.doesNotMatch(manifestSource, /"id": "ojAccount"/);
+  assert.match(extensionSource, /registerWebviewViewProvider\(\s*'ojPracticeHome'/);
+  assert.match(manifestSource, /"id": "ojPracticeHome"/);
 });
 
 test('status bar account entry and browser auth commands remain available', () => {
@@ -40,12 +42,13 @@ test('status bar account entry and browser auth commands remain available', () =
   );
   const manifestSource = readFromRepoRoot('apps', 'vscode-extension', 'package.json');
 
-  assert.match(statusBarSource, /this\.item\.text = '\$\(account\)'/);
+  assert.match(statusBarSource, /this\.item\.text = '\$\(account\) Sign in'/);
+  assert.match(statusBarSource, /Signed in as \$\{email\}\. Open OJ account/);
   assert.match(statusBarSource, /commandId = 'oj\.account\.show'/);
   assert.match(extensionSource, /new AccountWebviewPanel/);
   assert.match(panelSource, /message\.command === 'signIn'/);
   assert.match(panelSource, /message\.command === 'signUp'/);
   assert.match(panelSource, /message\.command === 'logout'/);
   assert.match(manifestSource, /"command": "oj\.login"/);
-  assert.match(manifestSource, /"command": "oj\.signup"/);
+  assert.doesNotMatch(manifestSource, /"command": "oj\.signup"/);
 });

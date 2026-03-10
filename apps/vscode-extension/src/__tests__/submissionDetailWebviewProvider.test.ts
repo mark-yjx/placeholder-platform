@@ -16,13 +16,17 @@ test('submission detail renders expected fields for finished judged result', () 
   );
 
   assert.match(html, /<h2>Sub #20260310-153045<\/h2>/);
-  assert.match(html, /<strong>Submitted:<\/strong> Mar 10, 2026 at 15:30:45 UTC/);
+  assert.match(html, /Submitted Mar 10, 2026 at 15:30:45 UTC\./);
   assert.match(html, /<strong>Submission ID:<\/strong> <code>submission-1<\/code>/);
-  assert.match(html, /<strong>Status:<\/strong> finished/);
-  assert.match(html, /<strong>Verdict:<\/strong> AC/);
-  assert.match(html, /<strong>Time:<\/strong> 120ms/);
-  assert.match(html, /<strong>Memory:<\/strong> 2048KB/);
-  assert.match(html, /Raw result summary/);
+  assert.match(html, /class="submission-overview"/);
+  assert.match(html, /class="submission-pill submission-pill-hero submission-pill-ac">AC<\/span>/);
+  assert.match(html, /Status: finished/);
+  assert.match(html, /Time: 120ms/);
+  assert.match(html, /Memory: 2048KB/);
+  assert.match(html, /Verdict and metrics/);
+  assert.match(html, /Execution summary/);
+  assert.doesNotMatch(html, /class="metric-grid"/);
+  assert.doesNotMatch(html, /class="metric-card"/);
   assert.doesNotMatch(html, /<strong>Failure Info:<\/strong>/);
 });
 
@@ -39,7 +43,7 @@ test('submission detail renders neutral memory placeholder when memory is zero',
     })
   );
 
-  assert.match(html, /<strong>Memory:<\/strong> N\/A/);
+  assert.match(html, /Memory: N\/A/);
   assert.doesNotMatch(html, /0KB/);
 });
 
@@ -55,7 +59,7 @@ test('submission detail renders neutral memory placeholder when memory is missin
     })
   );
 
-  assert.match(html, /<strong>Memory:<\/strong> N\/A/);
+  assert.match(html, /Memory: N\/A/);
   assert.doesNotMatch(html, /0KB/);
 });
 
@@ -79,7 +83,7 @@ test('submission detail renders running state without a blank detail body', () =
   );
 
   assert.match(html, /<h2>Sub #20260310-153045<\/h2>/);
-  assert.match(html, /<strong>Status:<\/strong> running/);
+  assert.match(html, /Status: running/);
   assert.match(html, /Status: running/);
 });
 
@@ -95,7 +99,7 @@ test('submission detail renders failed state with failure info fallback', () => 
   );
 
   assert.match(html, /<h2>Sub #20260310-153045<\/h2>/);
-  assert.match(html, /<strong>Status:<\/strong> failed/);
+  assert.match(html, /Status: failed/);
   assert.match(html, /<strong>Failure Info:<\/strong> compile step crashed/);
   assert.match(html, /Failed: compile step crashed/);
 });
@@ -113,10 +117,10 @@ test('submission detail hides failure info for finished non-AC verdicts without 
     })
   );
 
-  assert.match(html, /<strong>Status:<\/strong> finished/);
-  assert.match(html, /<strong>Verdict:<\/strong> CE/);
-  assert.match(html, /<strong>Time:<\/strong> 11ms/);
-  assert.match(html, /<strong>Memory:<\/strong> 22KB/);
+  assert.match(html, /Status: finished/);
+  assert.match(html, /class="submission-pill submission-pill-hero submission-pill-ce">CE<\/span>/);
+  assert.match(html, /Time: 11ms/);
+  assert.match(html, /Memory: 22KB/);
   assert.doesNotMatch(html, /<strong>Failure Info:<\/strong>/);
   assert.match(html, /verdict=CE, time=11ms, memory=22KB/);
 });
@@ -170,7 +174,7 @@ test('submission detail falls back to a neutral title when submitted time is una
   );
 
   assert.match(html, /<h2>Submission Result<\/h2>/);
-  assert.match(html, /<strong>Submitted:<\/strong> Not available/);
+  assert.match(html, /Submitted Not available\./);
   assert.match(html, /<strong>Submission ID:<\/strong> <code>submission-no-time-1<\/code>/);
   assert.doesNotMatch(html, /<h2>submission-no-time-1<\/h2>/);
 });

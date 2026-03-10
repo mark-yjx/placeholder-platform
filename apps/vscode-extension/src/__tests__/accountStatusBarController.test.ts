@@ -17,25 +17,36 @@ class FakeStatusBarItem implements AccountStatusBarItemLike {
   }
 }
 
-test('account status bar shows icon-only login entry point', () => {
+test('account status bar shows a visible sign-in entry point before login', () => {
   const item = new FakeStatusBarItem();
   const controller = new AccountStatusBarController(item);
 
   controller.refresh();
 
-  assert.equal(item.text, '$(account)');
-  assert.equal(item.tooltip, 'Open OJ account');
+  assert.equal(item.text, '$(account) Sign in');
+  assert.equal(item.tooltip, 'Sign in to OJ');
   assert.equal(item.command, 'oj.account.show');
   assert.equal(item.shown, 1);
 });
 
-test('account status bar remains icon-only after repeated refreshes', () => {
+test('account status bar shows the student email after login', () => {
+  const item = new FakeStatusBarItem();
+  const controller = new AccountStatusBarController(item);
+
+  controller.refresh({ isAuthenticated: true, email: 'student1@example.com' });
+
+  assert.equal(item.text, '$(account) student1@example.com');
+  assert.equal(item.tooltip, 'Signed in as student1@example.com. Open OJ account');
+  assert.equal(item.shown, 1);
+});
+
+test('account status bar remains stable after repeated refreshes', () => {
   const item = new FakeStatusBarItem();
   const controller = new AccountStatusBarController(item);
 
   controller.refresh();
-  controller.refresh();
+  controller.refresh({ isAuthenticated: true, email: 'student1@example.com' });
 
-  assert.equal(item.text, '$(account)');
+  assert.equal(item.text, '$(account) student1@example.com');
   assert.equal(item.shown, 2);
 });

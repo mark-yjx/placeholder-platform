@@ -26,6 +26,20 @@ import { ProblemDetailWebviewProvider } from './ui/ProblemDetailWebviewProvider'
 import { SubmissionDetailWebviewProvider } from './ui/SubmissionDetailWebviewProvider';
 import { AccountStatusBarController } from './ui/AccountStatusBarController';
 import { AccountWebviewPanel } from './ui/AccountWebviewPanel';
+import { PracticeHomeWebviewProvider } from './ui/PracticeHomeWebviewProvider';
+
+const PRACTICE_HOME_VISIBLE_CONTEXT = 'oj.practice.homeVisible';
+const PRACTICE_VIEWS_READY_CONTEXT = 'oj.practice.viewsReady';
+
+function hasCompleteStudentIdentity(tokenStore: SessionTokenStore): boolean {
+  const session = tokenStore.getSessionIdentity();
+  return Boolean(
+    tokenStore.isAuthenticated() &&
+      session.email?.trim() &&
+      session.role?.trim() &&
+      session.role === 'student'
+  );
+}
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel('OJ VSCode');
@@ -72,6 +86,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
   );
   let accountPanel: AccountWebviewPanel | null = null;
+  let sidebarHomeProvider: PracticeHomeWebviewProvider | null = null;
+  let practiceViews: PracticeTreeViews | null = null;
+  const updateSidebarContexts = async () => {
+    const isAuthenticated = hasCompleteStudentIdentity(tokenStore);
+    const hasLoadedProblems = practiceViews?.hasLoadedProblems() ?? false;
+    sidebarHomeProvider?.setState({ isAuthenticated });
+    await vscode.commands.executeCommand(
+      'setContext',
+      PRACTICE_HOME_VISIBLE_CONTEXT,
+      !isAuthenticated || !hasLoadedProblems
+    );
+    await vscode.commands.executeCommand(
+      'setContext',
+      PRACTICE_VIEWS_READY_CONTEXT,
+      isAuthenticated && hasLoadedProblems
+    );
+  };
   const refreshAccountStatus = () => {
     const session = tokenStore.getSessionIdentity();
     accountStatusBar.refresh({
@@ -79,9 +110,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       email: session.email
     });
   };
-  const refreshAccountUi = () => {
+  const refreshStudentUi = () => {
+    if (!hasCompleteStudentIdentity(tokenStore)) {
+      practiceViews?.clearAll();
+    }
     accountPanel?.refresh();
     refreshAccountStatus();
+    void updateSidebarContexts();
   };
   const browserAuthFlow = new BrowserAuthFlow(
     authCommands,
@@ -93,8 +128,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     {
       output,
       stateStore: context.globalState,
-      onSessionChanged: refreshAccountUi
+      onSessionChanged: refreshStudentUi
     }
+  );
+  sidebarHomeProvider = new PracticeHomeWebviewProvider(
+    browserAuthFlow,
+    vscode.window,
+    {
+      fetchProblems: async () => {
+        await vscode.commands.executeCommand('oj.practice.fetchProblems');
+      }
+    },
+    refreshStudentUi
   );
   accountPanel = new AccountWebviewPanel(
     browserAuthFlow,
@@ -105,18 +150,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.window.createWebviewPanel('ojAccountPanel', 'OJ Account', vscode.ViewColumn.Beside, {
         enableScripts: true
       }),
-    refreshAccountStatus,
+    refreshStudentUi,
     {
       getMyStats: () => engagementCommands.getMyStats(),
       getLeaderboard: (scope) => engagementCommands.getLeaderboard(scope),
       listSubmissions: () => practiceCommands.listSubmissions()
     }
   );
-  const practiceViews = new PracticeTreeViews(
+  practiceViews = new PracticeTreeViews(
     vscode.window,
     vscode.workspace,
     (problemDetail) => problemDetailProvider.showProblemDetail(problemDetail),
-    (submission) => submissionDetailProvider.showSubmissionDetail(submission)
+    (submission) => submissionDetailProvider.showSubmissionDetail(submission),
+    () => {
+      void updateSidebarContexts();
+    }
   );
   const problemStarterWorkspace = new ProblemStarterWorkspace(vscode.window, vscode.workspace);
   const localStateStore = new LocalPracticeStateStore(context.workspaceState);
@@ -130,7 +178,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     problemStarterWorkspace,
     localStateStore,
     onAuthSessionChanged: () => {
-      refreshAccountUi();
+      refreshStudentUi();
     },
     output,
     openExternalUrl: async (url) => {
@@ -141,6 +189,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   const treeViewDisposables = practiceViews.register((viewId, provider) =>
     vscode.window.registerTreeDataProvider(viewId, provider)
+  );
+  const sidebarHomeDisposable = vscode.window.registerWebviewViewProvider(
+    'ojPracticeHome',
+    sidebarHomeProvider
   );
   const problemDetailPanelDisposable = vscode.window.registerWebviewViewProvider(
     'ojProblemDetail',
@@ -158,7 +210,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   const logoutDisposable = vscode.commands.registerCommand('oj.logout', async () => {
     await authCommands.logout();
-    refreshAccountUi();
+    refreshStudentUi();
     vscode.window.showInformationMessage('Logged out of OJ.');
   });
   const revealSubmissionDisposable = vscode.commands.registerCommand(
@@ -188,6 +240,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(disposable);
   }
   context.subscriptions.push(revealSubmissionDisposable);
+  context.subscriptions.push(sidebarHomeDisposable);
   context.subscriptions.push(problemDetailPanelDisposable);
   context.subscriptions.push(submissionDetailPanelDisposable);
   context.subscriptions.push(accountPanelDisposable);
@@ -198,6 +251,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   output.appendLine(`Request timeout: ${requestTimeoutMs}ms`);
   output.appendLine(describeTokenStorageBehavior());
   refreshAccountStatus();
+  await updateSidebarContexts();
   await restorePracticeStateOnStartup({
     apiBaseUrl,
     tokenStore,
@@ -207,6 +261,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     localStateStore,
     problemStarterWorkspace
   });
+  await updateSidebarContexts();
 }
 
 export function deactivate(): void {

@@ -27,7 +27,7 @@ export class ProblemDetailWebviewProvider implements vscode.WebviewViewProvider 
     });
   }
 
-  showProblemDetail(problem: ProblemDetail): void {
+  showProblemDetail(problem: ProblemDetail | null): void {
     this.currentProblem = problem;
     this.render();
   }

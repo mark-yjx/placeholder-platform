@@ -71,7 +71,7 @@ export class PracticeTreeViews {
   constructor(
     private readonly window: Pick<typeof vscode.window, 'showInformationMessage' | 'showTextDocument'>,
     private readonly workspace: Pick<typeof vscode.workspace, 'openTextDocument'>,
-    private readonly onProblemDetailChanged?: (problem: ProblemDetail) => void,
+    private readonly onProblemDetailChanged?: (problem: ProblemDetail | null) => void,
     private readonly onSubmissionDetailChanged?: (submission: {
       submissionId: string;
       status: string;
@@ -81,7 +81,8 @@ export class PracticeTreeViews {
       memoryKb?: number;
       failureInfo?: string;
       detail: string;
-    }) => void
+    } | null) => void,
+    private readonly onProblemsChanged?: (problemCount: number) => void
   ) {}
 
   register(registerTreeDataProvider: (viewId: string, provider: vscode.TreeDataProvider<vscode.TreeItem>) => vscode.Disposable): readonly vscode.Disposable[] {
@@ -93,7 +94,11 @@ export class PracticeTreeViews {
 
   showProblems(problems: readonly PublishedProblem[]): void {
     this.state.setProblems(problems);
+    if (!this.state.getSelectedProblemId()) {
+      this.onProblemDetailChanged?.(null);
+    }
     this.problemsProvider.refresh();
+    this.onProblemsChanged?.(this.state.getProblemCount());
   }
 
   showProblemDetail(problem: ProblemDetail): void {
@@ -108,6 +113,20 @@ export class PracticeTreeViews {
 
   getSelectedProblemId(): string | null {
     return this.state.getSelectedProblemId();
+  }
+
+  hasLoadedProblems(): boolean {
+    return this.state.getProblemCount() > 0;
+  }
+
+  clearAll(): void {
+    this.state.clear();
+    this.selectedSubmissionId = null;
+    this.problemsProvider.refresh();
+    this.submissionsProvider.refresh();
+    this.onProblemDetailChanged?.(null);
+    this.onSubmissionDetailChanged?.(null);
+    this.onProblemsChanged?.(0);
   }
 
   showSubmissionCreated(submissionId: string): void {
@@ -138,6 +157,7 @@ export class PracticeTreeViews {
   private emitSubmissionDetail(submissionId: string): void {
     const detail = this.state.getSubmissionDetailData(submissionId);
     if (!detail) {
+      this.onSubmissionDetailChanged?.(null);
       return;
     }
 

@@ -35,7 +35,6 @@
     "onCommand:oj.account.show",
     "onCommand:oj.logout",
     "onCommand:oj.login",
-    "onCommand:oj.signup",
     "onCommand:oj.practice.fetchProblems",
     "onCommand:oj.practice.submitCode",
     "onCommand:oj.practice.submitCurrentFile",
@@ -43,6 +42,7 @@
     "onCommand:oj.practice.viewResult",
     "onCommand:oj.practice.cancelPolling",
     "onCommand:oj.practice.selectSubmission",
+    "onView:ojPracticeHome",
     "onView:ojProblems",
     "onView:ojSubmissions",
     "onView:ojProblemDetail",
@@ -97,15 +97,15 @@
       },
       {
         "command": "oj.login",
-        "title": "OJ: Sign In"
-      },
-      {
-        "command": "oj.signup",
-        "title": "OJ: Sign Up"
+        "title": "OJ: Login"
       },
       {
         "command": "oj.practice.fetchProblems",
-        "title": "OJ: Fetch Problems"
+        "title": "OJ: Fetch Problems",
+        "icon": {
+          "light": "media/fetch-problems-light.svg",
+          "dark": "media/fetch-problems-dark.svg"
+        }
       },
       {
         "command": "oj.practice.submitCode",
@@ -151,24 +151,34 @@
     "views": {
       "ojSidebar": [
         {
+          "id": "ojPracticeHome",
+          "name": "OJ Practice",
+          "type": "webview",
+          "when": "oj.practice.homeVisible"
+        },
+        {
           "id": "ojProblems",
-          "name": "Problems"
+          "name": "Problems",
+          "when": "oj.practice.viewsReady"
         },
         {
           "id": "ojProblemDetail",
           "name": "Problem Detail",
-          "type": "webview"
+          "type": "webview",
+          "when": "oj.practice.viewsReady"
         }
       ],
       "ojPanel": [
         {
           "id": "ojSubmissions",
-          "name": "Submissions"
+          "name": "Submissions",
+          "when": "oj.practice.viewsReady"
         },
         {
           "id": "ojSubmissionDetail",
           "name": "Submission Detail",
-          "type": "webview"
+          "type": "webview",
+          "when": "oj.practice.viewsReady"
         }
       ]
     },
@@ -176,7 +186,7 @@
       "view/title": [
         {
           "command": "oj.practice.fetchProblems",
-          "when": "view == ojProblems",
+          "when": "view == ojProblems && oj.practice.viewsReady",
           "group": "navigation"
         }
       ]

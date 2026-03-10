@@ -131,6 +131,10 @@ function buildSubmissionDetailText(input: {
   return `Status: ${input.status}`;
 }
 
+function createSubmissionTone(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
 export function createSubmissionDetailViewModel(input: {
   submissionId: string;
   status: string;
@@ -191,13 +195,114 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
   const verdict = escapeHtml(input.verdict);
   const time = escapeHtml(input.time);
   const memory = escapeHtml(input.memory);
+  const verdictTone = escapeHtml(createSubmissionTone(input.verdict));
   const failureInfo = input.failureInfo ? escapeHtml(input.failureInfo) : null;
   const detail = escapeHtml(input.detail);
   const emptyState = input.isEmpty
     ? '<p>Selecting a submission will load its status, verdict, timing, memory, and failure info here.</p>'
     : '';
+  const submissionStyles = `
+    body {
+      padding: 16px;
+    }
+
+    .submission-detail-shell {
+      max-width: 720px;
+      gap: 16px;
+    }
+
+    .submission-detail-shell .hero-card h2 {
+      font-size: 1.5rem;
+    }
+
+    .submission-detail-shell .hero-copy,
+    .submission-detail-shell pre {
+      font-size: 0.9rem;
+    }
+
+    .submission-detail-shell .submission-overview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .submission-detail-shell .submission-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-muted);
+      color: var(--text-secondary);
+      font-size: 0.84rem;
+    }
+
+    .submission-detail-shell .submission-pill-hero {
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .submission-detail-shell .submission-pill-ac {
+      background: color-mix(in srgb, var(--vscode-testing-iconPassed) 18%, var(--surface));
+    }
+
+    .submission-detail-shell .submission-pill-wa,
+    .submission-detail-shell .submission-pill-re,
+    .submission-detail-shell .submission-pill-ce,
+    .submission-detail-shell .submission-pill-tle,
+    .submission-detail-shell .submission-pill-failed {
+      background: color-mix(in srgb, var(--vscode-testing-iconFailed) 16%, var(--surface));
+    }
+
+    .submission-detail-shell .submission-summary {
+      display: grid;
+      gap: 10px;
+    }
+
+    .submission-detail-shell .summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+    }
+
+    .submission-detail-shell .summary-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .submission-detail-shell .summary-row:first-child {
+      padding-top: 0;
+    }
+
+    .submission-detail-shell .summary-label {
+      color: var(--text-secondary);
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .submission-detail-shell .summary-value {
+      text-align: right;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+  `;
   const failureInfoSection = failureInfo
-    ? `<div class="alert-card"><p><strong>Failure Info:</strong> ${failureInfo}</p></div>`
+    ? `
+      <section class="section-card">
+        <div class="section-header">
+          <p class="section-kicker">Failure</p>
+          <h3>Failure details</h3>
+        </div>
+        <div class="alert-card"><p><strong>Failure Info:</strong> ${failureInfo}</p></div>
+      </section>
+    `
     : '';
   const publicFailureSection = input.publicFailure
     ? `
@@ -252,15 +357,28 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
     <meta charset="UTF-8" />
     <style>
       ${createWebviewStyles()}
+      ${submissionStyles}
     </style>
   </head>
   <body>
-    <main class="webview-shell section-stack">
+    <main class="webview-shell section-stack submission-detail-shell">
       <section class="hero-card">
         <p class="eyebrow">Submission Detail</p>
         <h2>${title}</h2>
         ${emptyState}
-        <p class="hero-copy">Review verdict, timing, memory, and any student-visible failure details in one place.</p>
+        <p class="hero-copy">Submitted ${submittedAt}. Review the verdict, runtime, memory, and any student-visible failure details here.</p>
+        ${
+          input.isEmpty
+            ? ''
+            : `
+              <div class="submission-overview">
+                <span class="submission-pill submission-pill-hero submission-pill-${verdictTone}">${verdict}</span>
+                <span class="submission-pill">Status: ${status}</span>
+                <span class="submission-pill">Time: ${time}</span>
+                <span class="submission-pill">Memory: ${memory}</span>
+              </div>
+            `
+        }
         ${
           input.isEmpty
             ? ''
@@ -272,27 +390,33 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
         }
       </section>
 
-      <section class="metric-grid">
-        <article class="metric-card">
-          <p class="field-label">Submitted</p>
-          <p class="metric-value"><strong>Submitted:</strong> ${submittedAt}</p>
-        </article>
-        <article class="metric-card">
-          <p class="field-label">Status</p>
-          <p class="metric-value"><strong>Status:</strong> ${status}</p>
-        </article>
-        <article class="metric-card">
-          <p class="field-label">Verdict</p>
-          <p class="metric-value"><strong>Verdict:</strong> ${verdict}</p>
-        </article>
-        <article class="metric-card">
-          <p class="field-label">Time</p>
-          <p class="metric-value"><strong>Time:</strong> ${time}</p>
-        </article>
-        <article class="metric-card">
-          <p class="field-label">Memory</p>
-          <p class="metric-value"><strong>Memory:</strong> ${memory}</p>
-        </article>
+      <section class="section-card">
+        <div class="section-header">
+          <p class="section-kicker">Run Summary</p>
+          <h3>Verdict and metrics</h3>
+        </div>
+        <div class="submission-summary">
+          <div class="summary-row">
+            <span class="summary-label">Submitted</span>
+            <div class="summary-value">${submittedAt}</div>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Verdict</span>
+            <div class="summary-value">${verdict}</div>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Status</span>
+            <div class="summary-value">${status}</div>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Time</span>
+            <div class="summary-value">${time}</div>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Memory</span>
+            <div class="summary-value">${memory}</div>
+          </div>
+        </div>
       </section>
 
       ${failureInfoSection}
@@ -301,8 +425,8 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
 
       <section class="section-card">
         <div class="section-header">
-          <p class="section-kicker">Judge Detail</p>
-          <h3>Raw result summary</h3>
+          <p class="section-kicker">Judge Note</p>
+          <h3>Execution summary</h3>
         </div>
         <pre>${detail}</pre>
       </section>

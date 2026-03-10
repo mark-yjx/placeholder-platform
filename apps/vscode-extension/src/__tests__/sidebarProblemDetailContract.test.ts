@@ -29,7 +29,7 @@ test('problem detail panel includes required fields and actions', () => {
   const viewModelSource = readFromPackageRoot('src', 'ui', 'ProblemDetailViewModel.ts');
 
   assert.match(providerSource, /createProblemDetailViewModel\(/);
-  assert.match(providerSource, /showProblemDetail\(problem: ProblemDetail\): void/);
+  assert.match(providerSource, /showProblemDetail\(problem: ProblemDetail \| null\): void/);
   assert.match(providerSource, /this\.currentProblem = problem;/);
   assert.match(providerSource, /this\.render\(\);/);
   assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
@@ -37,6 +37,8 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(viewModelSource, /No statement available\./);
   assert.match(viewModelSource, /Problem ID:/);
   assert.match(viewModelSource, /Starter File:/);
+  assert.match(viewModelSource, /summary: string/);
+  assert.match(viewModelSource, /extractProblemSummary/);
   assert.doesNotMatch(viewModelSource, /Entry Function:/);
   assert.doesNotMatch(viewModelSource, /Language:/);
   assert.match(viewModelSource, /entryFunction: string/);
@@ -50,6 +52,7 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(viewModelSource, /Run Public Tests/);
   assert.match(viewModelSource, /data-command="submitCurrentFile"/);
   assert.match(viewModelSource, />Submit</);
+  assert.match(viewModelSource, /appearance="primary"\$\{openStarterAttributes\}/);
   assert.doesNotMatch(viewModelSource, /refreshProblem/);
   assert.match(viewModelSource, /postMessage\(\{ command: button\.dataset\.command \}\)/);
 });

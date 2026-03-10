@@ -26,17 +26,18 @@ test('submission detail panel exposes status and detail fields', () => {
   const viewModelSource = readFromPackageRoot('src', 'ui', 'SubmissionDetailViewModel.ts');
 
   assert.match(providerSource, /createSubmissionDetailViewModel/);
-  assert.match(providerSource, /showSubmissionDetail\(submission: SubmissionDetailState\): void/);
+  assert.match(providerSource, /showSubmissionDetail\(submission: SubmissionDetailState \| null\): void/);
   assert.match(providerSource, /this\.currentSubmission = submission;/);
   assert.match(providerSource, /this\.render\(\);/);
   assert.match(viewModelSource, /formatSubmissionDisplayId/);
   assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
+  assert.match(viewModelSource, /submission-overview/);
+  assert.match(viewModelSource, /submission-summary/);
   assert.match(viewModelSource, /<strong>Submission ID:<\/strong>/);
-  assert.match(viewModelSource, /<strong>Submitted:<\/strong>/);
-  assert.match(viewModelSource, /<strong>Status:<\/strong>/);
-  assert.match(viewModelSource, /<strong>Verdict:<\/strong>/);
-  assert.match(viewModelSource, /<strong>Time:<\/strong>/);
-  assert.match(viewModelSource, /<strong>Memory:<\/strong>/);
+  assert.match(viewModelSource, /Submitted \$\{submittedAt\}\./);
+  assert.match(viewModelSource, /Status: \$\{status\}/);
+  assert.match(viewModelSource, /Time: \$\{time\}/);
+  assert.match(viewModelSource, /Memory: \$\{memory\}/);
   assert.match(viewModelSource, /<strong>Failure Info:<\/strong>/);
   assert.match(viewModelSource, /const failureInfoSection = failureInfo/);
   assert.match(viewModelSource, /buildSubmissionDetailText/);
