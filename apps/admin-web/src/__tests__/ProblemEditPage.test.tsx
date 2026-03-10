@@ -50,7 +50,8 @@ describe('problem edit page', () => {
           timeLimitMs: 2000,
           memoryLimitKb: 65536,
           visibility: 'public',
-          statementMarkdown: '# Collapse Identical Digits',
+          statementMarkdown:
+            '# Collapse Identical Digits\n\nCollapse duplicate digits.\n\n## Input\n\nAn integer.\n\n## Output\n\nThe collapsed integer.',
           starterCode: 'def collapse(number):\n    return number\n',
           updatedAt: '2026-03-09T12:00:00Z'
         }),
@@ -71,7 +72,13 @@ describe('problem edit page', () => {
     expect((screen.getByLabelText('Entry Function') as HTMLInputElement).value).toBe('collapse');
     expect((screen.getByLabelText('Status') as HTMLInputElement).value).toBe('published');
     expect((screen.getByLabelText('Statement Markdown') as HTMLTextAreaElement).value).toBe(
-      '# Collapse Identical Digits'
+      '# Collapse Identical Digits\n\nCollapse duplicate digits.'
+    );
+    expect((screen.getByLabelText('Input Format') as HTMLTextAreaElement).value).toBe(
+      'An integer.'
+    );
+    expect((screen.getByLabelText('Output Format') as HTMLTextAreaElement).value).toBe(
+      'The collapsed integer.'
     );
     expect((screen.getByLabelText('Starter Code') as HTMLTextAreaElement).value).toBe(
       'def collapse(number):\n    return number\n'
@@ -110,7 +117,8 @@ describe('problem edit page', () => {
             timeLimitMs: 2500,
             memoryLimitKb: 65536,
             visibility: 'private',
-            statementMarkdown: '# Collapse Digits',
+            statementMarkdown:
+              '# Collapse Digits\n\nCollapse adjacent repeated digits.\n\n## Input\n\nA single integer.\n\n## Output\n\nThe integer after collapsing adjacent repeated digits.',
             starterCode: 'def collapse(number):\n    return int(number)\n',
             updatedAt: '2026-03-10T00:00:00Z'
           }),
@@ -134,7 +142,13 @@ describe('problem edit page', () => {
       target: { value: '2500' }
     });
     fireEvent.change(screen.getByLabelText('Statement Markdown'), {
-      target: { value: '# Collapse Digits' }
+      target: { value: '# Collapse Digits\n\nCollapse adjacent repeated digits.' }
+    });
+    fireEvent.change(screen.getByLabelText('Input Format'), {
+      target: { value: 'A single integer.' }
+    });
+    fireEvent.change(screen.getByLabelText('Output Format'), {
+      target: { value: 'The integer after collapsing adjacent repeated digits.' }
     });
     fireEvent.change(screen.getByLabelText('Starter Code'), {
       target: { value: 'def collapse(number):\n    return int(number)\n' }
@@ -163,7 +177,8 @@ describe('problem edit page', () => {
           timeLimitMs: 2500,
           memoryLimitKb: 65536,
           visibility: 'public',
-          statementMarkdown: '# Collapse Digits',
+          statementMarkdown:
+            '# Collapse Digits\n\nCollapse adjacent repeated digits.\n\n## Input\n\nA single integer.\n\n## Output\n\nThe integer after collapsing adjacent repeated digits.',
           starterCode: 'def collapse(number):\n    return int(number)\n',
           updatedAt: '2026-03-09T12:00:00Z'
         })

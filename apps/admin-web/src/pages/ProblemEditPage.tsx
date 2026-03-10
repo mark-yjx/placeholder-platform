@@ -8,10 +8,48 @@ import {
 } from '../api/problems';
 import { AdminLayout } from '../components/AdminLayout';
 import { readStoredAdminToken } from '../auth/storage';
+import {
+  buildProblemStatementMarkdown,
+  splitProblemStatementMarkdown
+} from '../problemStatementSections';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
 type PublishState = 'idle' | 'publishing' | 'success' | 'error';
+type ProblemEditorForm = AdminProblemDetail & {
+  statementBodyMarkdown: string;
+  inputFormatMarkdown: string;
+  outputFormatMarkdown: string;
+};
+
+function toEditorForm(problem: AdminProblemDetail): ProblemEditorForm {
+  const sections = splitProblemStatementMarkdown(problem.statementMarkdown);
+  return {
+    ...problem,
+    statementBodyMarkdown: sections.bodyMarkdown,
+    inputFormatMarkdown: sections.inputFormatMarkdown,
+    outputFormatMarkdown: sections.outputFormatMarkdown
+  };
+}
+
+function toProblemDetailPayload(form: ProblemEditorForm): AdminProblemDetail {
+  return {
+    problemId: form.problemId,
+    title: form.title,
+    entryFunction: form.entryFunction,
+    language: form.language,
+    timeLimitMs: form.timeLimitMs,
+    memoryLimitKb: form.memoryLimitKb,
+    visibility: form.visibility,
+    statementMarkdown: buildProblemStatementMarkdown({
+      bodyMarkdown: form.statementBodyMarkdown,
+      inputFormatMarkdown: form.inputFormatMarkdown,
+      outputFormatMarkdown: form.outputFormatMarkdown
+    }),
+    starterCode: form.starterCode,
+    updatedAt: form.updatedAt
+  };
+}
 
 function formatVisibilityLabel(value: AdminProblemDetail['visibility']): string {
   if (value === 'public') {
@@ -28,8 +66,8 @@ export function ProblemEditPage() {
   const location = useLocation();
   const initialProblem =
     (location.state as { initialProblem?: AdminProblemDetail } | null)?.initialProblem ?? null;
-  const [form, setForm] = useState<AdminProblemDetail | null>(
-    initialProblem && initialProblem.problemId === problemId ? initialProblem : null
+  const [form, setForm] = useState<ProblemEditorForm | null>(
+    initialProblem && initialProblem.problemId === problemId ? toEditorForm(initialProblem) : null
   );
   const [loadState, setLoadState] = useState<LoadState>(
     initialProblem && initialProblem.problemId === problemId ? 'ready' : 'loading'
@@ -60,7 +98,7 @@ export function ProblemEditPage() {
 
       try {
         const problem = await fetchAdminProblem(token, problemId);
-        setForm(problem);
+        setForm(toEditorForm(problem));
         setLoadState('ready');
       } catch (loadError) {
         setForm(null);
@@ -74,9 +112,9 @@ export function ProblemEditPage() {
     void loadProblem();
   }, [problemId]);
 
-  function updateField<Key extends keyof AdminProblemDetail>(
+  function updateField<Key extends keyof ProblemEditorForm>(
     key: Key,
-    value: AdminProblemDetail[Key]
+    value: ProblemEditorForm[Key]
   ) {
     setForm((current) => (current ? { ...current, [key]: value } : current));
     if (saveState !== 'idle') {
@@ -107,8 +145,8 @@ export function ProblemEditPage() {
     setSaveMessage(null);
 
     try {
-      const updated = await updateAdminProblem(token, problemId, form);
-      setForm(updated);
+      const updated = await updateAdminProblem(token, problemId, toProblemDetailPayload(form));
+      setForm(toEditorForm(updated));
       setSaveState('success');
       setSaveMessage('Problem saved.');
     } catch (saveError) {
@@ -136,7 +174,7 @@ export function ProblemEditPage() {
 
     try {
       const published = await publishAdminProblem(token, problemId);
-      setForm(published);
+      setForm(toEditorForm(published));
       setPublishState('success');
       setPublishMessage('Problem published.');
     } catch (publishError) {
@@ -270,12 +308,38 @@ export function ProblemEditPage() {
                 <span>Statement Markdown</span>
                 <textarea
                   className="code-area"
-                  name="statementMarkdown"
-                  onChange={(event) => updateField('statementMarkdown', event.target.value)}
+                  name="statementBodyMarkdown"
+                  onChange={(event) => updateField('statementBodyMarkdown', event.target.value)}
                   rows={14}
-                  value={form.statementMarkdown}
+                  value={form.statementBodyMarkdown}
                 />
               </label>
+              <div className="form-grid">
+                <label className="field">
+                  <span>Input Format</span>
+                  <textarea
+                    className="code-area"
+                    name="inputFormatMarkdown"
+                    onChange={(event) => updateField('inputFormatMarkdown', event.target.value)}
+                    rows={6}
+                    value={form.inputFormatMarkdown}
+                  />
+                </label>
+                <label className="field">
+                  <span>Output Format</span>
+                  <textarea
+                    className="code-area"
+                    name="outputFormatMarkdown"
+                    onChange={(event) => updateField('outputFormatMarkdown', event.target.value)}
+                    rows={6}
+                    value={form.outputFormatMarkdown}
+                  />
+                </label>
+              </div>
+              <p className="field-note">
+                Input and Output are saved as dedicated markdown sections so the student extension
+                can render them in the problem detail view.
+              </p>
             </section>
 
             <section className="form-section">
