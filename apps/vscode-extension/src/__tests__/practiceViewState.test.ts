@@ -199,6 +199,7 @@ test('submission detail state updates after result fetch with verdict, time, mem
   state.recordSubmissionResult({
     submissionId: 'submission-1',
     status: 'finished',
+    submittedAt: '2026-03-10T15:30:45.000Z',
     verdict: 'RE',
     timeMs: 33,
     memoryKb: 144,
@@ -208,6 +209,7 @@ test('submission detail state updates after result fetch with verdict, time, mem
   assert.deepEqual(state.getSubmissionDetailData('submission-1'), {
     submissionId: 'submission-1',
     status: 'finished',
+    submittedAt: '2026-03-10T15:30:45.000Z',
     verdict: 'RE',
     timeMs: 33,
     memoryKb: 144,

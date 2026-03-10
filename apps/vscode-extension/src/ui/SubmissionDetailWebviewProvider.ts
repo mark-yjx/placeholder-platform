@@ -9,6 +9,7 @@ import {
 export type SubmissionDetailState = {
   submissionId: string;
   status: string;
+  submittedAt?: string;
   verdict?: SubmissionResult['verdict'];
   timeMs?: number;
   memoryKb?: number;

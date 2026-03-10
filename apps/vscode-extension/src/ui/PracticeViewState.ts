@@ -17,6 +17,7 @@ export type SubmissionTreeNode = {
 export type SubmissionDetailData = {
   readonly submissionId: string;
   readonly status: string;
+  readonly submittedAt?: string;
   readonly verdict?: SubmissionResult['verdict'];
   readonly timeMs?: number;
   readonly memoryKb?: number;
@@ -283,6 +284,7 @@ export class PracticeViewState {
     return {
       submissionId: result.submissionId,
       status: result.status,
+      submittedAt: result.submittedAt,
       verdict: result.verdict,
       timeMs: result.timeMs,
       memoryKb: result.memoryKb,

@@ -75,6 +75,7 @@ export class PracticeTreeViews {
     private readonly onSubmissionDetailChanged?: (submission: {
       submissionId: string;
       status: string;
+      submittedAt?: string;
       verdict?: SubmissionResult['verdict'];
       timeMs?: number;
       memoryKb?: number;

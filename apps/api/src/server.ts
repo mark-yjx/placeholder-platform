@@ -144,6 +144,7 @@ type LocalApiRuntime = {
         submissionId: string;
         ownerUserId: string;
         status: string;
+        submittedAt: string;
         failureReason?: string;
         verdict?: string;
         timeMs?: number;
@@ -154,6 +155,7 @@ type LocalApiRuntime = {
           submissionId: string;
           ownerUserId: string;
           status: string;
+          submittedAt: string;
           failureReason?: string;
           verdict?: string;
           timeMs?: number;
@@ -253,6 +255,50 @@ function ensureRole(actor: AuthenticatedActor, role: 'admin' | 'student'): void 
   if (actor.role !== role) {
     throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
   }
+}
+
+type SubmissionResultPayload = {
+  submissionId: string;
+  ownerUserId: string;
+  status: string;
+  submittedAt: string;
+  failureReason?: string;
+  verdict?: string;
+  timeMs?: number;
+  memoryKb?: number;
+};
+
+function toSubmissionPayload(
+  view: SubmissionResultPayload,
+  options?: { includeSubmittedAt?: boolean }
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    submissionId: view.submissionId,
+    ownerUserId: view.ownerUserId,
+    status: view.status
+  };
+
+  if (options?.includeSubmittedAt !== false) {
+    payload.submittedAt = view.submittedAt;
+  }
+
+  if (view.failureReason !== undefined) {
+    payload.failureReason = view.failureReason;
+  }
+
+  if (view.verdict !== undefined) {
+    payload.verdict = view.verdict;
+  }
+
+  if (view.timeMs !== undefined) {
+    payload.timeMs = view.timeMs;
+  }
+
+  if (view.memoryKb !== undefined) {
+    payload.memoryKb = view.memoryKb;
+  }
+
+  return payload;
 }
 
 async function handleReadiness(
@@ -1004,7 +1050,9 @@ export function createApiRequestHandler(
         );
         ensureRole(actor, 'student');
         const submissions = await persistence.submissionResults.listByActorUserId(actor.userId);
-        sendJson(response, 200, { submissions });
+        sendJson(response, 200, {
+          submissions: submissions.map((submission) => toSubmissionPayload(submission))
+        });
       } catch (error) {
         sendError(response, mapUnknownError(error));
       }
@@ -1027,7 +1075,13 @@ export function createApiRequestHandler(
           return;
         }
 
-        sendJson(response, 200, view);
+        sendJson(
+          response,
+          200,
+          actor.role === 'student'
+            ? toSubmissionPayload(view)
+            : toSubmissionPayload(view, { includeSubmittedAt: false })
+        );
       } catch (error) {
         sendError(response, mapUnknownError(error));
       }
@@ -1045,7 +1099,7 @@ export function createApiRequestHandler(
         );
         ensureRole(actor, 'admin');
         const view = await persistence.submissionResults.getBySubmissionId(adminSubmissionMatch[1]);
-        sendJson(response, 200, view);
+        sendJson(response, 200, toSubmissionPayload(view, { includeSubmittedAt: false }));
       } catch (error) {
         sendError(response, mapUnknownError(error));
       }

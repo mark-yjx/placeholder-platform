@@ -29,7 +29,10 @@ test('submission detail panel exposes status and detail fields', () => {
   assert.match(providerSource, /showSubmissionDetail\(submission: SubmissionDetailState\): void/);
   assert.match(providerSource, /this\.currentSubmission = submission;/);
   assert.match(providerSource, /this\.render\(\);/);
-  assert.match(viewModelSource, /<h2>\$\{submissionId\}<\/h2>/);
+  assert.match(viewModelSource, /formatSubmissionDisplayId/);
+  assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
+  assert.match(viewModelSource, /<strong>Submission ID:<\/strong>/);
+  assert.match(viewModelSource, /<strong>Submitted:<\/strong>/);
   assert.match(viewModelSource, /<strong>Status:<\/strong>/);
   assert.match(viewModelSource, /<strong>Verdict:<\/strong>/);
   assert.match(viewModelSource, /<strong>Time:<\/strong>/);

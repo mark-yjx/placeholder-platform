@@ -166,6 +166,7 @@ export class HttpPracticeApiClient implements PracticeApiClient {
     const response = await requestJson<{
       submissionId: string;
       status: SubmissionResult['status'];
+      submittedAt?: string;
       failureReason?: string;
       verdict?: SubmissionResult['verdict'];
       timeMs?: number;
@@ -184,6 +185,10 @@ export class HttpPracticeApiClient implements PracticeApiClient {
 
     if (response.failureReason !== undefined) {
       result.failureReason = response.failureReason;
+    }
+
+    if (response.submittedAt !== undefined) {
+      result.submittedAt = response.submittedAt;
     }
 
     return result;

@@ -2,7 +2,9 @@ import { SubmissionResult } from '../api/PracticeApiClient';
 import { createWebviewStyles, escapeHtml } from './WebviewTheme';
 
 export type SubmissionDetailViewModel = {
+  title: string;
   submissionId: string;
+  submittedAt: string;
   status: string;
   verdict: string;
   time: string;
@@ -26,6 +28,45 @@ function normalizeSubmissionText(value?: string): string | null {
 
 function formatMemoryMetric(memoryKb?: number): string {
   return memoryKb !== undefined && memoryKb > 0 ? `${memoryKb}KB` : 'N/A';
+}
+
+const UTC_MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function padTwoDigits(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function parseSubmissionDate(value?: string): Date | null {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatSubmissionDisplayId(value?: string): string | null {
+  const parsed = parseSubmissionDate(value);
+  if (!parsed) {
+    return null;
+  }
+
+  return `Sub #${parsed.getUTCFullYear()}${padTwoDigits(parsed.getUTCMonth() + 1)}${padTwoDigits(parsed.getUTCDate())}-${padTwoDigits(parsed.getUTCHours())}${padTwoDigits(parsed.getUTCMinutes())}${padTwoDigits(parsed.getUTCSeconds())}`;
+}
+
+function formatSubmittedTimestamp(value?: string): string {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) {
+    return 'Not available';
+  }
+
+  const parsed = parseSubmissionDate(trimmed);
+  if (!parsed) {
+    return trimmed;
+  }
+
+  return `${UTC_MONTH_NAMES[parsed.getUTCMonth()]} ${parsed.getUTCDate()}, ${parsed.getUTCFullYear()} at ${padTwoDigits(parsed.getUTCHours())}:${padTwoDigits(parsed.getUTCMinutes())}:${padTwoDigits(parsed.getUTCSeconds())} UTC`;
 }
 
 function extractPipeValue(source: string, key: string): string | null {
@@ -93,6 +134,7 @@ function buildSubmissionDetailText(input: {
 export function createSubmissionDetailViewModel(input: {
   submissionId: string;
   status: string;
+  submittedAt?: string;
   verdict?: SubmissionResult['verdict'];
   timeMs?: number;
   memoryKb?: number;
@@ -101,7 +143,9 @@ export function createSubmissionDetailViewModel(input: {
 } | null): SubmissionDetailViewModel {
   if (!input) {
     return {
+      title: 'Submission Detail',
       submissionId: 'Submission Detail',
+      submittedAt: 'Not available',
       status: 'No submission selected yet.',
       verdict: 'Not available',
       time: 'Not available',
@@ -116,6 +160,7 @@ export function createSubmissionDetailViewModel(input: {
 
   const failureInfo = normalizeSubmissionText(input.failureInfo);
   const detail = buildSubmissionDetailText(input);
+  const submittedAt = formatSubmittedTimestamp(input.submittedAt);
   const publicFailure = parsePublicFailureDetail(`${input.detail} | ${input.failureInfo ?? ''}`);
   const hiddenFailureMessage =
     input.status === 'finished' && input.verdict === 'WA' && !publicFailure
@@ -123,7 +168,9 @@ export function createSubmissionDetailViewModel(input: {
       : null;
 
   return {
+    title: formatSubmissionDisplayId(input.submittedAt) ?? 'Submission Result',
     submissionId: input.submissionId,
+    submittedAt,
     status: input.status,
     verdict: input.verdict ?? 'Not available',
     time: input.timeMs === undefined ? 'Not available' : `${input.timeMs}ms`,
@@ -137,7 +184,9 @@ export function createSubmissionDetailViewModel(input: {
 }
 
 export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): string {
+  const title = escapeHtml(input.title);
   const submissionId = escapeHtml(input.submissionId);
+  const submittedAt = escapeHtml(input.submittedAt);
   const status = escapeHtml(input.status);
   const verdict = escapeHtml(input.verdict);
   const time = escapeHtml(input.time);
@@ -209,12 +258,25 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
     <main class="webview-shell section-stack">
       <section class="hero-card">
         <p class="eyebrow">Submission Detail</p>
-        <h2>${submissionId}</h2>
+        <h2>${title}</h2>
         ${emptyState}
         <p class="hero-copy">Review verdict, timing, memory, and any student-visible failure details in one place.</p>
+        ${
+          input.isEmpty
+            ? ''
+            : `
+              <div class="inline-meta">
+                <p><strong>Submission ID:</strong> <code>${submissionId}</code></p>
+              </div>
+            `
+        }
       </section>
 
       <section class="metric-grid">
+        <article class="metric-card">
+          <p class="field-label">Submitted</p>
+          <p class="metric-value"><strong>Submitted:</strong> ${submittedAt}</p>
+        </article>
         <article class="metric-card">
           <p class="field-label">Status</p>
           <p class="metric-value"><strong>Status:</strong> ${status}</p>

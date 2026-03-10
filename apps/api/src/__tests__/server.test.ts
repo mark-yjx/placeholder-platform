@@ -216,6 +216,7 @@ function createRuntime() {
               submissionId,
               ownerUserId: 'student-1',
               status: 'failed',
+              submittedAt: '2026-03-10T15:31:00.000Z',
               failureReason: 'sandbox could not start'
             };
           }
@@ -225,7 +226,8 @@ function createRuntime() {
           return {
             submissionId,
             ownerUserId: 'student-1',
-            status: 'finished'
+            status: 'finished',
+            submittedAt: '2026-03-10T15:30:45.000Z'
           };
         },
         async listByActorUserId(actorUserId: string) {
@@ -234,6 +236,7 @@ function createRuntime() {
               submissionId: 'submission-1',
               ownerUserId: actorUserId,
               status: 'finished',
+              submittedAt: '2026-03-10T15:30:45.000Z',
               verdict: 'AC',
               timeMs: 120,
               memoryKb: 2048
@@ -241,7 +244,8 @@ function createRuntime() {
             {
               submissionId: 'submission-older',
               ownerUserId: actorUserId,
-              status: 'queued'
+              status: 'queued',
+              submittedAt: '2026-03-09T12:00:00.000Z'
             }
           ];
         }
@@ -858,6 +862,7 @@ test('submission list returns deterministic ordering with stable fields', async 
         submissionId: 'submission-1',
         ownerUserId: 'student-1',
         status: 'finished',
+        submittedAt: '2026-03-10T15:30:45.000Z',
         verdict: 'AC',
         timeMs: 120,
         memoryKb: 2048
@@ -865,7 +870,8 @@ test('submission list returns deterministic ordering with stable fields', async 
       {
         submissionId: 'submission-older',
         ownerUserId: 'student-1',
-        status: 'queued'
+        status: 'queued',
+        submittedAt: '2026-03-09T12:00:00.000Z'
       }
     ]
   });
@@ -1046,14 +1052,16 @@ test('local runtime routes problem, favorites, and reviews through injected pers
               submissionId: 'submission-1',
               ownerUserId: actorUserId,
               status: 'finished',
+              submittedAt: '2026-03-10T15:30:45.000Z',
               verdict: 'AC',
               timeMs: 120,
               memoryKb: 2048
             },
             {
-              submissionId: 'submission-0',
+              submissionId: 'submission-older',
               ownerUserId: actorUserId,
-              status: 'queued'
+              status: 'queued',
+              submittedAt: '2026-03-09T12:00:00.000Z'
             }
           ];
         },
@@ -1063,6 +1071,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
             submissionId,
             ownerUserId: 'student-1',
             status: 'finished',
+            submittedAt: '2026-03-10T15:30:45.000Z',
             verdict: 'AC',
             timeMs: 120,
             memoryKb: 2048
@@ -1204,14 +1213,16 @@ test('local runtime routes problem, favorites, and reviews through injected pers
         submissionId: 'submission-1',
         ownerUserId: 'student-1',
         status: 'finished',
+        submittedAt: '2026-03-10T15:30:45.000Z',
         verdict: 'AC',
         timeMs: 120,
         memoryKb: 2048
       },
       {
-        submissionId: 'submission-0',
+        submissionId: 'submission-older',
         ownerUserId: 'student-1',
-        status: 'queued'
+        status: 'queued',
+        submittedAt: '2026-03-09T12:00:00.000Z'
       }
     ]
   });
@@ -1226,6 +1237,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     submissionId: 'submission-1',
     ownerUserId: 'student-1',
     status: 'finished',
+    submittedAt: '2026-03-10T15:30:45.000Z',
     verdict: 'AC',
     timeMs: 120,
     memoryKb: 2048
@@ -1241,6 +1253,7 @@ test('local runtime routes problem, favorites, and reviews through injected pers
     submissionId: 'submission-1',
     ownerUserId: 'student-1',
     status: 'finished',
+    submittedAt: '2026-03-10T15:30:45.000Z',
     verdict: 'AC',
     timeMs: 120,
     memoryKb: 2048
@@ -1357,6 +1370,7 @@ test('student submission detail returns failureReason for failed submissions', a
     submissionId: 'submission-failed-1',
     ownerUserId: 'student-1',
     status: 'failed',
+    submittedAt: '2026-03-10T15:31:00.000Z',
     failureReason: 'sandbox could not start'
   });
 });
@@ -1373,6 +1387,7 @@ test('student submission payloads omit unavailable metrics but preserve explicit
               submissionId: 'submission-zero',
               ownerUserId: actorUserId,
               status: 'finished',
+              submittedAt: '2026-03-10T15:30:45.000Z',
               verdict: 'AC',
               timeMs: 0,
               memoryKb: 0
@@ -1381,6 +1396,7 @@ test('student submission payloads omit unavailable metrics but preserve explicit
               submissionId: 'submission-unavailable',
               ownerUserId: actorUserId,
               status: 'finished',
+              submittedAt: '2026-03-10T15:31:00.000Z',
               verdict: 'CE',
               timeMs: undefined,
               memoryKb: undefined
@@ -1393,6 +1409,7 @@ test('student submission payloads omit unavailable metrics but preserve explicit
               submissionId,
               ownerUserId: 'student-1',
               status: 'finished',
+              submittedAt: '2026-03-10T15:30:45.000Z',
               verdict: 'AC',
               timeMs: 0,
               memoryKb: 0
@@ -1404,6 +1421,7 @@ test('student submission payloads omit unavailable metrics but preserve explicit
               submissionId,
               ownerUserId: 'student-1',
               status: 'finished',
+              submittedAt: '2026-03-10T15:31:00.000Z',
               verdict: 'CE',
               timeMs: undefined,
               memoryKb: undefined
@@ -1433,6 +1451,7 @@ test('student submission payloads omit unavailable metrics but preserve explicit
         submissionId: 'submission-zero',
         ownerUserId: 'student-1',
         status: 'finished',
+        submittedAt: '2026-03-10T15:30:45.000Z',
         verdict: 'AC',
         timeMs: 0,
         memoryKb: 0
@@ -1441,6 +1460,7 @@ test('student submission payloads omit unavailable metrics but preserve explicit
         submissionId: 'submission-unavailable',
         ownerUserId: 'student-1',
         status: 'finished',
+        submittedAt: '2026-03-10T15:31:00.000Z',
         verdict: 'CE'
       }
     ]
@@ -1456,6 +1476,7 @@ test('student submission payloads omit unavailable metrics but preserve explicit
     submissionId: 'submission-unavailable',
     ownerUserId: 'student-1',
     status: 'finished',
+    submittedAt: '2026-03-10T15:31:00.000Z',
     verdict: 'CE'
   });
 
@@ -1469,6 +1490,7 @@ test('student submission payloads omit unavailable metrics but preserve explicit
     submissionId: 'submission-zero',
     ownerUserId: 'student-1',
     status: 'finished',
+    submittedAt: '2026-03-10T15:30:45.000Z',
     verdict: 'AC',
     timeMs: 0,
     memoryKb: 0
@@ -1489,6 +1511,7 @@ test('admin submission lookup omits unavailable runtime metrics instead of conve
             submissionId,
             ownerUserId: 'student-1',
             status: 'finished',
+            submittedAt: '2026-03-10T15:30:45.000Z',
             verdict: 'RE',
             timeMs: undefined,
             memoryKb: undefined
@@ -1578,6 +1601,7 @@ test('admin API workflow supports create, update, publish, and submission lookup
             submissionId,
             ownerUserId: 'student-1',
             status: 'finished',
+            submittedAt: '2026-03-10T15:30:45.000Z',
             verdict: 'AC',
             timeMs: 120,
             memoryKb: 2048

@@ -188,6 +188,7 @@ test('duplicate judge callback ingestion does not overwrite terminal state and r
       submissionId: 'submission-1',
       ownerUserId: 'student-1',
       status: 'finished',
+      submittedAt: '2026-02-25T00:00:00.000Z',
       verdict: 'AC',
       timeMs: 120,
       memoryKb: 2048
@@ -240,6 +241,7 @@ test('result query keeps newest submissions first and does not require judge res
       submissionId: 'submission-new',
       ownerUserId: 'student-1',
       status: 'finished',
+      submittedAt: '2026-02-25T00:00:00.000Z',
       verdict: 'AC',
       timeMs: 101,
       memoryKb: 1024
@@ -248,6 +250,7 @@ test('result query keeps newest submissions first and does not require judge res
       submissionId: 'submission-old',
       ownerUserId: 'student-1',
       status: 'failed',
+      submittedAt: '2026-02-24T00:00:00.000Z',
       failureReason: 'sandbox could not start'
     }
   ]);
@@ -337,6 +340,7 @@ test('judge callback ingestion preserves unavailable runtime metrics instead of 
       submissionId: 'submission-3',
       ownerUserId: 'student-1',
       status: 'finished',
+      submittedAt: '2026-02-26T00:00:00.000Z',
       verdict: 'CE'
     }
   ]);
@@ -393,6 +397,7 @@ test('result query preserves explicit zero metrics while omitting unavailable on
       submissionId: 'submission-zero',
       ownerUserId: 'student-1',
       status: 'finished',
+      submittedAt: '2026-02-25T00:00:00.000Z',
       verdict: 'AC',
       timeMs: 0,
       memoryKb: 0
@@ -401,6 +406,7 @@ test('result query preserves explicit zero metrics while omitting unavailable on
       submissionId: 'submission-unavailable',
       ownerUserId: 'student-1',
       status: 'finished',
+      submittedAt: '2026-02-24T00:00:00.000Z',
       verdict: 'RE'
     }
   ]);

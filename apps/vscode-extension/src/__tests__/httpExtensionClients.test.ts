@@ -135,6 +135,7 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
       return createJsonResponse({
         submissionId: path.split('/')[2],
         status: 'finished',
+        submittedAt: '2026-03-10T15:30:45.000Z',
         verdict: 'AC',
         timeMs: 120,
         memoryKb: 2048
@@ -170,6 +171,7 @@ test('http practice client uses bearer auth for fetch, submit, and result pollin
     assert.deepEqual(await client.getSubmissionResult('student-token', submission.submissionId), {
       submissionId: submission.submissionId,
       status: 'finished',
+      submittedAt: '2026-03-10T15:30:45.000Z',
       verdict: 'AC',
       timeMs: 120,
       memoryKb: 2048

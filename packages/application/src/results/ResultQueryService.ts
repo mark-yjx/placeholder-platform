@@ -5,6 +5,7 @@ export type SubmissionResultView = {
   submissionId: string;
   ownerUserId: string;
   status: SubmissionStatus;
+  submittedAt: string;
   failureReason?: string;
   verdict?: string;
   timeMs?: number;
@@ -66,7 +67,8 @@ export class ResultQueryService {
     const view: SubmissionResultView = {
       submissionId: submission.id,
       ownerUserId: submission.ownerUserId,
-      status: submission.status
+      status: submission.status,
+      submittedAt: submission.createdAt
     };
 
     if (submission.failureReason) {

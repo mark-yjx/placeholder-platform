@@ -37,6 +37,7 @@ export type CreateSubmissionResponse = {
 export type SubmissionResult = {
   submissionId: string;
   status: SubmissionStatus;
+  submittedAt?: string;
   failureReason?: string;
   verdict?: JudgeVerdict;
   timeMs?: number;

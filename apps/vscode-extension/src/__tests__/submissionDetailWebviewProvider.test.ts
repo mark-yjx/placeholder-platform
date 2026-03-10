@@ -7,6 +7,7 @@ test('submission detail renders expected fields for finished judged result', () 
     createSubmissionDetailViewModel({
       submissionId: 'submission-1',
       status: 'finished',
+      submittedAt: '2026-03-10T15:30:45.000Z',
       verdict: 'AC',
       timeMs: 120,
       memoryKb: 2048,
@@ -14,7 +15,9 @@ test('submission detail renders expected fields for finished judged result', () 
     })
   );
 
-  assert.match(html, /<h2>submission-1<\/h2>/);
+  assert.match(html, /<h2>Sub #20260310-153045<\/h2>/);
+  assert.match(html, /<strong>Submitted:<\/strong> Mar 10, 2026 at 15:30:45 UTC/);
+  assert.match(html, /<strong>Submission ID:<\/strong> <code>submission-1<\/code>/);
   assert.match(html, /<strong>Status:<\/strong> finished/);
   assert.match(html, /<strong>Verdict:<\/strong> AC/);
   assert.match(html, /<strong>Time:<\/strong> 120ms/);
@@ -28,6 +31,7 @@ test('submission detail renders neutral memory placeholder when memory is zero',
     createSubmissionDetailViewModel({
       submissionId: 'submission-zero-memory-1',
       status: 'finished',
+      submittedAt: '2026-03-10T15:30:45.000Z',
       verdict: 'WA',
       timeMs: 120,
       memoryKb: 0,
@@ -44,6 +48,7 @@ test('submission detail renders neutral memory placeholder when memory is missin
     createSubmissionDetailViewModel({
       submissionId: 'submission-missing-memory-1',
       status: 'finished',
+      submittedAt: '2026-03-10T15:30:45.000Z',
       verdict: 'CE',
       timeMs: 11,
       detail: 'verdict=CE, time=11ms, memory=N/A'
@@ -68,11 +73,12 @@ test('submission detail renders running state without a blank detail body', () =
     createSubmissionDetailViewModel({
       submissionId: 'submission-running-1',
       status: 'running',
+      submittedAt: '2026-03-10T15:30:45.000Z',
       detail: ''
     })
   );
 
-  assert.match(html, /<h2>submission-running-1<\/h2>/);
+  assert.match(html, /<h2>Sub #20260310-153045<\/h2>/);
   assert.match(html, /<strong>Status:<\/strong> running/);
   assert.match(html, /Status: running/);
 });
@@ -82,12 +88,13 @@ test('submission detail renders failed state with failure info fallback', () => 
     createSubmissionDetailViewModel({
       submissionId: 'submission-failed-1',
       status: 'failed',
+      submittedAt: '2026-03-10T15:30:45.000Z',
       failureInfo: 'compile step crashed',
       detail: ''
     })
   );
 
-  assert.match(html, /<h2>submission-failed-1<\/h2>/);
+  assert.match(html, /<h2>Sub #20260310-153045<\/h2>/);
   assert.match(html, /<strong>Status:<\/strong> failed/);
   assert.match(html, /<strong>Failure Info:<\/strong> compile step crashed/);
   assert.match(html, /Failed: compile step crashed/);
@@ -98,6 +105,7 @@ test('submission detail hides failure info for finished non-AC verdicts without 
     createSubmissionDetailViewModel({
       submissionId: 'submission-ce-1',
       status: 'finished',
+      submittedAt: '2026-03-10T15:30:45.000Z',
       verdict: 'CE',
       timeMs: 11,
       memoryKb: 22,
@@ -118,6 +126,7 @@ test('submission detail keeps hidden wrong-answer feedback generic when no publi
     createSubmissionDetailViewModel({
       submissionId: 'submission-hidden-wa-1',
       status: 'finished',
+      submittedAt: '2026-03-10T15:30:45.000Z',
       verdict: 'WA',
       timeMs: 17,
       memoryKb: 88,
@@ -134,6 +143,7 @@ test('submission detail renders structured public failure details when present',
     createSubmissionDetailViewModel({
       submissionId: 'submission-public-wa-1',
       status: 'finished',
+      submittedAt: '2026-03-10T15:30:45.000Z',
       verdict: 'WA',
       timeMs: 9,
       memoryKb: 64,
@@ -145,4 +155,22 @@ test('submission detail renders structured public failure details when present',
   assert.match(html, /Expected Output/);
   assert.match(html, /Actual Output/);
   assert.match(html, /-3 \+4/);
+});
+
+test('submission detail falls back to a neutral title when submitted time is unavailable', () => {
+  const html = createSubmissionDetailHtml(
+    createSubmissionDetailViewModel({
+      submissionId: 'submission-no-time-1',
+      status: 'finished',
+      verdict: 'AC',
+      timeMs: 42,
+      memoryKb: 256,
+      detail: 'verdict=AC, time=42ms, memory=256KB'
+    })
+  );
+
+  assert.match(html, /<h2>Submission Result<\/h2>/);
+  assert.match(html, /<strong>Submitted:<\/strong> Not available/);
+  assert.match(html, /<strong>Submission ID:<\/strong> <code>submission-no-time-1<\/code>/);
+  assert.doesNotMatch(html, /<h2>submission-no-time-1<\/h2>/);
 });
