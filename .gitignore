@@ -6,3 +6,8 @@ apps/vscode-extension/dist/
 *.vsix
 dist/*.vsix
 apps/vscode-extension/*.vsix
+.venv/
+.oj/
+coverage/
+build/
+*.log
