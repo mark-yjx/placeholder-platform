@@ -1,5 +1,6 @@
-export function escapeHtml(value: string): string {
-  return value
+export function escapeHtml(value: unknown): string {
+  const normalized = value === null || value === undefined ? '' : String(value);
+  return normalized
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
