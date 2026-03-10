@@ -94,9 +94,12 @@ export function SettingsPage() {
               Microsoft sign-in proves who authenticated. Local TOTP adds the second factor for
               this platform account.
             </p>
-
-            {!user?.totpEnabled ? (
-              <>
+            <div className="totp-state-row">
+              <div>
+                <p className="detail-label">Current State</p>
+                <p className="detail-value">{user?.totpEnabled ? 'Enabled' : 'Not enabled'}</p>
+              </div>
+              {!user?.totpEnabled ? (
                 <button
                   className="primary-button"
                   disabled={isLoadingEnrollment}
@@ -105,16 +108,27 @@ export function SettingsPage() {
                 >
                   {isLoadingEnrollment ? 'Preparing...' : 'Enable TOTP'}
                 </button>
+              ) : null}
+            </div>
 
+            {!user?.totpEnabled ? (
+              <>
                 {enrollment ? (
                   <div className="totp-enrollment-card">
-                    <p className="detail-label">Secret</p>
-                    <p className="detail-value">{enrollment.secret}</p>
+                    <div>
+                      <p className="detail-label">Secret</p>
+                      <p className="code-block compact-code-block">{enrollment.secret}</p>
+                    </div>
                     <p className="field-note">
                       Add this secret to your authenticator app, then confirm the first 6-digit
                       code below.
                     </p>
-                    <p className="field-note">otpauth URI: {enrollment.otpauthUri}</p>
+                    <div>
+                      <p className="detail-label">Provisioning URI</p>
+                      <p className="code-block compact-code-block uri-code-block">
+                        {enrollment.otpauthUri}
+                      </p>
+                    </div>
 
                     <form className="auth-form" onSubmit={handleConfirmEnrollment}>
                       <label className="field">

@@ -3,6 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { microsoftLoginUrl } from '../auth/client';
 
+function MicrosoftIcon() {
+  return (
+    <svg aria-hidden="true" className="provider-icon" viewBox="0 0 24 24">
+      <path d="M3 3h8v8H3z" fill="#f25022" />
+      <path d="M13 3h8v8h-8z" fill="#7fba00" />
+      <path d="M3 13h8v8H3z" fill="#00a4ef" />
+      <path d="M13 13h8v8h-8z" fill="#ffb900" />
+    </svg>
+  );
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const { loginLocal } = useAuth();
@@ -82,9 +93,12 @@ export function LoginPage() {
               {isSubmitting ? 'Signing in...' : 'Sign in'}
             </button>
 
-            <p className="detail-label">or</p>
+            <div className="auth-divider" aria-hidden="true">
+              <span>or</span>
+            </div>
 
-            <a className="primary-button" href={microsoftLoginUrl()}>
+            <a className="secondary-button link-button provider-button" href={microsoftLoginUrl()}>
+              <MicrosoftIcon />
               Sign in with Microsoft
             </a>
           </form>
