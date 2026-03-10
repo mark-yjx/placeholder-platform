@@ -81,32 +81,48 @@
 .mini-chart {
   display: grid;
   grid-template-columns: repeat(14, minmax(0, 1fr));
-  align-items: end;
+  align-items: stretch;
   gap: 10px;
   min-height: 220px;
+  --mini-chart-value-height: 2.5rem;
+  --mini-chart-track-height: 160px;
+  --mini-chart-label-height: 2.5rem;
 }
 
 .mini-chart-column {
   display: grid;
+  grid-template-rows:
+    var(--mini-chart-value-height)
+    var(--mini-chart-track-height)
+    var(--mini-chart-label-height);
   gap: 8px;
-  justify-items: center;
+  justify-items: stretch;
+  align-items: stretch;
+  align-self: stretch;
   min-width: 0;
 }
 
 .mini-chart-value {
   color: var(--text-secondary);
   font-size: 0.85rem;
+  min-height: var(--mini-chart-value-height);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  text-align: center;
+  line-height: 1;
 }
 
 .mini-chart-bar {
   width: 100%;
-  min-height: 150px;
+  height: var(--mini-chart-track-height);
   display: flex;
   align-items: flex-end;
   padding: 4px;
   border-radius: 18px;
   background: rgba(245, 245, 247, 0.96);
   border: 1px solid var(--border);
+  box-sizing: border-box;
 }
 
 .mini-chart-fill {
@@ -119,7 +135,13 @@
 .mini-chart-label {
   color: var(--text-tertiary);
   font-size: 0.76rem;
+  min-height: var(--mini-chart-label-height);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
   text-align: center;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .horizontal-chart {
