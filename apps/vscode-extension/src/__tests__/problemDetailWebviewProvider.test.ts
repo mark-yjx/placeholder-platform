@@ -30,6 +30,7 @@ test('fetched problem detail renders expected fields', () => {
   assert.match(html, /class="primary-action"/);
   assert.doesNotMatch(html, /Entry Function:/);
   assert.doesNotMatch(html, /Language:/);
+  assert.doesNotMatch(html, /<h1>Collapse Identical Digits<\/h1>/);
   assert.match(html, /<p>Collapse duplicate digits\.<\/p>/);
   assert.match(html, /<ul><li>Keep the sign<\/li><li>Keep the order<\/li><\/ul>/);
   assert.match(html, /Use <code>collapse\(number\)<\/code>\./);
@@ -52,10 +53,13 @@ test('empty state shows friendly placeholder instead of blank panel', () => {
   assert.match(html, /Select a problem from the Problems list to view details\./);
   assert.doesNotMatch(html, /Problem ID:/);
   assert.doesNotMatch(html, /Starter File:/);
-  assert.match(html, /Examples will appear after you select a problem\./);
-  assert.match(html, /<vscode-button appearance="primary" data-command="openStarter" disabled>Open Coding File<\/vscode-button>/);
-  assert.match(html, /<vscode-button data-command="runPublicTests" disabled>Run Public Tests<\/vscode-button>/);
-  assert.match(html, /<vscode-button data-command="submitCurrentFile" disabled>Submit<\/vscode-button>/);
+  assert.doesNotMatch(html, /<h3>Description<\/h3>/);
+  assert.doesNotMatch(html, /<h3>Input<\/h3>/);
+  assert.doesNotMatch(html, /<h3>Output<\/h3>/);
+  assert.doesNotMatch(html, /<h3>Examples<\/h3>/);
+  assert.doesNotMatch(html, /Open Coding File/);
+  assert.doesNotMatch(html, /Run Public Tests/);
+  assert.doesNotMatch(html, />Submit</);
 });
 
 test('problem detail falls back safely when optional fields are missing', () => {
@@ -173,6 +177,8 @@ test('problem detail preserves example markdown alongside structured examples', 
   assert.match(html, /<h4 class="example-title">Example 1<\/h4>/);
   assert.match(html, /111122223333/);
   assert.match(html, /123/);
+  assert.doesNotMatch(html, /<h2>Examples<\/h2>/);
+  assert.doesNotMatch(html, /<h3>Examples<\/h3>.*<h3>Examples<\/h3>/s);
 });
 
 test('problem detail tolerates sparse example payloads without crashing', () => {

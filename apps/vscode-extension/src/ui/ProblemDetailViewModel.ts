@@ -6,6 +6,7 @@ import { createWebviewStyles, escapeHtml, formatCaseValue } from './WebviewTheme
 export type ProblemDetailViewModel = {
   title: string;
   summary: string;
+  emptyStateMessage: string;
   problemId: string;
   statement: string;
   entryFunction: string;
@@ -24,8 +25,9 @@ export function createProblemDetailViewModel(
     return {
       title: 'Choose a problem',
       summary: 'Pick a problem from the list to read the prompt, inspect examples, and start solving.',
+      emptyStateMessage: 'Select a problem from the Problems list to view details.',
       problemId: '',
-      statement: 'Select a problem from the Problems list to view details.',
+      statement: '',
       entryFunction: 'No problem selected yet.',
       language: null,
       starterFilePath: null,
@@ -47,6 +49,7 @@ export function createProblemDetailViewModel(
   return {
     title,
     summary,
+    emptyStateMessage: '',
     problemId: problem.problemId,
     statement,
     entryFunction,
@@ -244,6 +247,41 @@ function renderSectionContent(markdown: string, emptyMessage: string): string {
   return `<div class="markdown-content">${renderMarkdownToHtml(trimmed)}</div>`;
 }
 
+function stripLeadingPresentationHeadings(markdown: string, labels: readonly string[]): string {
+  const normalizedLabels = new Set(
+    labels
+      .map((label) => normalizeHeadingLabel(label))
+      .filter((label) => label.length > 0)
+  );
+  if (normalizedLabels.size === 0) {
+    return markdown.trim();
+  }
+
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+  let startIndex = 0;
+
+  while (startIndex < lines.length) {
+    while (startIndex < lines.length && lines[startIndex].trim().length === 0) {
+      startIndex += 1;
+    }
+
+    const line = lines[startIndex];
+    const headingMatch = line?.match(/^(#{1,6})\s+(.*)$/);
+    if (!headingMatch) {
+      break;
+    }
+
+    const headingLabel = normalizeHeadingLabel(headingMatch[2]);
+    if (!normalizedLabels.has(headingLabel)) {
+      break;
+    }
+
+    startIndex += 1;
+  }
+
+  return lines.slice(startIndex).join('\n').trim();
+}
+
 function renderExamples(
   examples: readonly PublicProblemTestCase[],
   examplesMarkdown: string,
@@ -290,6 +328,7 @@ function renderExamples(
 export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   const title = escapeHtml(input.title);
   const summary = escapeHtml(input.summary);
+  const emptyStateMessage = escapeHtml(input.emptyStateMessage);
   const problemId = escapeHtml(input.problemId);
   const starterFilePath = escapeHtml(input.starterFilePath ?? 'No problem selected yet.');
   const openStarterAttributes = input.isEmpty ? ' data-command="openStarter" disabled' : ' data-command="openStarter"';
@@ -300,20 +339,24 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     ? ' data-command="submitCurrentFile" disabled'
     : ' data-command="submitCurrentFile"';
   const statementSections = splitStatementSections(input.statement);
-  const statementBody = input.isEmpty
-    ? `<p role="status" class="muted">${escapeHtml(input.statement)}</p>`
-    : renderSectionContent(statementSections.description || input.statement, 'No description available yet.');
+  const statementBody = renderSectionContent(
+    stripLeadingPresentationHeadings(statementSections.description || input.statement, [
+      input.title,
+      'description'
+    ]),
+    'No description available yet.'
+  );
   const inputSection = renderSectionContent(
-    statementSections.input,
+    stripLeadingPresentationHeadings(statementSections.input, ['input', 'input format']),
     'No input format is documented yet.'
   );
   const outputSection = renderSectionContent(
-    statementSections.output,
+    stripLeadingPresentationHeadings(statementSections.output, ['output', 'output format']),
     'No output format is documented yet.'
   );
   const examplesSection = renderExamples(
     input.examples.length > 0 ? input.examples : input.publicTests,
-    statementSections.examples,
+    stripLeadingPresentationHeadings(statementSections.examples, ['example', 'examples']),
     input.isEmpty
   );
   const toolkitScript = 'https://unpkg.com/@vscode/webview-ui-toolkit@1.4.0/dist/toolkit.min.js';
@@ -491,7 +534,7 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
         <p class="hero-copy">${summary}</p>
         ${
           input.isEmpty
-            ? ''
+            ? `<div class="alert-card"><p role="status">${emptyStateMessage}</p></div>`
             : `
               <div class="problem-meta">
                 <p><strong>Problem ID:</strong> <code>${problemId}</code></p>
@@ -499,49 +542,61 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
               </div>
             `
         }
-        <div class="problem-actions">
-          <div class="primary-action">
-            <vscode-button appearance="primary"${openStarterAttributes}>Open Coding File</vscode-button>
-          </div>
-          <div class="secondary-actions">
-            <vscode-button${runPublicTestsAttributes}>Run Public Tests</vscode-button>
-            <vscode-button${submitAttributes}>Submit</vscode-button>
-          </div>
-        </div>
+        ${
+          input.isEmpty
+            ? ''
+            : `
+              <div class="problem-actions">
+                <div class="primary-action">
+                  <vscode-button appearance="primary"${openStarterAttributes}>Open Coding File</vscode-button>
+                </div>
+                <div class="secondary-actions">
+                  <vscode-button${runPublicTestsAttributes}>Run Public Tests</vscode-button>
+                  <vscode-button${submitAttributes}>Submit</vscode-button>
+                </div>
+              </div>
+            `
+        }
       </section>
 
-      <section class="section-card">
-        <div class="section-header">
-          <p class="section-kicker">Description</p>
-          <h3>Description</h3>
-        </div>
-        ${statementBody}
-      </section>
+      ${
+        input.isEmpty
+          ? ''
+          : `
+            <section class="section-card">
+              <div class="section-header">
+                <p class="section-kicker">Description</p>
+                <h3>Description</h3>
+              </div>
+              ${statementBody}
+            </section>
 
-      <div class="io-grid">
-        <section class="section-card io-card">
-          <div class="section-header">
-            <p class="section-kicker">Input</p>
-            <h3>Input</h3>
-          </div>
-            ${inputSection}
-        </section>
-        <section class="section-card io-card">
-          <div class="section-header">
-            <p class="section-kicker">Output</p>
-            <h3>Output</h3>
-          </div>
-            ${outputSection}
-        </section>
-      </div>
+            <div class="io-grid">
+              <section class="section-card io-card">
+                <div class="section-header">
+                  <p class="section-kicker">Input</p>
+                  <h3>Input</h3>
+                </div>
+                  ${inputSection}
+              </section>
+              <section class="section-card io-card">
+                <div class="section-header">
+                  <p class="section-kicker">Output</p>
+                  <h3>Output</h3>
+                </div>
+                  ${outputSection}
+              </section>
+            </div>
 
-      <section class="section-card">
-        <div class="section-header">
-          <p class="section-kicker">Examples</p>
-          <h3>Examples</h3>
-        </div>
-        ${examplesSection}
-      </section>
+            <section class="section-card">
+              <div class="section-header">
+                <p class="section-kicker">Examples</p>
+                <h3>Examples</h3>
+              </div>
+              ${examplesSection}
+            </section>
+          `
+      }
     </main>
     <script>
       const vscodeApi = acquireVsCodeApi();

@@ -13,6 +13,7 @@ export type AccountStatusBarState = {
 
 export class AccountStatusBarController {
   static readonly commandId = 'oj.account.show';
+  private static readonly visibleText = '$(account) OJ';
 
   constructor(private readonly item: AccountStatusBarItemLike) {
     this.item.command = AccountStatusBarController.commandId;
@@ -20,13 +21,12 @@ export class AccountStatusBarController {
 
   refresh(input?: AccountStatusBarState): void {
     const email = input?.email?.trim() ?? '';
+    this.item.text = AccountStatusBarController.visibleText;
 
     if (input?.isAuthenticated && email) {
-      this.item.text = `$(account) ${email}`;
-      this.item.tooltip = `Signed in as ${email}. Open OJ account`;
+      this.item.tooltip = `Signed in as ${email}. Open OJ account and stats`;
     } else {
-      this.item.text = '$(account) Sign in';
-      this.item.tooltip = 'Sign in to OJ';
+      this.item.tooltip = 'Open OJ account and sign in to start practicing';
     }
 
     this.item.show();

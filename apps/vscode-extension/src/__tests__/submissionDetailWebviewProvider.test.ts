@@ -23,10 +23,13 @@ test('submission detail renders expected fields for finished judged result', () 
   assert.match(html, /Status: finished/);
   assert.match(html, /Time: 120ms/);
   assert.match(html, /Memory: 2048KB/);
-  assert.match(html, /Verdict and metrics/);
   assert.match(html, /Execution summary/);
+  assert.doesNotMatch(html, /Verdict and metrics/);
+  assert.doesNotMatch(html, /Run Summary/);
   assert.doesNotMatch(html, /class="metric-grid"/);
   assert.doesNotMatch(html, /class="metric-card"/);
+  assert.doesNotMatch(html, /class="submission-summary"/);
+  assert.doesNotMatch(html, /class="summary-row"/);
   assert.doesNotMatch(html, /<strong>Failure Info:<\/strong>/);
 });
 
@@ -67,8 +70,9 @@ test('submission detail empty state shows friendly placeholder instead of blank 
   const html = createSubmissionDetailHtml(createSubmissionDetailViewModel(null));
 
   assert.match(html, /<h2>Submission Detail<\/h2>/);
-  assert.match(html, /No submission selected yet\./);
   assert.match(html, /Selecting a submission will load its status, verdict, timing, memory, and failure info here\./);
+  assert.match(html, /No submission details available yet\./);
+  assert.doesNotMatch(html, /class="submission-overview"/);
   assert.doesNotMatch(html, /<strong>Failure Info:<\/strong>/);
 });
 

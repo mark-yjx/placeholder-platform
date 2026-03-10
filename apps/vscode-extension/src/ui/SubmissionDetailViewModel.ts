@@ -256,42 +256,6 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
       background: color-mix(in srgb, var(--vscode-testing-iconFailed) 16%, var(--surface));
     }
 
-    .submission-detail-shell .submission-summary {
-      display: grid;
-      gap: 10px;
-    }
-
-    .submission-detail-shell .summary-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 12px 0;
-      border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-    }
-
-    .submission-detail-shell .summary-row:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-
-    .submission-detail-shell .summary-row:first-child {
-      padding-top: 0;
-    }
-
-    .submission-detail-shell .summary-label {
-      color: var(--text-secondary);
-      font-size: 0.84rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 600;
-    }
-
-    .submission-detail-shell .summary-value {
-      text-align: right;
-      font-weight: 600;
-      line-height: 1.45;
-    }
   `;
   const failureInfoSection = failureInfo
     ? `
@@ -388,35 +352,6 @@ export function createSubmissionDetailHtml(input: SubmissionDetailViewModel): st
               </div>
             `
         }
-      </section>
-
-      <section class="section-card">
-        <div class="section-header">
-          <p class="section-kicker">Run Summary</p>
-          <h3>Verdict and metrics</h3>
-        </div>
-        <div class="submission-summary">
-          <div class="summary-row">
-            <span class="summary-label">Submitted</span>
-            <div class="summary-value">${submittedAt}</div>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Verdict</span>
-            <div class="summary-value">${verdict}</div>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Status</span>
-            <div class="summary-value">${status}</div>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Time</span>
-            <div class="summary-value">${time}</div>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">Memory</span>
-            <div class="summary-value">${memory}</div>
-          </div>
-        </div>
       </section>
 
       ${failureInfoSection}

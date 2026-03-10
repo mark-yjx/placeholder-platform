@@ -42,8 +42,8 @@ test('status bar account entry and browser auth commands remain available', () =
   );
   const manifestSource = readFromRepoRoot('apps', 'vscode-extension', 'package.json');
 
-  assert.match(statusBarSource, /this\.item\.text = '\$\(account\) Sign in'/);
-  assert.match(statusBarSource, /Signed in as \$\{email\}\. Open OJ account/);
+  assert.match(statusBarSource, /visibleText = '\$\(account\) OJ'/);
+  assert.match(statusBarSource, /Signed in as \$\{email\}\. Open OJ account and stats/);
   assert.match(statusBarSource, /commandId = 'oj\.account\.show'/);
   assert.match(extensionSource, /new AccountWebviewPanel/);
   assert.match(panelSource, /message\.command === 'signIn'/);

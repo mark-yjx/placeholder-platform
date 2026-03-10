@@ -34,11 +34,13 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(providerSource, /this\.render\(\);/);
   assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
   assert.match(viewModelSource, /Select a problem from the Problems list to view details\./);
+  assert.match(viewModelSource, /emptyStateMessage: string/);
   assert.match(viewModelSource, /No statement available\./);
   assert.match(viewModelSource, /Problem ID:/);
   assert.match(viewModelSource, /Starter File:/);
   assert.match(viewModelSource, /summary: string/);
   assert.match(viewModelSource, /extractProblemSummary/);
+  assert.match(viewModelSource, /stripLeadingPresentationHeadings/);
   assert.doesNotMatch(viewModelSource, /Entry Function:/);
   assert.doesNotMatch(viewModelSource, /Language:/);
   assert.match(viewModelSource, /entryFunction: string/);
@@ -53,6 +55,7 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(viewModelSource, /data-command="submitCurrentFile"/);
   assert.match(viewModelSource, />Submit</);
   assert.match(viewModelSource, /appearance="primary"\$\{openStarterAttributes\}/);
+  assert.match(viewModelSource, /input\.isEmpty\s*\?\s*''/);
   assert.doesNotMatch(viewModelSource, /refreshProblem/);
   assert.match(viewModelSource, /postMessage\(\{ command: button\.dataset\.command \}\)/);
 });

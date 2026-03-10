@@ -32,7 +32,6 @@ test('submission detail panel exposes status and detail fields', () => {
   assert.match(viewModelSource, /formatSubmissionDisplayId/);
   assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
   assert.match(viewModelSource, /submission-overview/);
-  assert.match(viewModelSource, /submission-summary/);
   assert.match(viewModelSource, /<strong>Submission ID:<\/strong>/);
   assert.match(viewModelSource, /Submitted \$\{submittedAt\}\./);
   assert.match(viewModelSource, /Status: \$\{status\}/);
@@ -41,6 +40,8 @@ test('submission detail panel exposes status and detail fields', () => {
   assert.match(viewModelSource, /<strong>Failure Info:<\/strong>/);
   assert.match(viewModelSource, /const failureInfoSection = failureInfo/);
   assert.match(viewModelSource, /buildSubmissionDetailText/);
+  assert.doesNotMatch(viewModelSource, /submission-summary/);
+  assert.doesNotMatch(viewModelSource, /summary-row/);
   assert.match(viewModelSource, /input\.status === 'queued' \|\| input\.status === 'running'/);
   assert.match(viewModelSource, /return `Status: \$\{input\.status\}`/);
   assert.match(viewModelSource, /no failure reason available/);
