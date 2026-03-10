@@ -5,6 +5,11 @@ export type LoginRequest = {
 
 export type BrowserAuthMode = 'sign-in' | 'sign-up';
 
+export type BrowserAuthUrlInput = {
+  callbackUri: string;
+  state: string;
+};
+
 export type LoginResponse = {
   accessToken: string;
   email?: string;
@@ -13,6 +18,6 @@ export type LoginResponse = {
 
 export interface AuthClient {
   login(request: LoginRequest): Promise<LoginResponse>;
-  getBrowserAuthUrl(mode: BrowserAuthMode): string;
+  getBrowserAuthUrl(mode: BrowserAuthMode, input?: BrowserAuthUrlInput): string;
   exchangeBrowserCode(input: { code: string }): Promise<LoginResponse>;
 }

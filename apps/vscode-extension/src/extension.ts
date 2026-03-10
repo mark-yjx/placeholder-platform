@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { EngagementCommands } from './engagement/EngagementCommands';
 import { registerExtensionCommands } from './extensionCore';
 import { AuthCommands } from './auth/AuthCommands';
+import { BrowserAuthFlow, createStudentAuthCallbackUri } from './auth/BrowserAuthFlow';
 import { SessionTokenStore } from './auth/SessionTokenStore';
 import { PracticeCommands } from './practice/PracticeCommands';
 import {
@@ -67,7 +68,32 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
   const submissionDetailProvider = new SubmissionDetailWebviewProvider();
+  const accountStatusBar = new AccountStatusBarController(
+    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
+  );
+  const refreshAccountUi = () => {
+    accountPanel.refresh();
+    const session = tokenStore.getSessionIdentity();
+    accountStatusBar.refresh({
+      isAuthenticated: tokenStore.isAuthenticated(),
+      email: session.email
+    });
+  };
+  const browserAuthFlow = new BrowserAuthFlow(
+    authCommands,
+    vscode.window,
+    async (url) => {
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+    },
+    () => createStudentAuthCallbackUri(vscode.env.uriScheme),
+    {
+      output,
+      stateStore: context.globalState,
+      onSessionChanged: refreshAccountUi
+    }
+  );
   const accountPanel = new AccountWebviewPanel(
+    browserAuthFlow,
     authCommands,
     tokenStore,
     vscode.window,
@@ -75,12 +101,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.window.createWebviewPanel('ojAccountPanel', 'OJ Account', vscode.ViewColumn.Beside, {
         enableScripts: true
       }),
-    async (url) => {
-      await vscode.env.openExternal(vscode.Uri.parse(url));
-    }
-  );
-  const accountStatusBar = new AccountStatusBarController(
-    vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
+    refreshAccountUi
   );
   const practiceViews = new PracticeTreeViews(
     vscode.window,
@@ -93,14 +114,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const disposables = registerExtensionCommands({
     authCommands,
+    browserAuthFlow,
     practiceCommands,
     engagementCommands,
     practiceViews,
     problemStarterWorkspace,
     localStateStore,
     onAuthSessionChanged: () => {
-      accountPanel.refresh();
-      accountStatusBar.refresh();
+      refreshAccountUi();
     },
     output,
     openExternalUrl: async (url) => {
@@ -128,8 +149,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   const logoutDisposable = vscode.commands.registerCommand('oj.logout', async () => {
     await authCommands.logout();
-    accountPanel.refresh();
-    accountStatusBar.refresh();
+    refreshAccountUi();
     vscode.window.showInformationMessage('Logged out of OJ.');
   });
   const revealSubmissionDisposable = vscode.commands.registerCommand(
@@ -145,6 +165,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(output);
   context.subscriptions.push(accountStatusBar);
+  context.subscriptions.push(
+    vscode.window.registerUriHandler({
+      handleUri: async (uri) => {
+        await browserAuthFlow.handleUri(uri);
+      }
+    })
+  );
   for (const disposable of disposables) {
     context.subscriptions.push(disposable);
   }
@@ -161,7 +188,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   output.appendLine(`API base URL: ${apiBaseUrl}`);
   output.appendLine(`Request timeout: ${requestTimeoutMs}ms`);
   output.appendLine(describeTokenStorageBehavior());
-  accountStatusBar.refresh();
+  refreshAccountUi();
   await restorePracticeStateOnStartup({
     apiBaseUrl,
     tokenStore,

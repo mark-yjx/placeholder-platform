@@ -97,6 +97,7 @@ test('extension package keeps production packaging whitelist and activation even
   }
   assert.deepEqual(manifest.activationEvents, [
     'onStartupFinished',
+    'onUri',
     'onCommand:oj.account.show',
     'onCommand:oj.logout',
     'onCommand:oj.login',

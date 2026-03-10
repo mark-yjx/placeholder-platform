@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AuthClient } from '../auth/AuthClient';
 import { AuthCommands } from '../auth/AuthCommands';
+import { BrowserAuthFlowLike, BrowserAuthUriLike } from '../auth/BrowserAuthFlow';
 import { SecretStorageLike, SessionTokenStore } from '../auth/SessionTokenStore';
 import { ExtensionApiError } from '../errors/ExtensionErrorMapper';
 import { AccountWebviewPanel } from '../ui/AccountWebviewPanel';
@@ -61,6 +62,46 @@ class FakeAuthClient implements AuthClient {
   }
 }
 
+class FakeBrowserAuthFlow implements BrowserAuthFlowLike {
+  readonly startedModes: Array<'sign-in' | 'sign-up'> = [];
+  fallbackCount = 0;
+
+  constructor(
+    private readonly tokenStore: SessionTokenStore,
+    private readonly outcome:
+      | { accessToken: string; email?: string; role?: string; manualOnly?: boolean }
+      | Error
+      | null
+  ) {}
+
+  async start(mode: 'sign-in' | 'sign-up'): Promise<void> {
+    this.startedModes.push(mode);
+    if (this.outcome instanceof Error) {
+      throw this.outcome;
+    }
+    if (!this.outcome || this.outcome.manualOnly) {
+      return;
+    }
+    await this.tokenStore.setSession(this.outcome);
+  }
+
+  async enterFallbackCode(): Promise<boolean> {
+    this.fallbackCount += 1;
+    if (this.outcome instanceof Error) {
+      throw this.outcome;
+    }
+    if (!this.outcome) {
+      return false;
+    }
+    await this.tokenStore.setSession(this.outcome);
+    return true;
+  }
+
+  async handleUri(_uri: BrowserAuthUriLike): Promise<void> {
+    return;
+  }
+}
+
 class FakeWebview {
   html = '';
   options?: { enableScripts?: boolean };
@@ -99,8 +140,14 @@ test('account webview panel browser sign-in path remains functional', async () =
   const panel = new FakePanel();
   const tokenStore = new SessionTokenStore(new FakeSecretStorage());
   const infoMessages: string[] = [];
-  const openedUrls: string[] = [];
+  let sessionChangeCount = 0;
+  const browserAuthFlow = new FakeBrowserAuthFlow(tokenStore, {
+    accessToken: 'student-token',
+    email: 'student@example.com',
+    role: 'student'
+  });
   const webviewPanel = new AccountWebviewPanel(
+    browserAuthFlow,
     new AuthCommands(
       new FakeAuthClient({ accessToken: 'student-token', email: 'student@example.com', role: 'student' }),
       tokenStore
@@ -112,8 +159,8 @@ test('account webview panel browser sign-in path remains functional', async () =
       showErrorMessage: () => undefined
     },
     () => panel,
-    async (url) => {
-      openedUrls.push(url);
+    () => {
+      sessionChangeCount += 1;
     }
   );
 
@@ -125,14 +172,16 @@ test('account webview panel browser sign-in path remains functional', async () =
     email: 'student@example.com',
     role: 'student'
   });
-  assert.deepEqual(openedUrls, ['http://oj.test/auth/sign-in']);
+  assert.deepEqual(browserAuthFlow.startedModes, ['sign-in']);
   assert.match(panel.webview.html, /Logged in as <strong>student@example\.com<\/strong>/);
-  assert.ok(infoMessages.some((message) => message.includes('Logged in as student@example.com')));
+  assert.equal(sessionChangeCount, 1);
+  assert.deepEqual(infoMessages, []);
 });
 
 test('account webview panel reuses the existing panel when reopened', () => {
   const panel = new FakePanel();
   const webviewPanel = new AccountWebviewPanel(
+    new FakeBrowserAuthFlow(new SessionTokenStore(), null),
     new AuthCommands(new FakeAuthClient({ accessToken: 'student-token', role: 'student' }), new SessionTokenStore()),
     new SessionTokenStore(),
     {
@@ -140,8 +189,7 @@ test('account webview panel reuses the existing panel when reopened', () => {
       showInformationMessage: () => undefined,
       showErrorMessage: () => undefined
     },
-    () => panel,
-    async () => undefined
+    () => panel
   );
 
   webviewPanel.show();
@@ -155,6 +203,15 @@ test('account webview panel reports friendly failed browser auth errors', async 
   const tokenStore = new SessionTokenStore(new FakeSecretStorage());
   const errorMessages: string[] = [];
   const webviewPanel = new AccountWebviewPanel(
+    new FakeBrowserAuthFlow(
+      tokenStore,
+      new ExtensionApiError(401, {
+        error: {
+          code: 'AUTH_INVALID_CREDENTIALS',
+          message: 'invalid credentials'
+        }
+      })
+    ),
     new AuthCommands(
       new FakeAuthClient(
         new ExtensionApiError(401, {
@@ -172,8 +229,7 @@ test('account webview panel reports friendly failed browser auth errors', async 
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errorMessages.push(message)
     },
-    () => panel,
-    async () => undefined
+    () => panel
   );
 
   webviewPanel.show();

@@ -414,9 +414,10 @@ test('api errors use unified auth and not-found structure', async () => {
 
 test('student browser auth pages render and complete sign-in/sign-up handoff flows', async () => {
   const runtime = createRuntime();
+  const callbackUri = encodeURIComponent('vscode://local.oj-vscode-extension/auth-complete');
 
   const signInPage = await invokeRaw({
-    path: '/auth/sign-in',
+    path: `/auth/sign-in?callback_uri=${callbackUri}&state=signin-state`,
     runtime
   });
   assert.equal(signInPage.statusCode, 200);
@@ -424,9 +425,11 @@ test('student browser auth pages render and complete sign-in/sign-up handoff flo
   assert.match(signInPage.body, /Student Sign In/);
   assert.match(signInPage.body, /name="email"/);
   assert.match(signInPage.body, /name="password"/);
+  assert.match(signInPage.body, /name="callbackUri"/);
+  assert.match(signInPage.body, /name="state"/);
 
   const signUpPage = await invokeRaw({
-    path: '/auth/sign-up',
+    path: `/auth/sign-up?callback_uri=${callbackUri}&state=signup-state`,
     runtime
   });
   assert.equal(signUpPage.statusCode, 200);
@@ -438,33 +441,46 @@ test('student browser auth pages render and complete sign-in/sign-up handoff flo
     path: '/auth/sign-in',
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    rawBody: 'email=student1%40example.com&password=secret',
+    rawBody: `email=student1%40example.com&password=secret&callbackUri=${callbackUri}&state=signin-state`,
     runtime
   });
   assert.equal(signInSuccess.statusCode, 200);
+  assert.match(signInSuccess.body, /Opening VS Code/);
+  assert.match(signInSuccess.body, /window\.location\.replace/);
   assert.match(signInSuccess.body, /SIGNIN1234/);
-  assert.match(signInSuccess.body, /Student Sign In Complete/);
+  assert.match(
+    signInSuccess.body,
+    /vscode:\/\/local\.oj-vscode-extension\/auth-complete\?code=SIGNIN1234&amp;state=signin-state/
+  );
 
   const signUpSuccess = await invokeRaw({
     path: '/auth/sign-up',
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    rawBody: 'email=newstudent%40example.com&displayName=New%20Student&password=secret&confirmPassword=secret',
+    rawBody:
+      `email=newstudent%40example.com&displayName=New%20Student&password=secret&confirmPassword=secret&callbackUri=${callbackUri}&state=signup-state`,
     runtime
   });
   assert.equal(signUpSuccess.statusCode, 200);
+  assert.match(signUpSuccess.body, /Opening VS Code/);
+  assert.match(signUpSuccess.body, /window\.location\.replace/);
   assert.match(signUpSuccess.body, /SIGNUP1234/);
-  assert.match(signUpSuccess.body, /Student Account Created/);
+  assert.match(
+    signUpSuccess.body,
+    /vscode:\/\/local\.oj-vscode-extension\/auth-complete\?code=SIGNUP1234&amp;state=signup-state/
+  );
 });
 
 test('student browser auth rejects duplicate email, disabled users, and invalid exchange codes cleanly', async () => {
   const runtime = createRuntime();
+  const callbackUri = encodeURIComponent('vscode://local.oj-vscode-extension/auth-complete');
 
   const duplicateSignUp = await invokeRaw({
     path: '/auth/sign-up',
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    rawBody: 'email=existing%40example.com&displayName=Existing&password=secret&confirmPassword=secret',
+    rawBody:
+      `email=existing%40example.com&displayName=Existing&password=secret&confirmPassword=secret&callbackUri=${callbackUri}&state=signup-state`,
     runtime
   });
   assert.equal(duplicateSignUp.statusCode, 409);
@@ -474,7 +490,7 @@ test('student browser auth rejects duplicate email, disabled users, and invalid 
     path: '/auth/sign-in',
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    rawBody: 'email=student2%40example.com&password=secret',
+    rawBody: `email=student2%40example.com&password=secret&callbackUri=${callbackUri}&state=signin-state`,
     runtime
   });
   assert.equal(disabledSignIn.statusCode, 403);
@@ -484,7 +500,8 @@ test('student browser auth rejects duplicate email, disabled users, and invalid 
     path: '/auth/sign-up',
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    rawBody: 'email=student3%40example.com&displayName=Mismatch&password=secret&confirmPassword=wrong',
+    rawBody:
+      `email=student3%40example.com&displayName=Mismatch&password=secret&confirmPassword=wrong&callbackUri=${callbackUri}&state=signup-state`,
     runtime
   });
   assert.equal(mismatchSignUp.statusCode, 400);
@@ -505,13 +522,35 @@ test('student browser auth rejects duplicate email, disabled users, and invalid 
   });
 });
 
+test('student browser auth rejects invalid callback configuration cleanly', async () => {
+  const runtime = createRuntime();
+
+  const invalidCallbackPage = await invokeRaw({
+    path: '/auth/sign-in?callback_uri=https%3A%2F%2Fevil.example%2Fcallback&state=bad-state',
+    runtime
+  });
+  assert.equal(invalidCallbackPage.statusCode, 400);
+  assert.match(invalidCallbackPage.body, /callback target is invalid/i);
+
+  const incompleteCallbackSubmit = await invokeRaw({
+    path: '/auth/sign-up',
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    rawBody: 'email=student3%40example.com&displayName=Mismatch&password=secret&confirmPassword=secret&callbackUri=vscode%3A%2F%2Flocal.oj-vscode-extension%2Fauth-complete',
+    runtime
+  });
+  assert.equal(incompleteCallbackSubmit.statusCode, 400);
+  assert.match(incompleteCallbackSubmit.body, /callback configuration is incomplete/i);
+});
+
 test('student browser auth exchange returns a student session token for the extension', async () => {
   const runtime = createRuntime();
+  const callbackUri = encodeURIComponent('vscode://local.oj-vscode-extension/auth-complete');
   await invokeRaw({
     path: '/auth/sign-in',
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    rawBody: 'email=student1%40example.com&password=secret',
+    rawBody: `email=student1%40example.com&password=secret&callbackUri=${callbackUri}&state=signin-state`,
     runtime
   });
 

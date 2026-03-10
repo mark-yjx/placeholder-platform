@@ -107,7 +107,13 @@ test('browser auth completion stores a student session', async () => {
     tokenStore
   );
 
-  assert.equal(commands.getBrowserAuthUrl('sign-in'), 'http://oj.test/auth/sign-in');
+  assert.equal(
+    commands.getBrowserAuthUrl('sign-in', {
+      callbackUri: 'vscode://local.oj-vscode-extension/auth-complete',
+      state: 'state-123'
+    }),
+    'http://oj.test/auth/sign-in'
+  );
   await commands.completeBrowserAuth('ABC123');
 
   assert.equal(tokenStore.getAccessToken(), 'student-token');

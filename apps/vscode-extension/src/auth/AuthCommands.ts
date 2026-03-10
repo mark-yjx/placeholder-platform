@@ -1,4 +1,4 @@
-import { AuthClient, BrowserAuthMode, LoginRequest, LoginResponse } from './AuthClient';
+import { AuthClient, BrowserAuthMode, BrowserAuthUrlInput, LoginRequest, LoginResponse } from './AuthClient';
 import { SessionTokenStore } from './SessionTokenStore';
 import { validateLoginInput } from './AuthViews';
 
@@ -25,8 +25,8 @@ export class AuthCommands {
     return this.tokenStore.getSessionIdentity();
   }
 
-  getBrowserAuthUrl(mode: BrowserAuthMode): string {
-    return this.authClient.getBrowserAuthUrl(mode);
+  getBrowserAuthUrl(mode: BrowserAuthMode, input?: BrowserAuthUrlInput): string {
+    return this.authClient.getBrowserAuthUrl(mode, input);
   }
 
   async completeBrowserAuth(code: string): Promise<{ email: string | null; role: string | null }> {

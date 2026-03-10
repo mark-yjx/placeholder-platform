@@ -9,6 +9,7 @@ import { extractSubmitPayload } from './submission/SubmissionPayloadExtraction';
 import { runLocalPublicTests } from './practice/PublicTestRunner';
 import { LocalPracticeStateStore } from './runtime/LocalPracticeStateStore';
 import { resolveProblemStatementMarkdown } from './ui/PracticeViewState';
+import { BrowserAuthFlowLike } from './auth/BrowserAuthFlow';
 
 export type DisposableLike = { dispose: () => void };
 
@@ -54,6 +55,7 @@ export type WindowLike = {
 
 export type ExtensionCommandDependencies = {
   authCommands: AuthCommands;
+  browserAuthFlow?: BrowserAuthFlowLike;
   practiceCommands: PracticeCommands;
   engagementCommands: EngagementCommands;
   waitForNextPoll?: (delayMs: number) => Promise<void>;
@@ -85,6 +87,7 @@ export function registerExtensionCommands(
   const openExternalUrl =
     dependencies.openExternalUrl ??
     (async () => undefined);
+  const browserAuthFlow = dependencies.browserAuthFlow;
   const pollIntervalMs = 1_000;
   const maxPollBackoffMs = 8_000;
 
@@ -325,42 +328,33 @@ export function registerExtensionCommands(
     );
   };
 
-  const promptForBrowserAuthCode = async (mode: 'sign-in' | 'sign-up'): Promise<string | null> => {
-    const code = await dependencies.window.showInputBox({
-      prompt:
+  const completeBrowserAuth = async (mode: 'sign-in' | 'sign-up') => {
+    if (!browserAuthFlow) {
+      const browserUrl = dependencies.authCommands.getBrowserAuthUrl(mode);
+      await openExternalUrl(browserUrl);
+      dependencies.window.showInformationMessage(
         mode === 'sign-in'
-          ? 'Paste the one-time student sign-in code from your browser'
-          : 'Paste the one-time student sign-up code from your browser',
-      placeHolder: 'Example: 8F2A9C4D10',
-      ignoreFocusOut: true
-    });
-    if (code === undefined) {
-      return null;
+          ? 'Student sign-in opened in your browser.'
+          : 'Student sign-up opened in your browser.'
+      );
+      return;
     }
 
-    return code;
+    await browserAuthFlow.start(mode);
+    dependencies.onAuthSessionChanged?.();
   };
 
-  const completeBrowserAuth = async (mode: 'sign-in' | 'sign-up') => {
-    const browserUrl = dependencies.authCommands.getBrowserAuthUrl(mode);
-    await openExternalUrl(browserUrl);
-    dependencies.window.showInformationMessage(
-      mode === 'sign-in'
-        ? 'Student sign-in opened in your browser. Complete it there, then paste the one-time code back here.'
-        : 'Student sign-up opened in your browser. Complete it there, then paste the one-time code back here.'
-    );
-
-    const code = await promptForBrowserAuthCode(mode);
-    if (code === null) {
+  const completeFallbackBrowserAuth = async () => {
+    if (!browserAuthFlow) {
       return false;
     }
 
-    try {
-      await dependencies.authCommands.completeBrowserAuth(code);
-      dependencies.output.appendLine(`Browser auth completed via ${mode}.`);
-    } finally {
-      dependencies.onAuthSessionChanged?.();
+    const completed = await browserAuthFlow.enterFallbackCode();
+    if (!completed) {
+      return false;
     }
+
+    dependencies.onAuthSessionChanged?.();
   };
 
   return [
@@ -374,6 +368,12 @@ export function registerExtensionCommands(
       'oj.signup',
       runWithHandling('oj.signup', async () => {
         return completeBrowserAuth('sign-up');
+      })
+    ),
+    dependencies.registerCommand(
+      'oj.auth.enterBrowserCode',
+      runWithHandling('oj.auth.enterBrowserCode', async () => {
+        return completeFallbackBrowserAuth();
       })
     ),
     dependencies.registerCommand(

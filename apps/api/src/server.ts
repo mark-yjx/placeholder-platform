@@ -345,7 +345,9 @@ export function createApiRequestHandler(
   const sessionSecret = process.env.JWT_SECRET?.trim() || 'local-dev-jwt-secret';
   const {
     renderStudentAuthForm,
-    renderStudentAuthSuccess
+    renderStudentAuthSuccess,
+    renderStudentAuthCallbackRedirect,
+    resolveStudentAuthCallback
   } = require('./studentAuth/browserPages') as typeof import('./studentAuth/browserPages');
 
   return async (request, response) => {
@@ -371,12 +373,58 @@ export function createApiRequestHandler(
     const { persistence } = localRuntime;
 
     if (path === '/auth/sign-in' && method === 'GET') {
-      sendHtml(response, 200, renderStudentAuthForm({ mode: 'sign-in' }));
+      try {
+        const callback = resolveStudentAuthCallback({
+          callbackUri: url.searchParams.get('callback_uri'),
+          state: url.searchParams.get('state')
+        });
+        sendHtml(
+          response,
+          200,
+          renderStudentAuthForm({
+            mode: 'sign-in',
+            callbackUri: callback?.callbackUri,
+            state: callback?.state
+          })
+        );
+      } catch (error) {
+        sendHtml(
+          response,
+          400,
+          renderStudentAuthForm({
+            mode: 'sign-in',
+            errorMessage: error instanceof Error ? error.message : 'Invalid browser callback target.'
+          })
+        );
+      }
       return;
     }
 
     if (path === '/auth/sign-up' && method === 'GET') {
-      sendHtml(response, 200, renderStudentAuthForm({ mode: 'sign-up' }));
+      try {
+        const callback = resolveStudentAuthCallback({
+          callbackUri: url.searchParams.get('callback_uri'),
+          state: url.searchParams.get('state')
+        });
+        sendHtml(
+          response,
+          200,
+          renderStudentAuthForm({
+            mode: 'sign-up',
+            callbackUri: callback?.callbackUri,
+            state: callback?.state
+          })
+        );
+      } catch (error) {
+        sendHtml(
+          response,
+          400,
+          renderStudentAuthForm({
+            mode: 'sign-up',
+            errorMessage: error instanceof Error ? error.message : 'Invalid browser callback target.'
+          })
+        );
+      }
       return;
     }
 
@@ -384,6 +432,30 @@ export function createApiRequestHandler(
       const form = await readFormBody(request);
       const email = String(form.email ?? '').trim();
       const password = String(form.password ?? '').trim();
+      let callback:
+        | {
+            callbackUri: string;
+            state: string;
+          }
+        | null;
+
+      try {
+        callback = resolveStudentAuthCallback({
+          callbackUri: String(form.callbackUri ?? ''),
+          state: String(form.state ?? '')
+        });
+      } catch (error) {
+        sendHtml(
+          response,
+          400,
+          renderStudentAuthForm({
+            mode: 'sign-in',
+            errorMessage: error instanceof Error ? error.message : 'Invalid browser callback target.',
+            values: { email }
+          })
+        );
+        return;
+      }
 
       if (!email || !password) {
         sendHtml(
@@ -392,7 +464,9 @@ export function createApiRequestHandler(
           renderStudentAuthForm({
             mode: 'sign-in',
             errorMessage: !email ? 'Email is required.' : 'Password is required.',
-            values: { email }
+            values: { email },
+            callbackUri: callback?.callbackUri,
+            state: callback?.state
           })
         );
         return;
@@ -400,16 +474,22 @@ export function createApiRequestHandler(
 
       try {
         const handoff = await requireAuth(localRuntime).browserSignIn({ email, password });
-        sendHtml(
-          response,
-          200,
-          renderStudentAuthSuccess({
-            mode: 'sign-in',
-            email: handoff.email,
-            code: handoff.code,
-            expiresAt: handoff.expiresAt
-          })
-        );
+        const successHtml = callback
+          ? renderStudentAuthCallbackRedirect({
+              mode: 'sign-in',
+              email: handoff.email,
+              code: handoff.code,
+              expiresAt: handoff.expiresAt,
+              callbackUri: callback.callbackUri,
+              state: callback.state
+            })
+          : renderStudentAuthSuccess({
+              mode: 'sign-in',
+              email: handoff.email,
+              code: handoff.code,
+              expiresAt: handoff.expiresAt
+            });
+        sendHtml(response, 200, successHtml);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unable to sign in.';
         const statusCode =
@@ -424,7 +504,9 @@ export function createApiRequestHandler(
           renderStudentAuthForm({
             mode: 'sign-in',
             errorMessage: message,
-            values: { email }
+            values: { email },
+            callbackUri: callback?.callbackUri,
+            state: callback?.state
           })
         );
       }
@@ -437,6 +519,30 @@ export function createApiRequestHandler(
       const displayName = String(form.displayName ?? '').trim();
       const password = String(form.password ?? '').trim();
       const confirmPassword = String(form.confirmPassword ?? '').trim();
+      let callback:
+        | {
+            callbackUri: string;
+            state: string;
+          }
+        | null;
+
+      try {
+        callback = resolveStudentAuthCallback({
+          callbackUri: String(form.callbackUri ?? ''),
+          state: String(form.state ?? '')
+        });
+      } catch (error) {
+        sendHtml(
+          response,
+          400,
+          renderStudentAuthForm({
+            mode: 'sign-up',
+            errorMessage: error instanceof Error ? error.message : 'Invalid browser callback target.',
+            values: { email, displayName }
+          })
+        );
+        return;
+      }
 
       if (!email || !displayName || !password || !confirmPassword) {
         sendHtml(
@@ -445,7 +551,9 @@ export function createApiRequestHandler(
           renderStudentAuthForm({
             mode: 'sign-up',
             errorMessage: 'Email, display name, password, and confirm password are required.',
-            values: { email, displayName }
+            values: { email, displayName },
+            callbackUri: callback?.callbackUri,
+            state: callback?.state
           })
         );
         return;
@@ -458,7 +566,9 @@ export function createApiRequestHandler(
           renderStudentAuthForm({
             mode: 'sign-up',
             errorMessage: 'Password confirmation does not match.',
-            values: { email, displayName }
+            values: { email, displayName },
+            callbackUri: callback?.callbackUri,
+            state: callback?.state
           })
         );
         return;
@@ -470,16 +580,22 @@ export function createApiRequestHandler(
           displayName,
           password
         });
-        sendHtml(
-          response,
-          200,
-          renderStudentAuthSuccess({
-            mode: 'sign-up',
-            email: handoff.email,
-            code: handoff.code,
-            expiresAt: handoff.expiresAt
-          })
-        );
+        const successHtml = callback
+          ? renderStudentAuthCallbackRedirect({
+              mode: 'sign-up',
+              email: handoff.email,
+              code: handoff.code,
+              expiresAt: handoff.expiresAt,
+              callbackUri: callback.callbackUri,
+              state: callback.state
+            })
+          : renderStudentAuthSuccess({
+              mode: 'sign-up',
+              email: handoff.email,
+              code: handoff.code,
+              expiresAt: handoff.expiresAt
+            });
+        sendHtml(response, 200, successHtml);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unable to create account.';
         const statusCode =
@@ -492,7 +608,9 @@ export function createApiRequestHandler(
           renderStudentAuthForm({
             mode: 'sign-up',
             errorMessage: message,
-            values: { email, displayName }
+            values: { email, displayName },
+            callbackUri: callback?.callbackUri,
+            state: callback?.state
           })
         );
       }

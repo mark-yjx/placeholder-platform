@@ -1,6 +1,9 @@
 declare module 'vscode' {
   export type Event<T> = (listener: (event: T) => unknown) => Disposable;
   export type Disposable = { dispose(): unknown };
+  export type UriHandler = {
+    handleUri(uri: Uri): unknown;
+  };
   export const StatusBarAlignment: {
     Left: 1;
     Right: 2;
@@ -45,8 +48,11 @@ declare module 'vscode' {
   };
   export class Uri {
     readonly fsPath: string;
+    readonly path: string;
+    readonly query: string;
     static file(path: string): Uri;
     static parse(value: string): Uri;
+    toString(): string;
   }
   export const TreeItemCollapsibleState: {
     None: 0;
@@ -86,6 +92,7 @@ declare module 'vscode' {
 
   export const env: {
     openExternal(target: Uri): Thenable<boolean>;
+    uriScheme: string;
   };
 
   export const workspace: {
@@ -101,6 +108,7 @@ declare module 'vscode' {
   export const window: {
     registerTreeDataProvider(viewId: string, provider: TreeDataProvider<TreeItem>): Disposable;
     registerWebviewViewProvider(viewId: string, provider: WebviewViewProvider): Disposable;
+    registerUriHandler(handler: UriHandler): Disposable;
     createWebviewPanel(
       viewType: string,
       title: string,

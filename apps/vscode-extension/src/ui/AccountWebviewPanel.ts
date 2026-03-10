@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AuthCommands } from '../auth/AuthCommands';
+import { BrowserAuthFlowLike } from '../auth/BrowserAuthFlow';
 import { SessionTokenStore } from '../auth/SessionTokenStore';
 import { mapExtensionError } from '../errors/ExtensionErrorMapper';
 import { createAccountHtml, createAccountViewModel } from './AccountViewModel';
@@ -7,6 +8,7 @@ import { createAccountHtml, createAccountViewModel } from './AccountViewModel';
 type AccountWebviewMessage =
   | { command: 'signIn' }
   | { command: 'signUp' }
+  | { command: 'enterCode' }
   | { command: 'logout' };
 
 export type AccountWebviewLike = {
@@ -31,11 +33,12 @@ export class AccountWebviewPanel {
   private errorMessage: string | null = null;
 
   constructor(
+    private readonly browserAuthFlow: BrowserAuthFlowLike,
     private readonly authCommands: AuthCommands,
     private readonly tokenStore: SessionTokenStore,
     private readonly window: AccountWindowLike,
     private readonly createPanel: () => AccountWebviewPanelLike,
-    private readonly openExternalUrl: (url: string) => Promise<void>
+    private readonly onSessionChanged?: () => void
   ) {}
 
   show(): void {
@@ -71,6 +74,11 @@ export class AccountWebviewPanel {
       return;
     }
 
+    if (message.command === 'enterCode') {
+      await this.completeBrowserAuthFallback();
+      return;
+    }
+
     if (message.command === 'logout') {
       await this.logout();
     }
@@ -78,32 +86,10 @@ export class AccountWebviewPanel {
 
   private async startBrowserAuth(mode: 'sign-in' | 'sign-up'): Promise<void> {
     try {
-      await this.openExternalUrl(this.authCommands.getBrowserAuthUrl(mode));
-      this.window.showInformationMessage(
-        mode === 'sign-in'
-          ? 'Student sign-in opened in your browser. Paste the one-time code here when you finish.'
-          : 'Student sign-up opened in your browser. Paste the one-time code here when you finish.'
-      );
-      const code = await this.window.showInputBox({
-        prompt:
-          mode === 'sign-in'
-            ? 'Paste the student sign-in code from your browser'
-            : 'Paste the student sign-up code from your browser',
-        placeHolder: 'Example: 8F2A9C4D10',
-        ignoreFocusOut: true
-      });
-      if (code === undefined) {
-        return;
-      }
-
-      const session = await this.authCommands.completeBrowserAuth(code);
-      if (!isCompleteAccountIdentity(session)) {
-        await this.authCommands.logout();
-        throw new Error('Login succeeded but account details are incomplete.');
-      }
       this.errorMessage = null;
+      await this.browserAuthFlow.start(mode);
+      this.onSessionChanged?.();
       this.render();
-      this.window.showInformationMessage(`Logged in as ${session.email} (${session.role}).`);
     } catch (error) {
       const message = this.resolvePanelErrorMessage(error);
       this.errorMessage = message;
@@ -115,8 +101,26 @@ export class AccountWebviewPanel {
   private async logout(): Promise<void> {
     await this.authCommands.logout();
     this.errorMessage = null;
+    this.onSessionChanged?.();
     this.render();
     this.window.showInformationMessage('Logged out of OJ.');
+  }
+
+  private async completeBrowserAuthFallback(): Promise<void> {
+    try {
+      this.errorMessage = null;
+      const completed = await this.browserAuthFlow.enterFallbackCode();
+      if (!completed) {
+        return;
+      }
+      this.onSessionChanged?.();
+      this.render();
+    } catch (error) {
+      const message = this.resolvePanelErrorMessage(error);
+      this.errorMessage = message;
+      this.render();
+      this.window.showErrorMessage(message);
+    }
   }
 
   private resolvePanelErrorMessage(error: unknown): string {
@@ -157,7 +161,7 @@ function isAccountWebviewMessage(message: unknown): message is AccountWebviewMes
   }
 
   const command = (message as { command?: unknown }).command;
-  return command === 'signIn' || command === 'signUp' || command === 'logout';
+  return command === 'signIn' || command === 'signUp' || command === 'enterCode' || command === 'logout';
 }
 
 function isCompleteAccountIdentity(input: { email?: string | null; role?: string | null }): input is {

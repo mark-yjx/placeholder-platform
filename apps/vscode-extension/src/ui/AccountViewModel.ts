@@ -189,19 +189,19 @@ ${sharedHead}
             <h2 class="hero-title">${title}</h2>
             <p class="hero-copy">${status}</p>
           </div>
-          <p class="hero-copy">Continue in your system browser, then return to VS Code to finish with the one-time code you receive.</p>
+          <p class="hero-copy">Continue in your system browser and let VS Code finish automatically when the browser redirects back.</p>
         </div>
         ${errorMessage ? `<div class="alert-card error-text">${errorMessage}</div>` : ''}
         <section class="account-section">
           <p class="account-section-title">Primary action</p>
-          <p class="account-section-copy">Already have an account? Open the browser sign-in flow, authenticate there, then paste the returned code back into VS Code.</p>
+          <p class="account-section-copy">Already have an account? Open the browser sign-in flow and VS Code will complete the student session automatically after browser auth succeeds.</p>
           <div class="account-actions">
             <vscode-button appearance="primary" data-command="signIn">Sign in</vscode-button>
           </div>
         </section>
         <section class="account-section">
           <p class="account-section-title">New to OJ?</p>
-          <p class="account-section-copy">Create your student account in the browser first, then come back here to complete setup in the extension.</p>
+          <p class="account-section-copy">Create your student account in the browser, then let the browser hand control back to VS Code automatically.</p>
           <div class="account-secondary-actions">
             <vscode-button data-command="signUp">Sign up</vscode-button>
           </div>
@@ -220,19 +220,26 @@ ${sharedHead}
               <span class="account-step-number">2</span>
               <div class="account-step-copy">
                 <strong>Finish in the browser</strong>
-                <p class="account-section-copy">Complete the login or registration flow there. The browser will show a one-time code when it finishes.</p>
+                <p class="account-section-copy">Complete the login or registration flow there. The student auth page will immediately try to reopen VS Code when it succeeds.</p>
               </div>
             </div>
             <div class="account-step">
               <span class="account-step-number">3</span>
               <div class="account-step-copy">
-                <strong>Return to VS Code</strong>
-                <p class="account-section-copy">Paste that code into the VS Code prompt to activate your session in the extension.</p>
+                <strong>Automatic completion</strong>
+                <p class="account-section-copy">VS Code validates the callback state, exchanges the one-time code, and refreshes your signed-in student session automatically.</p>
               </div>
             </div>
           </div>
         </section>
-        <p class="account-note"><strong>Note:</strong> keep this window open. After browser auth finishes, return here and complete the one-time code prompt.</p>
+        <section class="account-section">
+          <p class="account-section-title">Fallback</p>
+          <p class="account-section-copy">If your browser cannot reopen VS Code, use the one-time code shown in the browser success page here instead.</p>
+          <div class="account-secondary-actions">
+            <vscode-button data-command="enterCode">Enter browser code</vscode-button>
+          </div>
+        </section>
+        <p class="account-note"><strong>Note:</strong> manual code entry is fallback-only. The normal path is browser auth redirecting back into VS Code automatically.</p>
       </section>
     </main>
     <script>

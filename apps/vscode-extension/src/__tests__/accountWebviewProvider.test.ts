@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AuthClient } from '../auth/AuthClient';
-import { AuthCommands, STUDENT_ONLY_EXTENSION_MESSAGE } from '../auth/AuthCommands';
+import { BrowserAuthFlowLike, BrowserAuthUriLike } from '../auth/BrowserAuthFlow';
+import {
+  AuthCommands,
+  STUDENT_ONLY_EXTENSION_MESSAGE,
+  StudentOnlyExtensionError
+} from '../auth/AuthCommands';
 import { SecretStorageLike, SessionTokenStore } from '../auth/SessionTokenStore';
 import { ExtensionApiError } from '../errors/ExtensionErrorMapper';
 import { AccountWebviewProvider } from '../ui/AccountWebviewProvider';
@@ -62,6 +67,52 @@ class FakeAuthClient implements AuthClient {
   }
 }
 
+class FakeBrowserAuthFlow implements BrowserAuthFlowLike {
+  readonly startedModes: Array<'sign-in' | 'sign-up'> = [];
+  fallbackCount = 0;
+
+  constructor(
+    private readonly tokenStore: SessionTokenStore,
+    private readonly outcome:
+      | { accessToken: string; email?: string; role?: string; manualOnly?: boolean }
+      | Error
+      | null
+  ) {}
+
+  async start(mode: 'sign-in' | 'sign-up'): Promise<void> {
+    this.startedModes.push(mode);
+    if (this.outcome instanceof Error) {
+      if (this.outcome.message === STUDENT_ONLY_EXTENSION_MESSAGE) {
+        await this.tokenStore.clear();
+      }
+      throw this.outcome;
+    }
+    if (!this.outcome || this.outcome.manualOnly) {
+      return;
+    }
+    await this.tokenStore.setSession(this.outcome);
+  }
+
+  async enterFallbackCode(): Promise<boolean> {
+    this.fallbackCount += 1;
+    if (this.outcome instanceof Error) {
+      if (this.outcome.message === STUDENT_ONLY_EXTENSION_MESSAGE) {
+        await this.tokenStore.clear();
+      }
+      throw this.outcome;
+    }
+    if (!this.outcome) {
+      return false;
+    }
+    await this.tokenStore.setSession(this.outcome);
+    return true;
+  }
+
+  async handleUri(_uri: BrowserAuthUriLike): Promise<void> {
+    return;
+  }
+}
+
 class FakeWebview {
   html = '';
   options?: { enableScripts?: boolean };
@@ -89,11 +140,13 @@ test('account panel renders browser auth actions when unauthenticated', () => {
   assert.match(html, /New to OJ\?/);
   assert.match(html, /How it works/);
   assert.match(html, /Open browser auth/);
-  assert.match(html, /Return to VS Code/);
-  assert.match(html, /keep this window open/i);
+  assert.match(html, /Automatic completion/);
+  assert.match(html, /Enter browser code/);
+  assert.match(html, /fallback-only/i);
   assert.doesNotMatch(html, /Administrators must use Web Admin/);
   assert.match(html, /data-command="signIn"/);
   assert.match(html, /data-command="signUp"/);
+  assert.match(html, /data-command="enterCode"/);
   assert.doesNotMatch(html, /data-command="fetchProblems"/);
 });
 
@@ -113,28 +166,25 @@ test('account panel renders unauthenticated state when identity is incomplete', 
 test('account panel handles successful browser sign-in flow', async () => {
   const secretStorage = new FakeSecretStorage();
   const tokenStore = new SessionTokenStore(secretStorage);
-  const openExternalUrls: string[] = [];
-  const inputPrompts: string[] = [];
+  const browserAuthFlow = new FakeBrowserAuthFlow(tokenStore, {
+    accessToken: 'student-token',
+    email: 'student@example.com',
+    role: 'student'
+  });
   const authCommands = new AuthCommands(
     new FakeAuthClient({ accessToken: 'student-token', email: 'student@example.com', role: 'student' }),
     tokenStore
   );
-  const infoMessages: string[] = [];
   const errorMessages: string[] = [];
   const webview = new FakeWebview();
   const provider = new AccountWebviewProvider(
+    browserAuthFlow,
     authCommands,
     tokenStore,
     {
-      showInputBox: async (options) => {
-        inputPrompts.push(options?.prompt ?? '');
-        return 'ABC123';
-      },
-      showInformationMessage: (message) => infoMessages.push(message),
+      showInputBox: async () => undefined,
+      showInformationMessage: () => undefined,
       showErrorMessage: (message) => errorMessages.push(message)
-    },
-    async (url) => {
-      openExternalUrls.push(url);
     }
   );
 
@@ -146,18 +196,25 @@ test('account panel handles successful browser sign-in flow', async () => {
     email: 'student@example.com',
     role: 'student'
   });
-  assert.deepEqual(openExternalUrls, ['http://oj.test/auth/sign-in']);
-  assert.ok(inputPrompts.some((prompt) => prompt.includes('Paste the student sign-in code')));
+  assert.deepEqual(browserAuthFlow.startedModes, ['sign-in']);
   assert.match(webview.html, /Logged in as <strong>student@example\.com<\/strong>/);
   assert.match(webview.html, /Role: <code>student<\/code>/);
   assert.match(webview.html, /data-command="logout"/);
   assert.doesNotMatch(webview.html, /data-command="fetchProblems"/);
   assert.deepEqual(errorMessages, []);
-  assert.ok(infoMessages.some((message) => message.includes('Logged in as student@example.com')));
 });
 
 test('account panel shows friendly message for failed browser sign-in flow', async () => {
   const tokenStore = new SessionTokenStore(new FakeSecretStorage());
+  const browserAuthFlow = new FakeBrowserAuthFlow(
+    tokenStore,
+    new ExtensionApiError(401, {
+      error: {
+        code: 'AUTH_INVALID_CREDENTIALS',
+        message: 'invalid credentials'
+      }
+    })
+  );
   const authCommands = new AuthCommands(
     new FakeAuthClient(
       new ExtensionApiError(401, {
@@ -172,14 +229,14 @@ test('account panel shows friendly message for failed browser sign-in flow', asy
   const errorMessages: string[] = [];
   const webview = new FakeWebview();
   const provider = new AccountWebviewProvider(
+    browserAuthFlow,
     authCommands,
     tokenStore,
     {
       showInputBox: async () => 'BADCODE',
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errorMessages.push(message)
-    },
-    async () => undefined
+    }
   );
 
   provider.resolveWebviewView({ webview } as never);
@@ -201,14 +258,14 @@ test('account panel logout clears session and returns to login form', async () =
   const infoMessages: string[] = [];
   const webview = new FakeWebview();
   const provider = new AccountWebviewProvider(
+    new FakeBrowserAuthFlow(tokenStore, null),
     new AuthCommands(new FakeAuthClient({ accessToken: 'student-token', role: 'student' }), tokenStore),
     tokenStore,
     {
       showInputBox: async () => undefined,
       showInformationMessage: (message) => infoMessages.push(message),
       showErrorMessage: () => undefined
-    },
-    async () => undefined
+    }
   );
 
   provider.resolveWebviewView({ webview } as never);
@@ -226,6 +283,10 @@ test('account panel logout clears session and returns to login form', async () =
 
 test('account panel clears incomplete session after browser auth', async () => {
   const tokenStore = new SessionTokenStore(new FakeSecretStorage());
+  const browserAuthFlow = new FakeBrowserAuthFlow(
+    tokenStore,
+    new Error('Login succeeded but account details are incomplete.')
+  );
   const authCommands = new AuthCommands(
     new FakeAuthClient({ accessToken: 'student-token' }),
     tokenStore
@@ -233,18 +294,18 @@ test('account panel clears incomplete session after browser auth', async () => {
   const errorMessages: string[] = [];
   const webview = new FakeWebview();
   const provider = new AccountWebviewProvider(
+    browserAuthFlow,
     authCommands,
     tokenStore,
     {
-      showInputBox: async () => 'ABC123',
+      showInputBox: async () => undefined,
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errorMessages.push(message)
-    },
-    async () => undefined
+    }
   );
 
   provider.resolveWebviewView({ webview } as never);
-  await webview.dispatch({ command: 'signIn' });
+  await webview.dispatch({ command: 'enterCode' });
 
   assert.equal(tokenStore.getAccessToken(), null);
   assert.deepEqual(tokenStore.getSessionIdentity(), {
@@ -264,17 +325,18 @@ test('account panel rejects admin browser auth and clears any existing session',
     email: 'student@example.com',
     role: 'student'
   });
+  const browserAuthFlow = new FakeBrowserAuthFlow(tokenStore, new StudentOnlyExtensionError());
   const errorMessages: string[] = [];
   const webview = new FakeWebview();
   const provider = new AccountWebviewProvider(
+    browserAuthFlow,
     new AuthCommands(new FakeAuthClient({ accessToken: 'admin-token', role: 'admin' }), tokenStore),
     tokenStore,
     {
-      showInputBox: async () => 'ABC123',
+      showInputBox: async () => undefined,
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errorMessages.push(message)
-    },
-    async () => undefined
+    }
   );
 
   provider.resolveWebviewView({ webview } as never);

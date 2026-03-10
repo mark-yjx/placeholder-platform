@@ -8,7 +8,7 @@ import {
   PublishedProblem,
   SubmissionResult
 } from '../api/PracticeApiClient';
-import { AuthClient, BrowserAuthMode, LoginRequest, LoginResponse } from '../auth/AuthClient';
+import { AuthClient, BrowserAuthMode, BrowserAuthUrlInput, LoginRequest, LoginResponse } from '../auth/AuthClient';
 import { ApiErrorPayload, ExtensionApiError } from '../errors/ExtensionErrorMapper';
 
 export type ExtensionApiClientConfig = {
@@ -97,8 +97,15 @@ export class HttpAuthClient implements AuthClient {
     });
   }
 
-  getBrowserAuthUrl(mode: BrowserAuthMode): string {
-    return `${this.config.apiBaseUrl}${mode === 'sign-in' ? '/auth/sign-in' : '/auth/sign-up'}`;
+  getBrowserAuthUrl(mode: BrowserAuthMode, input?: BrowserAuthUrlInput): string {
+    const url = new URL(`${this.config.apiBaseUrl}${mode === 'sign-in' ? '/auth/sign-in' : '/auth/sign-up'}`);
+    if (input?.callbackUri) {
+      url.searchParams.set('callback_uri', input.callbackUri);
+    }
+    if (input?.state) {
+      url.searchParams.set('state', input.state);
+    }
+    return url.toString();
   }
 
   async exchangeBrowserCode(input: { code: string }): Promise<LoginResponse> {

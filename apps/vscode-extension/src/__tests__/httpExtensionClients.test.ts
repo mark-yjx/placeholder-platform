@@ -64,8 +64,20 @@ test('http auth client exposes browser auth URLs and exchanges one-time codes', 
 
   try {
     const client = new HttpAuthClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 });
-    assert.equal(client.getBrowserAuthUrl('sign-in'), 'http://oj.test/auth/sign-in');
-    assert.equal(client.getBrowserAuthUrl('sign-up'), 'http://oj.test/auth/sign-up');
+    assert.equal(
+      client.getBrowserAuthUrl('sign-in', {
+        callbackUri: 'vscode://local.oj-vscode-extension/auth-complete',
+        state: 'sign-in-state'
+      }),
+      'http://oj.test/auth/sign-in?callback_uri=vscode%3A%2F%2Flocal.oj-vscode-extension%2Fauth-complete&state=sign-in-state'
+    );
+    assert.equal(
+      client.getBrowserAuthUrl('sign-up', {
+        callbackUri: 'vscode://local.oj-vscode-extension/auth-complete',
+        state: 'sign-up-state'
+      }),
+      'http://oj.test/auth/sign-up?callback_uri=vscode%3A%2F%2Flocal.oj-vscode-extension%2Fauth-complete&state=sign-up-state'
+    );
     assert.deepEqual(await client.exchangeBrowserCode({ code: 'ABC123' }), {
       accessToken: 'student-token',
       email: 'student@example.com',

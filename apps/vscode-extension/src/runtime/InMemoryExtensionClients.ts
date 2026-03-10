@@ -1,5 +1,5 @@
 import { EngagementApiClient, ProblemReview, PublicRankingEntry, PublicStatsView } from '../api/EngagementApiClient';
-import { AuthClient, BrowserAuthMode, LoginRequest, LoginResponse } from '../auth/AuthClient';
+import { AuthClient, BrowserAuthMode, BrowserAuthUrlInput, LoginRequest, LoginResponse } from '../auth/AuthClient';
 import {
   CreateSubmissionRequest,
   CreateSubmissionResponse,
@@ -21,8 +21,15 @@ export class InMemoryAuthClient implements AuthClient {
     return { accessToken: 'dev-student-token', role: 'student' };
   }
 
-  getBrowserAuthUrl(mode: BrowserAuthMode): string {
-    return `http://localhost:3000/auth/${mode}`;
+  getBrowserAuthUrl(mode: BrowserAuthMode, input?: BrowserAuthUrlInput): string {
+    const url = new URL(`http://localhost:3000/auth/${mode}`);
+    if (input?.callbackUri) {
+      url.searchParams.set('callback_uri', input.callbackUri);
+    }
+    if (input?.state) {
+      url.searchParams.set('state', input.state);
+    }
+    return url.toString();
   }
 
   async exchangeBrowserCode(_input: { code: string }): Promise<LoginResponse> {
