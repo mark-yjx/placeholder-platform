@@ -106,7 +106,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         enableScripts: true
       }),
     refreshAccountStatus,
-    engagementCommands
+    {
+      getMyStats: () => engagementCommands.getMyStats(),
+      getLeaderboard: (scope) => engagementCommands.getLeaderboard(scope),
+      listSubmissions: () => practiceCommands.listSubmissions()
+    }
   );
   const practiceViews = new PracticeTreeViews(
     vscode.window,

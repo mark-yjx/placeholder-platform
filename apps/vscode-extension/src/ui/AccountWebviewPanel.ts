@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
-import { LeaderboardView, StudentStatsView } from '../api/EngagementApiClient';
+import {
+  LeaderboardScope,
+  LeaderboardView,
+  StudentStatsView
+} from '../api/EngagementApiClient';
+import { SubmissionResult } from '../api/PracticeApiClient';
 import { AuthCommands } from '../auth/AuthCommands';
 import { BrowserAuthFlowLike, BrowserAuthUriLike } from '../auth/BrowserAuthFlow';
 import { SessionTokenStore } from '../auth/SessionTokenStore';
@@ -10,7 +15,8 @@ type AccountWebviewMessage =
   | { command: 'signIn' }
   | { command: 'signUp' }
   | { command: 'enterCode' }
-  | { command: 'logout' };
+  | { command: 'logout' }
+  | { command: 'selectLeaderboardScope'; scope?: unknown };
 
 export type AccountWebviewLike = {
   html: string;
@@ -31,8 +37,11 @@ type AccountWindowLike = Pick<typeof vscode.window, 'showErrorMessage' | 'showIn
 
 type AccountStatsLoader = {
   getMyStats: () => Promise<StudentStatsView>;
-  getLeaderboard: (scope: 'all-time') => Promise<LeaderboardView>;
+  getLeaderboard: (scope: LeaderboardScope) => Promise<LeaderboardView>;
+  listSubmissions: () => Promise<readonly SubmissionResult[]>;
 };
+
+const LEADERBOARD_SCOPES: readonly LeaderboardScope[] = ['all-time', 'weekly', 'monthly', 'streak'];
 
 export class AccountWebviewPanel {
   private currentPanel: AccountWebviewPanelLike | null = null;
@@ -40,7 +49,9 @@ export class AccountWebviewPanel {
   private statsErrorMessage: string | null = null;
   private isLoadingStats = false;
   private stats: StudentStatsView | null = null;
-  private leaderboard: LeaderboardView | null = null;
+  private leaderboards: Partial<Record<LeaderboardScope, LeaderboardView>> = {};
+  private selectedLeaderboardScope: LeaderboardScope = 'all-time';
+  private recentSubmissions: readonly SubmissionResult[] = [];
   private statsLoadId = 0;
 
   constructor(
@@ -95,6 +106,12 @@ export class AccountWebviewPanel {
 
     if (message.command === 'logout') {
       await this.logout();
+      return;
+    }
+
+    if (message.command === 'selectLeaderboardScope' && isLeaderboardScope(message.scope)) {
+      this.selectedLeaderboardScope = message.scope;
+      this.render();
     }
   }
 
@@ -157,8 +174,9 @@ export class AccountWebviewPanel {
     const session = this.tokenStore.getSessionIdentity();
     const isAuthenticated = this.tokenStore.isAuthenticated() && isCompleteAccountIdentity(session);
     const loadId = ++this.statsLoadId;
+    const statsLoader = this.statsLoader;
 
-    if (!isAuthenticated || !this.statsLoader) {
+    if (!isAuthenticated || !statsLoader) {
       this.resetStatsState();
       this.render();
       return;
@@ -169,21 +187,28 @@ export class AccountWebviewPanel {
     this.render();
 
     try {
-      const [stats, leaderboard] = await Promise.all([
-        this.statsLoader.getMyStats(),
-        this.statsLoader.getLeaderboard('all-time')
+      const [stats, leaderboardEntries, recentSubmissions] = await Promise.all([
+        statsLoader.getMyStats(),
+        Promise.all(
+          LEADERBOARD_SCOPES.map(async (scope) => [scope, await statsLoader.getLeaderboard(scope)] as const)
+        ),
+        statsLoader.listSubmissions()
       ]);
       if (loadId !== this.statsLoadId) {
         return;
       }
       this.stats = stats;
-      this.leaderboard = leaderboard;
+      this.leaderboards = Object.fromEntries(leaderboardEntries) as Partial<
+        Record<LeaderboardScope, LeaderboardView>
+      >;
+      this.recentSubmissions = recentSubmissions;
     } catch (error) {
       if (loadId !== this.statsLoadId) {
         return;
       }
       this.stats = null;
-      this.leaderboard = null;
+      this.leaderboards = {};
+      this.recentSubmissions = [];
       this.statsErrorMessage = mapExtensionError(error).userMessage;
     } finally {
       if (loadId !== this.statsLoadId) {
@@ -196,7 +221,9 @@ export class AccountWebviewPanel {
 
   private resetStatsState(): void {
     this.stats = null;
-    this.leaderboard = null;
+    this.leaderboards = {};
+    this.selectedLeaderboardScope = 'all-time';
+    this.recentSubmissions = [];
     this.statsErrorMessage = null;
     this.isLoadingStats = false;
   }
@@ -216,7 +243,9 @@ export class AccountWebviewPanel {
         statsErrorMessage: this.statsErrorMessage,
         isLoadingStats: this.isLoadingStats,
         stats: this.stats,
-        leaderboard: this.leaderboard
+        leaderboards: this.leaderboards,
+        selectedLeaderboardScope: this.selectedLeaderboardScope,
+        recentSubmissions: this.recentSubmissions
       })
     );
   }
@@ -228,7 +257,13 @@ function isAccountWebviewMessage(message: unknown): message is AccountWebviewMes
   }
 
   const command = (message as { command?: unknown }).command;
-  return command === 'signIn' || command === 'signUp' || command === 'enterCode' || command === 'logout';
+  return (
+    command === 'signIn' ||
+    command === 'signUp' ||
+    command === 'enterCode' ||
+    command === 'logout' ||
+    command === 'selectLeaderboardScope'
+  );
 }
 
 function isCompleteAccountIdentity(input: { email?: string | null; role?: string | null }): input is {
@@ -238,6 +273,10 @@ function isCompleteAccountIdentity(input: { email?: string | null; role?: string
   const email = input.email?.trim() ?? '';
   const role = input.role?.trim() ?? '';
   return Boolean(email && role);
+}
+
+function isLeaderboardScope(value: unknown): value is LeaderboardScope {
+  return value === 'all-time' || value === 'weekly' || value === 'monthly' || value === 'streak';
 }
 
 export type AccountBrowserAuthFlowLike = BrowserAuthFlowLike & {

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LeaderboardView, StudentStatsView } from '../api/EngagementApiClient';
+import { LeaderboardScope, LeaderboardView, StudentStatsView } from '../api/EngagementApiClient';
+import { SubmissionResult } from '../api/PracticeApiClient';
 import { AuthClient } from '../auth/AuthClient';
 import { AuthCommands } from '../auth/AuthCommands';
 import { BrowserAuthFlowLike, BrowserAuthUriLike } from '../auth/BrowserAuthFlow';
@@ -165,15 +166,28 @@ class FakeStatsLoader {
           title: 'First AC',
           description: 'Earn your first accepted submission.',
           earned: true
+        },
+        {
+          id: 'streak_7',
+          title: '7-Day Streak',
+          description: 'Stay active for 7 consecutive days.',
+          earned: false
         }
       ]
     };
   }
 
-  async getLeaderboard(_scope: 'all-time'): Promise<LeaderboardView> {
+  async getLeaderboard(scope: LeaderboardScope): Promise<LeaderboardView> {
     return {
-      scope: 'all-time',
-      title: 'All-Time Leaderboard',
+      scope,
+      title:
+        scope === 'all-time'
+          ? 'All-Time Leaderboard'
+          : scope === 'weekly'
+            ? 'Weekly Leaderboard'
+            : scope === 'monthly'
+              ? 'Monthly Leaderboard'
+              : 'Streak Leaderboard',
       formula: 'Ranked by solvedCount desc, acceptedCount desc, submissionCount asc.',
       generatedAt: '2026-03-10T13:00:00.000Z',
       entries: [
@@ -188,9 +202,37 @@ class FakeStatsLoader {
           longestStreak: 4,
           score: 3,
           scoreLabel: 'Solved'
+        },
+        {
+          rank: 2,
+          userId: 'student-2',
+          displayName: 'Student Two',
+          solvedCount: 2,
+          acceptedCount: 2,
+          submissionCount: 3,
+          currentStreak: 1,
+          longestStreak: 2,
+          score: 2,
+          scoreLabel: 'Solved'
         }
       ]
     };
+  }
+
+  async listSubmissions(): Promise<readonly SubmissionResult[]> {
+    return [
+      {
+        submissionId: 'sub-101',
+        status: 'finished',
+        verdict: 'AC',
+        timeMs: 12,
+        memoryKb: 256
+      },
+      {
+        submissionId: 'sub-102',
+        status: 'running'
+      }
+    ];
   }
 }
 
@@ -232,11 +274,17 @@ test('account webview panel browser sign-in path remains functional', async () =
     role: 'student'
   });
   assert.deepEqual(browserAuthFlow.startedModes, ['sign-in']);
-  assert.match(panel.webview.html, /Logged in as <strong>student@example\.com<\/strong>/);
-  assert.match(panel.webview.html, /Current progress/);
+  assert.match(panel.webview.html, /student@example\.com/);
+  assert.match(panel.webview.html, /Solved statistics/);
+  assert.match(panel.webview.html, /Activity summary/);
+  assert.match(panel.webview.html, /Recent judge results/);
   assert.match(panel.webview.html, /All-Time Leaderboard/);
+  assert.match(panel.webview.html, /leaderboard-row-current/);
   assert.equal(sessionChangeCount, 1);
   assert.deepEqual(infoMessages, []);
+
+  await panel.webview.dispatch({ command: 'selectLeaderboardScope', scope: 'weekly' });
+  assert.match(panel.webview.html, /Weekly Leaderboard/);
 });
 
 test('account webview panel reuses the existing panel when reopened', () => {
