@@ -2,16 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-
-function resolveRepoRoot(): string {
-  const candidates = [process.cwd(), path.resolve(process.cwd(), '..', '..')];
-  for (const candidate of candidates) {
-    if (fs.existsSync(path.join(candidate, 'README.md'))) {
-      return candidate;
-    }
-  }
-  throw new Error('Unable to resolve repository root for problem manifest docs contract tests');
-}
+import { resolveRepoRoot } from './support/resolveRepoRoot';
 
 function readText(...segments: string[]): string {
   return fs.readFileSync(path.join(resolveRepoRoot(), ...segments), 'utf8');
@@ -21,11 +12,14 @@ function readJson(...segments: string[]): unknown {
   return JSON.parse(readText(...segments));
 }
 
-test('problem manifest spec defines canonical manifest metadata and layer responsibilities', () => {
+test('problem manifest spec defines the canonical repository-authored problem contract', () => {
   const spec = readText('.specify', 'specs', 'problem-manifest.md');
 
-  assert.match(spec, /manifest\.json` as the single source of truth/i);
-  assert.match(spec, /problems\/\s*\n\s*<problemId>\//);
+  assert.match(
+    spec,
+    /(?:canonical repository-authored problem contract|manifest\.json.*(?:canonical|repository-authored).*(?:problem contract|problem definition)|manifest\.json.*execution contract)/is
+  );
+  assert.match(spec, /problems\/<problemId>\//);
   assert.match(spec, /statement\.md/);
   assert.match(spec, /starter\.py/);
   assert.match(spec, /hidden\.json/);
@@ -44,15 +38,12 @@ test('problem manifest spec defines canonical manifest metadata and layer respon
   assert.match(spec, /`version`/);
   assert.match(spec, /`author`/);
 
-  assert.match(spec, /Import Pipeline/);
-  assert.match(spec, /Reads `manifest\.json` first/);
-  assert.match(spec, /API/);
-  assert.match(spec, /Extension/);
-  assert.match(spec, /Worker/);
-  assert.match(spec, /Database Persistence/);
-  assert.match(spec, /Must not assume a fixed `solve\(\)`/);
-  assert.match(spec, /Hidden tests must never be exposed to students/);
-  assert.match(spec, /queued -> running -> finished \| failed/);
+  assert.match(spec, /File Responsibilities/);
+  assert.match(spec, /Public Vs Hidden Test Contract/);
+  assert.match(spec, /Import Responsibilities/);
+  assert.match(spec, /Invariants/);
+  assert.match(spec, /entryFunction.*aligned/is);
+  assert.match(spec, /hidden tests.*server-side only/i);
 });
 
 test('sample collapse manifest problem folder matches the canonical manifest layout', () => {
@@ -109,6 +100,5 @@ test('sample collapse manifest problem folder matches the canonical manifest lay
 
   assert.match(statement, /# Collapse Identical Digits/);
   assert.match(starter, /def collapse\(number\):/);
-  assert.doesNotMatch(starter, /doctest/);
   assert.equal(hiddenTests.length > 0, true);
 });

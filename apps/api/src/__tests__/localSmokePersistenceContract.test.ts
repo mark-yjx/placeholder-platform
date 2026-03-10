@@ -3,16 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-
-function resolveRepoRoot(): string {
-  const candidates = [process.cwd(), path.resolve(process.cwd(), '..', '..')];
-  for (const candidate of candidates) {
-    if (fs.existsSync(path.join(candidate, 'tools', 'scripts', 'local-smoke.mjs'))) {
-      return candidate;
-    }
-  }
-  throw new Error('Unable to resolve repository root for local smoke contract tests');
-}
+import { resolveRepoRoot } from './support/resolveRepoRoot';
 
 function readSmokeScript(): string {
   const repoRoot = resolveRepoRoot();
@@ -124,24 +115,19 @@ print("debug")
   assert.doesNotMatch(extracted, /print\("debug"\)/);
 });
 
-test('README and demo checklist document smoke:local as the one-command local demo path', () => {
+test('README and local-development doc document the supported local verification workflow', () => {
   const repoRoot = resolveRepoRoot();
   const readme = fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
-  const checklist = fs.readFileSync(path.join(repoRoot, 'docs', 'extension-demo-checklist.md'), 'utf8');
+  const localDevDoc = fs.readFileSync(path.join(repoRoot, 'docs', 'local-development.md'), 'utf8');
 
-  assert.match(readme, /supported one-command local demo/i);
-  assert.match(readme, /npm run smoke:local/);
-  assert.match(readme, /builds and exercises the extension HTTP client path/i);
-  assert.match(readme, /imports sample problems from `problems`/);
-  assert.match(readme, /verifies the extension `entryFunction` submit contract/i);
-  assert.match(readme, /queued -> running -> finished\|failed/);
+  assert.match(readme, /npm run local:up/);
+  assert.match(readme, /npm run local:db:setup/);
+  assert.match(readme, /npm run import:problems -- --dir problems/);
+  assert.match(readme, /\[Local Development\]\(\.\/docs\/local-development\.md\)/);
 
-  assert.match(checklist, /One-Command Demo/);
-  assert.match(checklist, /npm run smoke:local/);
-  assert.match(checklist, /exercises the extension login\/fetch\/submit flow against the live API/i);
-  assert.match(checklist, /imports sample problems from `problems`/);
-  assert.match(checklist, /rejects submissions without the configured top-level entry function/i);
-  assert.match(checklist, /waits for API readiness instead of relying on fixed startup sleeps/);
-  assert.match(checklist, /no duplicate worker processing/);
-  assert.match(checklist, /do not start a second host-side `npm run worker:start`/i);
+  assert.match(localDevDoc, /npm run smoke:local/);
+  assert.match(localDevDoc, /npm run extension:package/);
+  assert.match(localDevDoc, /Typical verification flow:/);
+  assert.match(localDevDoc, /queued -> running -> finished \| failed/);
+  assert.match(localDevDoc, /ensure only one worker is active/i);
 });
