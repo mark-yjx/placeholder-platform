@@ -216,18 +216,16 @@ function renderExamples(
         ${examples
           .map(
             (example, index) => `
-              <article class="example-row">
-                <div class="example-label-rail">
-                  <p class="example-label">Example ${index + 1}</p>
-                </div>
-                <div class="example-io">
-                  <section class="example-column">
-                    <p class="field-label">Input</p>
-                    <pre class="case-value">${escapeHtml(formatCaseValue(example.input))}</pre>
+              <article class="example-card">
+                <h4 class="example-title">Example ${index + 1}</h4>
+                <div class="example-grid">
+                  <section class="example-field">
+                    <p class="example-field-label">Input</p>
+                    <pre class="example-surface">${escapeHtml(formatCaseValue(example.input))}</pre>
                   </section>
-                  <section class="example-column">
-                    <p class="field-label">Output</p>
-                    <pre class="case-value">${escapeHtml(formatCaseValue(example.output))}</pre>
+                  <section class="example-field">
+                    <p class="example-field-label">Output</p>
+                    <pre class="example-surface">${escapeHtml(formatCaseValue(example.output))}</pre>
                   </section>
                 </div>
               </article>
@@ -341,41 +339,26 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     .problem-detail-shell .format-panel {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 0;
+      gap: 14px;
       margin-top: 2px;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background:
-        linear-gradient(180deg, var(--vscode-editorWidget-background, var(--surface-muted)), transparent 120%),
-        var(--surface-muted);
     }
 
     .problem-detail-shell .format-column {
+      display: grid;
       min-width: 0;
-      padding: 18px 20px 20px;
-    }
-
-    .problem-detail-shell .format-column + .format-column {
-      border-left: 1px solid var(--border);
+      gap: 8px;
     }
 
     .problem-detail-shell .format-label {
-      display: inline-flex;
-      align-items: center;
-      min-height: 22px;
-      padding: 0 10px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: var(--surface);
+      display: block;
       color: var(--text-secondary);
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
     }
 
     .problem-detail-shell .format-column h4 {
-      margin-top: 8px;
       font-size: 0.86rem;
       line-height: 1.3;
       letter-spacing: 0;
@@ -385,70 +368,72 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
 
     .problem-detail-shell .format-column .markdown-content,
     .problem-detail-shell .format-column .muted {
-      margin-top: 12px;
+      margin-top: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 76%, transparent), transparent 140%),
+        color-mix(in srgb, var(--surface-muted) 44%, var(--surface));
     }
 
     .problem-detail-shell .examples-panel {
       display: grid;
+      gap: 12px;
+      margin-top: 2px;
+    }
+
+    .problem-detail-shell .example-card {
+      display: grid;
+      gap: 10px;
+      padding: 14px 16px 16px;
       border: 1px solid var(--border);
       border-radius: 16px;
       background:
-        linear-gradient(180deg, var(--vscode-editorWidget-background, var(--surface-muted)), transparent 150%),
-        var(--surface);
-      overflow: hidden;
+        linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 70%, transparent), transparent 150%),
+        color-mix(in srgb, var(--surface-muted) 26%, var(--surface));
     }
 
-    .problem-detail-shell .example-row {
+    .problem-detail-shell .example-title {
+      font-size: 0.98rem;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      font-weight: 600;
+    }
+
+    .problem-detail-shell .example-grid {
       display: grid;
-      grid-template-columns: 88px minmax(0, 1fr);
-      gap: 0;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: 12px;
     }
 
-    .problem-detail-shell .example-row + .example-row {
-      border-top: 1px solid var(--border);
-    }
-
-    .problem-detail-shell .example-label-rail {
+    .problem-detail-shell .example-field {
       display: grid;
-      align-content: start;
+      min-width: 0;
       gap: 6px;
-      padding: 18px 16px;
-      border-right: 1px solid var(--border);
-      background: color-mix(in srgb, var(--surface-muted) 68%, transparent);
     }
 
-    .problem-detail-shell .example-label {
+    .problem-detail-shell .example-field-label {
       margin: 0;
       color: var(--text-secondary);
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
     }
 
-    .problem-detail-shell .example-io {
-      display: grid;
-      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-      gap: 0;
-    }
-
-    .problem-detail-shell .example-column {
+    .problem-detail-shell .example-surface {
+      margin: 0;
       min-width: 0;
-      padding: 18px;
-    }
-
-    .problem-detail-shell .example-column + .example-column {
-      border-left: 1px solid var(--border);
-    }
-
-    .problem-detail-shell .example-column .field-label {
-      font-size: 0.7rem;
-    }
-
-    .problem-detail-shell .example-column .case-value {
-      margin-top: 10px;
-      border-radius: 14px;
-      background: color-mix(in srgb, var(--vscode-textCodeBlock-background) 86%, var(--surface));
+      padding: 12px 14px;
+      border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+      border-radius: 12px;
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--vscode-textCodeBlock-background) 88%, transparent), transparent 160%),
+        color-mix(in srgb, var(--vscode-textCodeBlock-background) 72%, var(--surface));
+      font-size: 0.84rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
     }
 
     @media (max-width: 640px) {
@@ -456,27 +441,9 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .problem-detail-shell .example-row {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .problem-detail-shell .example-label-rail {
-        grid-template-columns: auto auto;
-        align-items: center;
-        justify-content: flex-start;
-        border-right: 0;
-        border-bottom: 1px solid var(--border);
-      }
-
       .problem-detail-shell .format-panel,
-      .problem-detail-shell .example-io {
+      .problem-detail-shell .example-grid {
         grid-template-columns: minmax(0, 1fr);
-      }
-
-      .problem-detail-shell .format-column + .format-column,
-      .problem-detail-shell .example-column + .example-column {
-        border-left: 0;
-        border-top: 1px solid var(--border);
       }
     }
   `;

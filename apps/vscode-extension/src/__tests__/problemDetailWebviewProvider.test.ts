@@ -113,13 +113,17 @@ test('problem detail renders manifest examples as rows inside one shared panel',
   );
 
   assert.match(html, /class="examples-panel"/);
-  assert.match(html, /class="example-row"/);
-  assert.match(html, /class="example-label-rail"/);
-  assert.match(html, /<p class="example-label">Example 1<\/p>/);
-  assert.match(html, /class="example-io"/);
-  assert.match(html, /<p class="field-label">Input<\/p>/);
+  assert.match(html, /class="example-card"/);
+  assert.match(html, /<h4 class="example-title">Example 1<\/h4>/);
+  assert.match(html, /class="example-grid"/);
+  assert.match(html, /<p class="example-field-label">Input<\/p>/);
+  assert.match(html, /<p class="example-field-label">Output<\/p>/);
+  assert.match(html, /class="example-surface">112233<\/pre>/);
+  assert.match(html, /class="example-surface">123<\/pre>/);
   assert.match(html, /112233/);
   assert.match(html, /123/);
-  assert.doesNotMatch(html, /class="example-card"/);
-  assert.doesNotMatch(html, /class="example-index"/);
+  assert.doesNotMatch(html, /class="example-row"/);
+  assert.doesNotMatch(html, /class="example-label-rail"/);
+  assert.doesNotMatch(html, /class="field-label">Input<\/p>/);
 });
+
