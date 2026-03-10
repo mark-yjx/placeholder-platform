@@ -1,15 +1,15 @@
 {
-  "name": "@packages/application",
+  "name": "@placeholder/application",
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "@packages/contracts": "*",
-    "@packages/domain": "*"
+    "@placeholder/contracts": "*",
+    "@placeholder/domain": "*"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "node -e \"console.log('lint @packages/application')\"",
+    "lint": "node -e \"console.log('lint @placeholder/application')\"",
     "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/**/*.test.js",
-    "build": "node -e \"console.log('build @packages/application')\""
+    "build": "node -e \"console.log('build @placeholder/application')\""
   }
 }

@@ -60,7 +60,7 @@ function registerTsHook(): void {
       isMain: boolean,
       options?: unknown
     ) {
-      if (request === '@packages/contracts/src') {
+      if (request === '@placeholder/contracts/src') {
         return resolver(
           path.join(repoRoot, 'packages', 'contracts', 'src', 'index.ts'),
           parent,

@@ -7,7 +7,7 @@ export type LoginViewModel = {
 
 export function createLoginViewModel(): LoginViewModel {
   return {
-    title: 'OJ Login',
+    title: 'Placeholder Practice Login',
     fields: ['email', 'password']
   };
 }

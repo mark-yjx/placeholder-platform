@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The OJ system uses a Problem Manifest architecture.
+The Placeholder Platform uses a Problem Manifest architecture.
 
 Each problem has an explicit `manifest.json` as the single source of truth for problem metadata.
 Statement content, starter code, and tests live in adjacent files and are mapped into one canonical problem definition used across:
@@ -96,7 +96,7 @@ Canonical logical fields:
   "difficulty": "easy",
   "tags": ["digits", "iteration"],
   "version": "1.0.0",
-  "author": "COMP9021 Staff",
+  "author": "Placeholder Staff",
   "statementMarkdown": "# Collapse Identical Digits\n\nWrite a function `collapse(number)` that ...",
   "starterCode": "def collapse(number):\n    raise NotImplementedError\n",
   "publicTests": [
@@ -134,7 +134,7 @@ Canonical logical fields:
   "difficulty": "easy",
   "tags": ["digits", "iteration"],
   "version": "1.0.0",
-  "author": "COMP9021 Staff"
+  "author": "Placeholder Staff"
 }
 ```
 

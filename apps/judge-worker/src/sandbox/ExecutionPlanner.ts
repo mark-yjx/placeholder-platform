@@ -1,4 +1,4 @@
-import type { Judge } from '@packages/contracts/src';
+import type { Judge } from '@placeholder/contracts/src';
 import { DEFAULT_RESOURCE_LIMITS, ResourceLimits } from './judgePolicy';
 import { ProblemExecutionConfigRepository } from './problemConfig';
 

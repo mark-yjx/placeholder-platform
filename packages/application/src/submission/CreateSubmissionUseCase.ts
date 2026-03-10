@@ -1,9 +1,9 @@
-import { Problem, Submission } from '@packages/domain/src';
-import { ProblemRepository } from '@packages/domain/src/ports';
-import { SubmissionPolicyService } from '@packages/domain/src/services';
-import { Role } from '@packages/domain/src/identity';
-import { SubmissionStatus } from '@packages/domain/src/submission';
-import { Judge } from '@packages/contracts/src';
+import { Problem, Submission } from '@placeholder/domain/src';
+import { ProblemRepository } from '@placeholder/domain/src/ports';
+import { SubmissionPolicyService } from '@placeholder/domain/src/services';
+import { Role } from '@placeholder/domain/src/identity';
+import { SubmissionStatus } from '@placeholder/domain/src/submission';
+import { Judge } from '@placeholder/contracts/src';
 
 export type SubmissionRecord = {
   id: string;

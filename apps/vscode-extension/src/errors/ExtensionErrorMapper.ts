@@ -44,8 +44,8 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
       return {
         userMessage:
           errorCode === 'AUTH_INVALID_CREDENTIALS'
-            ? 'Invalid email or password. Run OJ: Sign In and try again.'
-            : 'Please sign in to continue. Run OJ: Sign In and try again.',
+            ? 'Invalid email or password. Run Placeholder Practice: Sign In and try again.'
+            : 'Please sign in to continue. Run Placeholder Practice: Sign In and try again.',
         logMessage: `API 401 ${errorCode}`
       };
     }
@@ -65,7 +65,7 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
     }
 
     return {
-      userMessage: apiMessage ?? 'The OJ request failed. Check the OJ output channel, then try again.',
+      userMessage: apiMessage ?? 'The Placeholder Practice request failed. Check the Placeholder Practice output channel, then try again.',
       logMessage: `API ${error.statusCode} ${error.payload?.error?.code ?? 'UNKNOWN'}`
     };
   }
@@ -90,14 +90,14 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
     normalizedMessage.includes('socket hang up')
   ) {
     return {
-      userMessage: 'Unable to reach the OJ API. Check that the server is running and verify oj.apiBaseUrl, then try again.',
+      userMessage: 'Unable to reach the Placeholder student API. Check that the server is running and verify oj.apiBaseUrl, then try again.',
       logMessage: networkCode ? `Network error ${networkCode}` : rawMessage
     };
   }
 
   if (normalizedMessage.includes('authentication required')) {
     return {
-      userMessage: 'Please sign in to continue. Run OJ: Sign In and try again.',
+      userMessage: 'Please sign in to continue. Run Placeholder Practice: Sign In and try again.',
       logMessage: rawMessage
     };
   }
@@ -113,7 +113,7 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
   }
 
   return {
-    userMessage: 'Something went wrong. Check the OJ output channel for details, then try again.',
+    userMessage: 'Something went wrong. Check the Placeholder Practice output channel for details, then try again.',
     logMessage: rawMessage
   };
 }

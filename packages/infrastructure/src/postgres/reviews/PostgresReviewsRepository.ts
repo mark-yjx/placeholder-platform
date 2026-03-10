@@ -1,4 +1,4 @@
-import { ProblemReview, ReviewsRepository, ReviewSentiment } from '@packages/application/src/engagement';
+import { ProblemReview, ReviewsRepository, ReviewSentiment } from '@placeholder/application/src/engagement';
 
 export interface PostgresReviewsSqlClient {
   query<T>(sql: string, params?: readonly unknown[]): Promise<readonly T[]>;

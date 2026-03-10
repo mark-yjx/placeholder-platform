@@ -1,5 +1,5 @@
-import { PublicRankingProjectionRepository } from '@packages/application/src/stats';
-import { Judge, Ports } from '@packages/domain/src';
+import { PublicRankingProjectionRepository } from '@placeholder/application/src/stats';
+import { Judge, Ports } from '@placeholder/domain/src';
 
 export const DEFAULT_SEEDED_RANKING_SUBMISSIONS: readonly Ports.RankedSubmissionRecord[] = [
   {

@@ -1,5 +1,5 @@
-import { StudentProblemQueryService } from '@packages/application/src/problem';
-import { Role } from '@packages/domain/src/identity';
+import { StudentProblemQueryService } from '@placeholder/application/src/problem';
+import { Role } from '@placeholder/domain/src/identity';
 
 type StudentActor = {
   actorRoles: readonly Role[];

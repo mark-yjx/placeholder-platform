@@ -1,4 +1,4 @@
-OJ VSCode Extension
+Placeholder Practice Extension
 Copyright (c) 2026 Mark
 
 This package is provided as UNLICENSED software.

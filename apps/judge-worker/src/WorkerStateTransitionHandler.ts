@@ -1,4 +1,4 @@
-import { Judge } from '@packages/contracts/src';
+import { Judge } from '@placeholder/contracts/src';
 import { createWorkerLogger } from './observability/WorkerLogger';
 
 export type WorkerSubmissionStatus = 'queued' | 'running' | 'finished' | 'failed';

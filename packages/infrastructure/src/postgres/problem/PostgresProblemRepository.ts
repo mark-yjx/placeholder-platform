@@ -2,8 +2,8 @@ import {
   ProblemCrudRepository,
   ProblemVersionHistoryRepository,
   ProblemVersionTimelineEntry
-} from '@packages/application/src/problem';
-import { Problem, ProblemVersion, PublicationState } from '@packages/domain/src/problem';
+} from '@placeholder/application/src/problem';
+import { Problem, ProblemVersion, PublicationState } from '@placeholder/domain/src/problem';
 
 type ProblemVersionRow = {
   problem_id: string;

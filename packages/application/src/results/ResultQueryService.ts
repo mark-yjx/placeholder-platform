@@ -1,4 +1,4 @@
-import { SubmissionStatus } from '@packages/domain/src/submission';
+import { SubmissionStatus } from '@placeholder/domain/src/submission';
 import { PersistedJudgeResult } from './JudgeCallbackIngestionService';
 
 export type SubmissionResultView = {

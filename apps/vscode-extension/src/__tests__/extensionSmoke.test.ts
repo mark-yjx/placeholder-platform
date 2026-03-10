@@ -373,7 +373,7 @@ test('startup skips practice restore when the API is unavailable', async () => {
 
 test('startup restores per-problem local state and drops missing file paths', async () => {
   const originalFetch = globalThis.fetch;
-  const existingRoot = await mkdtemp(path.join(tmpdir(), 'oj-local-state-'));
+  const existingRoot = await mkdtemp(path.join(tmpdir(), 'placeholder-local-state-'));
   const existingFile = path.join(existingRoot, 'problem-1.py');
   await writeFile(existingFile, 'def solve():\n    return 42\n', 'utf8');
 

@@ -7,8 +7,8 @@ import {
   ResultQueryService,
   ReviewsService,
   StudentProblemQueryService
-} from '@packages/application/src';
-import { SubmissionPolicyService } from '@packages/domain/src/services';
+} from '@placeholder/application/src';
+import { SubmissionPolicyService } from '@placeholder/domain/src/services';
 import {
   InMemoryProblemRepository,
   PostgresFavoritesRepository,
@@ -17,13 +17,13 @@ import {
   PostgresProblemRepository,
   PostgresSubmissionRepository,
   PostgresReviewsRepository
-} from '@packages/infrastructure/src';
-import type { PostgresSqlClient } from '@packages/infrastructure/src/postgres/problem';
-import type { PostgresFavoritesSqlClient } from '@packages/infrastructure/src/postgres/favorites';
-import type { PostgresReviewsSqlClient } from '@packages/infrastructure/src/postgres/reviews';
-import type { PostgresJudgeResultSqlClient } from '@packages/infrastructure/src/postgres/results';
-import type { PostgresSubmissionSqlClient } from '@packages/infrastructure/src/postgres/submission';
-import type { PostgresJudgeJobQueueSqlClient } from '@packages/infrastructure/src/queue';
+} from '@placeholder/infrastructure/src';
+import type { PostgresSqlClient } from '@placeholder/infrastructure/src/postgres/problem';
+import type { PostgresFavoritesSqlClient } from '@placeholder/infrastructure/src/postgres/favorites';
+import type { PostgresReviewsSqlClient } from '@placeholder/infrastructure/src/postgres/reviews';
+import type { PostgresJudgeResultSqlClient } from '@placeholder/infrastructure/src/postgres/results';
+import type { PostgresSubmissionSqlClient } from '@placeholder/infrastructure/src/postgres/submission';
+import type { PostgresJudgeJobQueueSqlClient } from '@placeholder/infrastructure/src/queue';
 
 export type PersistenceMode = 'in-memory' | 'postgres';
 

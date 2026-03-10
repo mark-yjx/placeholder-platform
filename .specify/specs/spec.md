@@ -1,9 +1,9 @@
 ## Product Specification (WHAT + WHY)
-**Project:** COMP9021 Practice Platform  
+**Project:** Placeholder Platform  
 **Phase:** Specification (no implementation decisions)
 
 ## 1. Product Purpose
-Create a practice platform for COMP9021 where students solve Python programming problems and receive objective feedback, while teachers/admins manage content and course integrity.
+Create a practice platform where students solve Python programming problems and receive objective feedback, while teachers/admins manage content and course integrity.
 
 ## 2. Goals and Success Outcomes
 1. Students can practice effectively with fast, reliable judging feedback.

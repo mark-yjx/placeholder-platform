@@ -151,16 +151,16 @@ test('judge jobs migration creates a queue table keyed by submission id', () => 
 
 test('creating a submission persists queued status and inserts a queue job referencing submission id', async () => {
   const { CreateSubmissionUseCase } = loadModule<
-    typeof import('@packages/application/src/submission/CreateSubmissionUseCase')
+    typeof import('@placeholder/application/src/submission/CreateSubmissionUseCase')
   >(['packages', 'application', 'src', 'submission', 'CreateSubmissionUseCase.ts']);
-  const { Role } = loadModule<typeof import('@packages/domain/src/identity')>([
+  const { Role } = loadModule<typeof import('@placeholder/domain/src/identity')>([
     'packages',
     'domain',
     'src',
     'identity',
     'index.ts'
   ]);
-  const { Problem, ProblemVersion } = loadModule<typeof import('@packages/domain/src/problem')>([
+  const { Problem, ProblemVersion } = loadModule<typeof import('@placeholder/domain/src/problem')>([
     'packages',
     'domain',
     'src',
@@ -168,9 +168,9 @@ test('creating a submission persists queued status and inserts a queue job refer
     'index.ts'
   ]);
   const { SubmissionPolicyService } = loadModule<
-    typeof import('@packages/domain/src/services')
+    typeof import('@placeholder/domain/src/services')
   >(['packages', 'domain', 'src', 'services', 'index.ts']);
-  const { SubmissionStatus } = loadModule<typeof import('@packages/domain/src/submission')>([
+  const { SubmissionStatus } = loadModule<typeof import('@placeholder/domain/src/submission')>([
     'packages',
     'domain',
     'src',
@@ -178,10 +178,10 @@ test('creating a submission persists queued status and inserts a queue job refer
     'index.ts'
   ]);
   const { PostgresJudgeJobQueue } = loadModule<
-    typeof import('@packages/infrastructure/src/queue/PostgresJudgeJobQueue')
+    typeof import('@placeholder/infrastructure/src/queue/PostgresJudgeJobQueue')
   >(['packages', 'infrastructure', 'src', 'queue', 'PostgresJudgeJobQueue.ts']);
   const { PostgresSubmissionRepository } = loadModule<
-    typeof import('@packages/infrastructure/src/postgres/submission/PostgresSubmissionRepository')
+    typeof import('@placeholder/infrastructure/src/postgres/submission/PostgresSubmissionRepository')
   >([
     'packages',
     'infrastructure',

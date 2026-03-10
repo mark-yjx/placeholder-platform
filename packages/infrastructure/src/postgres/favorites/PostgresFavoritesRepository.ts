@@ -1,4 +1,4 @@
-import { FavoritesRepository } from '@packages/application/src/engagement';
+import { FavoritesRepository } from '@placeholder/application/src/engagement';
 
 export interface PostgresFavoritesSqlClient {
   query<T>(sql: string, params?: readonly unknown[]): Promise<readonly T[]>;

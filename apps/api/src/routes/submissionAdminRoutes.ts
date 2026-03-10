@@ -1,6 +1,6 @@
-import { RbacAuthorizationService } from '@packages/application/src/auth';
-import { AdminSubmissionManagementService } from '@packages/application/src/submission/AdminSubmissionManagementService';
-import { Role } from '@packages/domain/src/identity';
+import { RbacAuthorizationService } from '@placeholder/application/src/auth';
+import { AdminSubmissionManagementService } from '@placeholder/application/src/submission/AdminSubmissionManagementService';
+import { Role } from '@placeholder/domain/src/identity';
 import { SUBMISSION_ADMIN_ROUTE_PERMISSIONS } from './permissionMapping';
 
 type AdminRequest = {

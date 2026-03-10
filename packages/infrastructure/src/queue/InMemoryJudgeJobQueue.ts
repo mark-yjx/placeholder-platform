@@ -1,5 +1,5 @@
-import { Judge } from '@packages/contracts/src';
-import { JudgeJobQueue } from '@packages/application/src/submission/CreateSubmissionUseCase';
+import { Judge } from '@placeholder/contracts/src';
+import { JudgeJobQueue } from '@placeholder/application/src/submission/CreateSubmissionUseCase';
 
 export class InMemoryJudgeJobQueue implements JudgeJobQueue {
   private readonly jobs: Judge.JudgeJob[] = [];

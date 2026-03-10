@@ -39,8 +39,8 @@ describe('settings page', () => {
           JSON.stringify({
             secret: 'ABCDEF123456',
             otpauthUri:
-              'otpauth://totp/OJ%20Admin%20Web:admin@example.com?secret=ABCDEF123456',
-            issuer: 'OJ Admin Web',
+              'otpauth://totp/Placeholder%20Admin:admin@example.com?secret=ABCDEF123456',
+            issuer: 'Placeholder Admin',
             accountName: 'admin@example.com'
           }),
           {

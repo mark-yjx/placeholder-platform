@@ -79,37 +79,53 @@ export function ProblemEditPage() {
   const [publishMessage, setPublishMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    let isDisposed = false;
+
     async function loadProblem() {
       if (!problemId) {
-        setLoadState('error');
-        setError('Problem ID is missing.');
+        if (!isDisposed) {
+          setLoadState('error');
+          setError('Problem ID is missing.');
+        }
         return;
       }
 
       const token = readStoredAdminToken();
       if (!token) {
-        setLoadState('error');
-        setError('Admin session is missing.');
+        if (!isDisposed) {
+          setLoadState('error');
+          setError('Admin session is missing.');
+        }
         return;
       }
 
-      setLoadState('loading');
-      setError(null);
+      if (!isDisposed) {
+        setLoadState('loading');
+        setError(null);
+      }
 
       try {
         const problem = await fetchAdminProblem(token, problemId);
-        setForm(toEditorForm(problem));
-        setLoadState('ready');
+        if (!isDisposed) {
+          setForm(toEditorForm(problem));
+          setLoadState('ready');
+        }
       } catch (loadError) {
-        setForm(null);
-        setLoadState('error');
-        setError(
-          loadError instanceof Error ? loadError.message : 'Failed to load the selected problem.'
-        );
+        if (!isDisposed) {
+          setForm(null);
+          setLoadState('error');
+          setError(
+            loadError instanceof Error ? loadError.message : 'Failed to load the selected problem.'
+          );
+        }
       }
     }
 
     void loadProblem();
+
+    return () => {
+      isDisposed = true;
+    };
   }, [problemId]);
 
   function updateField<Key extends keyof ProblemEditorForm>(

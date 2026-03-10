@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import { Email, Role } from '@packages/domain/src/identity';
-import { hashPassword, SessionTokenIssuer } from '@packages/application/src/auth/PasswordCredentialAuthService';
+import { Email, Role } from '@placeholder/domain/src/identity';
+import { hashPassword, SessionTokenIssuer } from '@placeholder/application/src/auth/PasswordCredentialAuthService';
 
 export type StudentAuthRole = 'student' | 'admin';
 export type StudentAuthStatus = 'active' | 'disabled';

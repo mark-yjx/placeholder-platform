@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { Role } from '@packages/domain/src/identity';
+import type { Role } from '@placeholder/domain/src/identity';
 
 type SessionTokenPayload = {
   userId: string;

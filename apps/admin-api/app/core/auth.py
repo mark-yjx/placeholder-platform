@@ -76,7 +76,7 @@ def load_admin_auth_settings() -> AdminAuthSettings:
         "ADMIN_MICROSOFT_MOCK_SUBJECT",
         "microsoft-mock-admin-subject",
     )
-    totp_issuer = os.getenv("ADMIN_TOTP_ISSUER", "OJ Admin Web")
+    totp_issuer = os.getenv("ADMIN_TOTP_ISSUER", "Placeholder Admin")
 
     if not session_secret:
         raise AdminAuthConfigError(

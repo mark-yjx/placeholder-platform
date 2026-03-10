@@ -110,7 +110,7 @@ export class AccountWebviewProvider implements vscode.WebviewViewProvider {
     this.resetStatsState();
     this.onSessionChanged?.();
     this.render();
-    this.window.showInformationMessage('Logged out of OJ.');
+    this.window.showInformationMessage('Logged out of Placeholder Practice.');
   }
 
   private async completeBrowserAuthFallback(): Promise<void> {
@@ -140,7 +140,7 @@ export class AccountWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     return mapExtensionError(error).userMessage.replace(
-      'Run OJ: Sign In and try again.',
+      'Run Placeholder Practice: Sign In and try again.',
       'Try again from the Account panel.'
     );
   }

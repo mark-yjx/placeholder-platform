@@ -30,7 +30,7 @@ export function AdminLayout({
     <main className="admin-shell">
       <aside className="admin-sidebar">
         <div className="sidebar-brand">
-          <p className="eyebrow">OJ Admin Web</p>
+          <p className="eyebrow">Placeholder Admin</p>
           <p className="sidebar-title">Control Center</p>
           <p className="sidebar-copy">
             A quieter workspace for preparing problems and reviewing platform activity.
@@ -70,7 +70,7 @@ export function AdminLayout({
       <section className="admin-content">
         <header className="hero-card">
           <div>
-            <p className="eyebrow">OJ Admin Web</p>
+            <p className="eyebrow">Placeholder Admin</p>
             <h1>{title}</h1>
             <p className="message">{description}</p>
             {meta ? <p className="hint">{meta}</p> : null}

@@ -235,7 +235,7 @@ test('account panel renders browser auth actions when unauthenticated', () => {
     })
   );
 
-  assert.match(html, /OJ Practice/);
+  assert.match(html, /Placeholder Practice/);
   assert.match(html, /Solve problems directly in VS Code\./);
   assert.match(html, /Sign in to sync your account, fetch problems, and submit\./);
   assert.match(html, /Auth opens in your browser and returns automatically\./);
@@ -391,7 +391,7 @@ test('account panel logout clears session and returns to login form', async () =
   });
   assert.match(webview.html, /data-command="signIn"/);
   assert.match(webview.html, /data-command="signUp"/);
-  assert.ok(infoMessages.includes('Logged out of OJ.'));
+  assert.ok(infoMessages.includes('Logged out of Placeholder Practice.'));
 });
 
 test('account panel clears incomplete session after browser auth', async () => {

@@ -1,4 +1,4 @@
-import { PublicationState } from '@packages/domain/src/problem';
+import { PublicationState } from '@placeholder/domain/src/problem';
 
 export type ProblemVersionTimelineEntry = {
   versionId: string;

@@ -1,6 +1,6 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { URL } from 'node:url';
-import type { Role } from '@packages/domain/src/identity';
+import type { Role } from '@placeholder/domain/src/identity';
 import type {
   AdminAnalyticsOverviewView,
   LeaderboardView,
@@ -350,8 +350,8 @@ function createDefaultReadinessDependencies(sqlClient?: ReadinessSqlClient): rea
 
 function createLocalApiRuntime(): LocalApiRuntime {
   // Load workspace-bound adapters only when the local Postgres runtime is enabled.
-  const { PasswordCredentialAuthService } = require('@packages/application/src/auth/PasswordCredentialAuthService') as typeof import('@packages/application/src/auth/PasswordCredentialAuthService');
-  const { PostgresCredentialRepository } = require('@packages/infrastructure/src/postgres/identity/PostgresCredentialRepository') as typeof import('@packages/infrastructure/src/postgres/identity/PostgresCredentialRepository');
+  const { PasswordCredentialAuthService } = require('@placeholder/application/src/auth/PasswordCredentialAuthService') as typeof import('@placeholder/application/src/auth/PasswordCredentialAuthService');
+  const { PostgresCredentialRepository } = require('@placeholder/infrastructure/src/postgres/identity/PostgresCredentialRepository') as typeof import('@placeholder/infrastructure/src/postgres/identity/PostgresCredentialRepository');
   const { BrowserStudentAuthService, InMemoryBrowserAuthCodeStore, PostgresStudentAuthUserRepository } = require('./studentAuth/BrowserStudentAuthService') as typeof import('./studentAuth/BrowserStudentAuthService');
   const { PostgresStatsRankingRepository, StatsRankingService } = require('./stats/StatsRankingService') as typeof import('./stats/StatsRankingService');
   const { createLocalPersistenceServices } = require('./runtime/localPersistenceWiring') as typeof import('./runtime/localPersistenceWiring');

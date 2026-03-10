@@ -4,6 +4,6 @@ src/**
 tsconfig*.json
 *.tsbuildinfo
 main.js
-oj-vscode-extension-*.vsix
+placeholder-extension-*.vsix
 dist/__tests__/**
 coverage/**

@@ -39,5 +39,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: oj-vscode-vsix
-          path: dist/oj-vscode.vsix
+          path: dist/placeholder-extension.vsix
           if-no-files-found: error

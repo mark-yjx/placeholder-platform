@@ -105,7 +105,7 @@ VALUES
     'easy',
     '["digits","iteration"]'::jsonb,
     '1.0.0',
-    'COMP9021 Staff',
+    'Placeholder Staff',
     '[{"input":"111","output":"1"},{"input":"111122223333","output":"123"}]'::jsonb,
 $$def collapse(number):
     """Collapse adjacent repeated digits while preserving sign."""

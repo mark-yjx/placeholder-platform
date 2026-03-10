@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { PostgresFavoritesSqlClient } from '@packages/infrastructure/src/postgres/favorites';
-import type { PostgresSqlClient } from '@packages/infrastructure/src/postgres/problem';
-import type { PostgresReviewsSqlClient } from '@packages/infrastructure/src/postgres/reviews';
-import type { PostgresSubmissionSqlClient } from '@packages/infrastructure/src/postgres/submission';
-import type { PostgresJudgeResultSqlClient } from '@packages/infrastructure/src/postgres/results';
-import type { PostgresJudgeJobQueueSqlClient } from '@packages/infrastructure/src/queue';
+import type { PostgresFavoritesSqlClient } from '@placeholder/infrastructure/src/postgres/favorites';
+import type { PostgresSqlClient } from '@placeholder/infrastructure/src/postgres/problem';
+import type { PostgresReviewsSqlClient } from '@placeholder/infrastructure/src/postgres/reviews';
+import type { PostgresSubmissionSqlClient } from '@placeholder/infrastructure/src/postgres/submission';
+import type { PostgresJudgeResultSqlClient } from '@placeholder/infrastructure/src/postgres/results';
+import type { PostgresJudgeJobQueueSqlClient } from '@placeholder/infrastructure/src/queue';
 
 type LocalPostgresSqlClient = PostgresSqlClient &
   PostgresFavoritesSqlClient &

@@ -62,8 +62,8 @@ export class PracticeHomeWebviewProvider implements vscode.WebviewViewProvider {
       this.render();
     } catch (error) {
       const message = mapExtensionError(error).userMessage.replace(
-        'Run OJ: Sign In and try again.',
-        'Try again from the OJ sidebar.'
+        'Run Placeholder Practice: Sign In and try again.',
+        'Try again from the Placeholder Practice sidebar.'
       );
       this.errorMessage = message;
       this.render();

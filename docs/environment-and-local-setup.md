@@ -46,7 +46,7 @@ Use [.env.example](/home/mark/src/oj-vscode/.env.example) as the local starting 
 ## Local Stack Ports
 
 - `5432`: local Postgres container
-- `3100`: real OJ API runtime expected by the extension
+- `3100`: real Placeholder student API runtime expected by the extension
 - `6379`: not used by the current local stack, but commonly occupied by Redis on developer machines
 
 ## Recommended Local Startup

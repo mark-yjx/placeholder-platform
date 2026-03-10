@@ -1,6 +1,6 @@
 const { extractPythonSubmission } = require(
-  '@packages/application/src/submission/PythonSubmissionExtraction.ts'
-) as typeof import('@packages/application/src/submission/PythonSubmissionExtraction');
+  '@placeholder/application/src/submission/PythonSubmissionExtraction.ts'
+) as typeof import('@placeholder/application/src/submission/PythonSubmissionExtraction');
 
 export function extractJudgedPythonSource(sourceCode: string, entryFunction = 'solve'): string {
   return extractPythonSubmission({

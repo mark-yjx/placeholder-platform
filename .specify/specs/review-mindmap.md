@@ -2,7 +2,7 @@
 
 ```mermaid
 mindmap
-  root((COMP9021 Practice Platform
+  root((Placeholder Platform
   Progress Review))
     Specification Phase
       spec.md created

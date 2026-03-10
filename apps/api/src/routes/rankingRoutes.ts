@@ -1,5 +1,5 @@
-import { PublicRankingService } from '@packages/application/src/stats';
-import { Role } from '@packages/domain/src/identity';
+import { PublicRankingService } from '@placeholder/application/src/stats';
+import { Role } from '@placeholder/domain/src/identity';
 
 type StudentActor = {
   actorRoles: readonly Role[];

@@ -506,7 +506,7 @@ export function registerExtensionCommands(
         dependencies.output.appendLine(formatSubmissionDetail(result));
         if (result.status === 'queued' || result.status === 'running') {
           dependencies.window.showInformationMessage(
-            `Submission is still ${result.status}. Run OJ: View Result again shortly.`
+            `Submission is still ${result.status}. Run Placeholder Practice: View Result again shortly.`
           );
         }
       })
@@ -516,7 +516,7 @@ export function registerExtensionCommands(
       runWithHandling('oj.practice.selectProblem', async (...args: unknown[]) => {
         const problemId = typeof args[0] === 'string' ? args[0] : '';
         if (!problemId) {
-          dependencies.window.showInformationMessage('No problem selected yet. Run OJ: Fetch Problems first.');
+          dependencies.window.showInformationMessage('No problem selected yet. Run Placeholder Practice: Fetch Problems first.');
           return;
         }
         console.log('problem selected', problemId);

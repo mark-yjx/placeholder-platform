@@ -1,4 +1,4 @@
-# @packages/config
+# @placeholder/config
 
 Shared workspace config artifacts.
 

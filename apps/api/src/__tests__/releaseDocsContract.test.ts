@@ -21,12 +21,12 @@ test('README and demo checklist are linked for release rehearsal', () => {
   const readme = readFromRoot('README.md');
   const checklist = readFromRoot('docs', 'extension-demo-checklist.md');
 
-  assert.match(readme, /\[OJ VSCode Demo Checklist\]\(\.\/docs\/extension-demo-checklist\.md\)/);
+  assert.match(readme, /\[Placeholder Practice Demo Checklist\]\(\.\/docs\/extension-demo-checklist\.md\)/);
   assert.match(readme, /\[Release Runbook\]\(\.\/docs\/release-runbook\.md\)/);
   assert.match(readme, /Release troubleshooting checks/i);
 
   assert.match(checklist, /One-Command Demo/);
-  assert.match(checklist, /Install `apps\/vscode-extension\/oj-vscode-extension-0\.1\.0\.vsix`/i);
+  assert.match(checklist, /Install `apps\/vscode-extension\/placeholder-extension-0\.1\.0\.vsix`/i);
   assert.match(checklist, /oj\.apiBaseUrl/);
 });
 
@@ -36,9 +36,9 @@ test('release runbook keeps packaging, versioning, and troubleshooting checks al
   assert.match(runbook, /Update the extension version in:/);
   assert.match(runbook, /apps\/vscode-extension\/package\.json/);
   assert.match(runbook, /npm run extension:package/);
-  assert.match(runbook, /oj-vscode-extension-<version>\.vsix/);
-  assert.match(runbook, /dist\/oj-vscode\.vsix/);
-  assert.match(runbook, /\[OJ VSCode Demo Checklist\]\(\.\/extension-demo-checklist\.md\)/);
+  assert.match(runbook, /placeholder-extension-<version>\.vsix/);
+  assert.match(runbook, /dist\/placeholder-extension\.vsix/);
+  assert.match(runbook, /\[Placeholder Practice Demo Checklist\]\(\.\/extension-demo-checklist\.md\)/);
   assert.match(runbook, /Create Release Notes/);
   assert.match(runbook, /Semantic Versioning/);
 

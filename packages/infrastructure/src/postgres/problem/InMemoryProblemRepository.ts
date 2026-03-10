@@ -1,6 +1,6 @@
-import { ProblemVersionTimelineEntry } from '@packages/application/src/problem';
-import { Problem } from '@packages/domain/src/problem';
-import { ProblemCrudRepository, ProblemVersionHistoryRepository } from '@packages/application/src/problem';
+import { ProblemVersionTimelineEntry } from '@placeholder/application/src/problem';
+import { Problem } from '@placeholder/domain/src/problem';
+import { ProblemCrudRepository, ProblemVersionHistoryRepository } from '@placeholder/application/src/problem';
 
 export class InMemoryProblemRepository
   implements ProblemCrudRepository, ProblemVersionHistoryRepository

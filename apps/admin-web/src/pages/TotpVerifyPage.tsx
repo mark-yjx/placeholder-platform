@@ -32,7 +32,7 @@ export function TotpVerifyPage() {
     <main className="login-shell">
       <section className="login-panel">
         <div className="login-intro">
-          <p className="eyebrow">OJ Admin Web</p>
+          <p className="eyebrow">Placeholder Admin</p>
           <h1>TOTP Verification</h1>
           <p className="message">
             Finish the local admin sign-in by entering the 6-digit authenticator code.

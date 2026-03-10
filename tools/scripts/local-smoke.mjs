@@ -384,7 +384,7 @@ export function extractEntrypointPayload(sourceCode, entryFunction) {
     throw new Error('Python interpreter unavailable for local smoke submission extraction');
   }
 
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oj-local-smoke-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'placeholder-local-smoke-'));
   const scriptPath = path.join(tempDir, 'extract.py');
   const sourcePath = path.join(tempDir, 'submission.py');
 
@@ -582,7 +582,7 @@ function assertNoDuplicateWorkerProcessing(submissionId) {
     { cwd: root, encoding: 'utf8' }
   );
   const blocks = logs
-    .split(/(?=oj-local-worker\s+\|\s+\{)/)
+    .split(/(?=placeholder-local-worker\s+\|\s+\{)/)
     .filter((block) => block.includes(`submissionId: '${submissionId}'`));
   const claimedMatches = blocks.filter((block) => block.includes("message: 'worker.job.claimed'"));
   const runningMatches = blocks.filter((block) => block.includes("message: 'worker.submission.running'"));
@@ -785,7 +785,7 @@ def collapse(number):
 
 async function main() {
   try {
-    runStep('build extension runtime', 'npm -w oj-vscode-extension run build');
+    runStep('build extension runtime', 'npm -w placeholder-extension run build');
     runStep('boot local stack', 'npm run local:up');
     runStep('seed user+problem', 'npm run local:db:setup');
     runStep('import sample problems', 'npm run import:problems -- --dir problems');

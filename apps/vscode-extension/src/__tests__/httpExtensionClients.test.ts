@@ -38,7 +38,7 @@ test('http auth client posts credentials and surfaces invalid login mapping', as
         assert.ok(error instanceof ExtensionApiError);
         assert.equal(
           mapExtensionError(error).userMessage,
-          'Invalid email or password. Run OJ: Sign In and try again.'
+          'Invalid email or password. Run Placeholder Practice: Sign In and try again.'
         );
         return true;
       }
@@ -66,17 +66,17 @@ test('http auth client exposes browser auth URLs and exchanges one-time codes', 
     const client = new HttpAuthClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 });
     assert.equal(
       client.getBrowserAuthUrl('sign-in', {
-        callbackUri: 'vscode://local.oj-vscode-extension/auth-complete',
+        callbackUri: 'vscode://local.placeholder-extension/auth-complete',
         state: 'sign-in-state'
       }),
-      'http://oj.test/auth/sign-in?callback_uri=vscode%3A%2F%2Flocal.oj-vscode-extension%2Fauth-complete&state=sign-in-state'
+      'http://oj.test/auth/sign-in?callback_uri=vscode%3A%2F%2Flocal.placeholder-extension%2Fauth-complete&state=sign-in-state'
     );
     assert.equal(
       client.getBrowserAuthUrl('sign-up', {
-        callbackUri: 'vscode://local.oj-vscode-extension/auth-complete',
+        callbackUri: 'vscode://local.placeholder-extension/auth-complete',
         state: 'sign-up-state'
       }),
-      'http://oj.test/auth/sign-up?callback_uri=vscode%3A%2F%2Flocal.oj-vscode-extension%2Fauth-complete&state=sign-up-state'
+      'http://oj.test/auth/sign-up?callback_uri=vscode%3A%2F%2Flocal.placeholder-extension%2Fauth-complete&state=sign-up-state'
     );
     assert.deepEqual(await client.exchangeBrowserCode({ code: 'ABC123' }), {
       accessToken: 'student-token',

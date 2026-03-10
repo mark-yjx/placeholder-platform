@@ -2,8 +2,8 @@ import {
   AuthProvisioningService,
   PasswordCredentialAuthService,
   RbacAuthorizationService
-} from '@packages/application/src/auth';
-import { Role } from '@packages/domain/src/identity';
+} from '@placeholder/application/src/auth';
+import { Role } from '@placeholder/domain/src/identity';
 import { AUTH_ROUTE_PERMISSIONS } from './permissionMapping';
 
 type IssueInviteRequest = {

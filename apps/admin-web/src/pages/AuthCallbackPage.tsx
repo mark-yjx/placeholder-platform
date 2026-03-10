@@ -38,7 +38,7 @@ export function AuthCallbackPage() {
     <main className="login-shell">
       <section className="login-panel">
         <div className="login-intro">
-          <p className="eyebrow">OJ Admin Web</p>
+          <p className="eyebrow">Placeholder Admin</p>
           <h1>Finishing Sign-In</h1>
           <p className="message">
             Completing Microsoft sign-in and restoring the local admin session.

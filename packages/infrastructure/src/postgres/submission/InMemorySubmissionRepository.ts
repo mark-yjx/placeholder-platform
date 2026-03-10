@@ -1,8 +1,8 @@
-import { SubmissionAdminRepository } from '@packages/application/src/submission/AdminSubmissionManagementService';
+import { SubmissionAdminRepository } from '@placeholder/application/src/submission/AdminSubmissionManagementService';
 import {
   SubmissionCreationRepository,
   SubmissionRecord
-} from '@packages/application/src/submission/CreateSubmissionUseCase';
+} from '@placeholder/application/src/submission/CreateSubmissionUseCase';
 import {
   assertSubmissionStartsQueued,
   assertValidSubmissionTransition

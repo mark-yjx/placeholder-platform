@@ -68,14 +68,14 @@ test('extension package keeps production packaging whitelist and activation even
 
   assert.equal(manifest.version, '0.1.0');
   assert.equal(manifest.license, 'UNLICENSED');
-  assert.match(manifest.description, /Local-first COMP9021 online judge workflow/);
+  assert.match(manifest.description, /Local-first Placeholder Practice workflow/);
   assert.deepEqual(manifest.repository, {
     type: 'git',
-    url: 'git+https://github.com/mark-yjx/comp9021-oj.git'
+    url: 'git+https://github.com/mark-yjx/placeholder-platform.git'
   });
-  assert.equal(manifest.homepage, 'https://github.com/mark-yjx/comp9021-oj');
+  assert.equal(manifest.homepage, 'https://github.com/mark-yjx/placeholder-platform');
   assert.deepEqual(manifest.bugs, {
-    url: 'https://github.com/mark-yjx/comp9021-oj/issues'
+    url: 'https://github.com/mark-yjx/placeholder-platform/issues'
   });
   assert.equal(manifest.main, './dist/extension.js');
   assert.deepEqual(manifest.categories, ['Education', 'Programming Languages']);
@@ -95,7 +95,7 @@ test('extension package keeps production packaging whitelist and activation even
   assert.equal(manifest.scripts.build, 'rm -rf dist && tsc -p tsconfig.build.json');
   assert.match(
     manifest.scripts['package:vsix'],
-    /node \.\.\/\.\.\/node_modules\/@vscode\/vsce\/vsce package --no-dependencies --out oj-vscode-extension-\$\(node -p/
+    /node \.\.\/\.\.\/node_modules\/@vscode\/vsce\/vsce package --no-dependencies --out placeholder-extension-\$\(node -p/
   );
   assert.doesNotMatch(manifest.scripts['package:vsix'], /npx --yes|--skip-license/);
   for (const command of manifest.contributes.commands ?? []) {
@@ -128,24 +128,24 @@ test('extension package keeps production packaging whitelist and activation even
     'onCommand:oj.ranking.show'
   ]);
   assert.deepEqual(manifest.contributes.viewsContainers?.activitybar, [
-    { id: 'ojSidebar', title: 'OJ', icon: 'media/icon.png' }
+    { id: 'ojSidebar', title: 'Placeholder', icon: 'media/icon.png' }
   ]);
   assert.deepEqual(manifest.contributes.viewsContainers?.panel, [
-    { id: 'ojPanel', title: 'OJ Results', icon: 'media/icon.png' }
+    { id: 'ojPanel', title: 'Placeholder Judge', icon: 'media/icon.png' }
   ]);
   assert.deepEqual(
     (manifest.contributes.commands ?? []).slice(0, 3),
     [
-      { command: 'oj.account.show', title: 'OJ: Open Account' },
-      { command: 'oj.logout', title: 'OJ: Logout' },
-      { command: 'oj.login', title: 'OJ: Login' }
+      { command: 'oj.account.show', title: 'Placeholder Practice: Open Account' },
+      { command: 'oj.logout', title: 'Placeholder Practice: Logout' },
+      { command: 'oj.login', title: 'Placeholder Practice: Login' }
     ]
   );
   assert.deepEqual(
     manifest.contributes.commands?.find((command) => command.command === 'oj.practice.fetchProblems'),
     {
       command: 'oj.practice.fetchProblems',
-      title: 'OJ: Fetch Problems',
+      title: 'Placeholder Practice: Fetch Problems',
       icon: {
         light: 'media/fetch-problems-light.svg',
         dark: 'media/fetch-problems-dark.svg'
@@ -159,7 +159,7 @@ test('extension package keeps production packaging whitelist and activation even
       when: view.when
     })),
     [
-      { id: 'ojPracticeHome', name: 'OJ Practice', when: 'oj.practice.homeVisible' },
+      { id: 'ojPracticeHome', name: 'Placeholder Practice', when: 'oj.practice.homeVisible' },
       { id: 'ojProblems', name: 'Problems', when: 'oj.practice.viewsReady' },
       { id: 'ojProblemDetail', name: 'Problem Detail', when: 'oj.practice.viewsReady' }
     ]

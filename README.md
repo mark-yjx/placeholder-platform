@@ -1,6 +1,6 @@
-# OJ VSCode
+# Placeholder Practice
 
-OJ VSCode is a local-first Online Judge built around a real VS Code workflow. Students log in from the extension, browse imported problems, open starter files in the workspace, submit Python code to the HTTP API, and receive judged results produced by a Postgres-backed worker and Docker sandbox.
+Placeholder Practice is a local-first Online Judge built around a real VS Code workflow. Students log in from the extension, browse imported problems, open starter files in the workspace, submit Python code to the HTTP API, and receive judged results produced by a Postgres-backed worker and Docker sandbox.
 
 ## Project Overview
 
@@ -137,7 +137,7 @@ npm run extension:package
 Install the packaged VSIX:
 
 ```bash
-code --install-extension dist/oj-vscode.vsix
+code --install-extension dist/placeholder-extension.vsix
 ```
 
 ## Local Setup
@@ -174,7 +174,7 @@ For normal local verification:
 - Use the `Problems` sidebar refresh action to fetch published problems.
 - Select a problem to populate `Problem Detail`.
 - Open the starter-backed coding file at `.oj/problems/<problemId>.py`.
-- Submit via `Submit`, `OJ: Submit Code`, or `OJ: Submit Current File`.
+- Submit via `Submit`, `Placeholder Practice: Submit Code`, or `Placeholder Practice: Submit Current File`.
 - Use the `Submissions` panel and `Submission Detail` view to inspect current and previous results.
 
 See [docs/extension-usage.md](./docs/extension-usage.md) for the step-by-step workflow.
@@ -230,7 +230,7 @@ problems/
 - [Problem Format](./docs/problem-format.md)
 - [Local Development](./docs/local-development.md)
 - [Extension Usage](./docs/extension-usage.md)
-- [OJ VSCode Demo Checklist](./docs/extension-demo-checklist.md)
+- [Placeholder Practice Demo Checklist](./docs/extension-demo-checklist.md)
 - [Release Runbook](./docs/release-runbook.md)
 - [Runtime Metrics](./docs/runtime-metrics.md)
 - [Roadmap](./docs/roadmap.md)

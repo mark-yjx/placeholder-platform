@@ -103,7 +103,7 @@ test('browser auth start opens sign-in with callback uri and state', async () =>
   assert.equal(startedUrl.pathname, '/auth/sign-in');
   assert.equal(
     startedUrl.searchParams.get('callback_uri'),
-    'vscode://local.oj-vscode-extension/auth-complete'
+    'vscode://local.placeholder-extension/auth-complete'
   );
   assert.match(String(startedUrl.searchParams.get('state')), /^[0-9a-f-]{36}$/i);
   assert.equal(authClient.browserAuthRequests[0]?.mode, 'sign-in');
@@ -138,7 +138,7 @@ test('browser auth start opens sign-up with callback uri and state', async () =>
   assert.equal(startedUrl.pathname, '/auth/sign-up');
   assert.equal(
     startedUrl.searchParams.get('callback_uri'),
-    'vscode-insiders://local.oj-vscode-extension/auth-complete'
+    'vscode-insiders://local.placeholder-extension/auth-complete'
   );
   assert.match(String(startedUrl.searchParams.get('state')), /^[0-9a-f-]{36}$/i);
 });
@@ -178,7 +178,7 @@ test('valid browser auth callback completes the student session automatically', 
   await flow.handleUri({
     path: '/auth-complete',
     query: `code=ABC123&state=${encodeURIComponent(pending.state)}`,
-    toString: () => `vscode://local.oj-vscode-extension/auth-complete?code=ABC123&state=${pending.state}`
+    toString: () => `vscode://local.placeholder-extension/auth-complete?code=ABC123&state=${pending.state}`
   });
 
   assert.deepEqual(authClient.exchangedCodes, ['ABC123']);
@@ -212,7 +212,7 @@ test('invalid callback state is rejected without exchanging the auth code', asyn
   await flow.handleUri({
     path: '/auth-complete',
     query: 'code=ABC123&state=wrong-state',
-    toString: () => 'vscode://local.oj-vscode-extension/auth-complete?code=ABC123&state=wrong-state'
+    toString: () => 'vscode://local.placeholder-extension/auth-complete?code=ABC123&state=wrong-state'
   });
 
   assert.deepEqual(authClient.exchangedCodes, []);
@@ -250,13 +250,13 @@ test('manual fallback code entry succeeds when callback return fails', async () 
   await flow.handleUri({
     path: '/auth-complete',
     query: `state=${encodeURIComponent(pending.state)}`,
-    toString: () => `vscode://local.oj-vscode-extension/auth-complete?state=${pending.state}`
+    toString: () => `vscode://local.placeholder-extension/auth-complete?state=${pending.state}`
   });
   const completed = await flow.enterFallbackCode();
 
   assert.equal(completed, true);
   assert.ok(
-    errorMessages.some((message) => message.includes('fallback code entry from the OJ Account window'))
+    errorMessages.some((message) => message.includes('fallback code entry from the Placeholder Practice window'))
   );
   assert.deepEqual(authClient.exchangedCodes, ['FALL123']);
   assert.ok(infoMessages.some((message) => message.includes('Logged in as student@example.com')));

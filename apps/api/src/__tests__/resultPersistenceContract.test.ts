@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import type { Verdict } from '@packages/domain/src/judge';
+import type { Verdict } from '@placeholder/domain/src/judge';
 
 function resolveRepoRoot(): string {
   const candidates = [process.cwd(), path.resolve(process.cwd(), '..', '..')];
@@ -147,7 +147,7 @@ class GuardedInMemoryJudgeResultRepository {
 
 test('duplicate judge callback ingestion does not overwrite terminal state and returns persisted result view', async () => {
   const { JudgeCallbackIngestionService, ResultQueryService } = loadModule<
-    typeof import('@packages/application/src/results')
+    typeof import('@placeholder/application/src/results')
   >(['packages', 'application', 'src', 'results', 'index.ts']);
   const submissions = new InMemorySubmissionStateRepository({
     id: 'submission-1',
@@ -197,7 +197,7 @@ test('duplicate judge callback ingestion does not overwrite terminal state and r
 });
 
 test('result query keeps newest submissions first and does not require judge results for failed submissions', async () => {
-  const { ResultQueryService } = loadModule<typeof import('@packages/application/src/results')>([
+  const { ResultQueryService } = loadModule<typeof import('@placeholder/application/src/results')>([
     'packages',
     'application',
     'src',
@@ -258,7 +258,7 @@ test('result query keeps newest submissions first and does not require judge res
 
 test('conflicting duplicate judge callback is rejected and terminal result remains immutable', async () => {
   const { JudgeCallbackIngestionService } = loadModule<
-    typeof import('@packages/application/src/results')
+    typeof import('@placeholder/application/src/results')
   >(['packages', 'application', 'src', 'results', 'index.ts']);
   const submissions = new InMemorySubmissionStateRepository({
     id: 'submission-2',
@@ -301,7 +301,7 @@ test('conflicting duplicate judge callback is rejected and terminal result remai
 
 test('judge callback ingestion preserves unavailable runtime metrics instead of converting them to zero', async () => {
   const { JudgeCallbackIngestionService, ResultQueryService } = loadModule<
-    typeof import('@packages/application/src/results')
+    typeof import('@placeholder/application/src/results')
   >(['packages', 'application', 'src', 'results', 'index.ts']);
   const submissions = new InMemorySubmissionStateRepository({
     id: 'submission-3',
@@ -347,7 +347,7 @@ test('judge callback ingestion preserves unavailable runtime metrics instead of 
 });
 
 test('result query preserves explicit zero metrics while omitting unavailable ones', async () => {
-  const { ResultQueryService } = loadModule<typeof import('@packages/application/src/results')>([
+  const { ResultQueryService } = loadModule<typeof import('@placeholder/application/src/results')>([
     'packages',
     'application',
     'src',

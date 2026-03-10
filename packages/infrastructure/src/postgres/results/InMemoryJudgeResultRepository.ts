@@ -1,7 +1,7 @@
 import {
   JudgeResultPersistenceRepository,
   PersistedJudgeResult
-} from '@packages/application/src/results/JudgeCallbackIngestionService';
+} from '@placeholder/application/src/results/JudgeCallbackIngestionService';
 
 export class InMemoryJudgeResultRepository implements JudgeResultPersistenceRepository {
   private readonly resultsBySubmissionId = new Map<string, PersistedJudgeResult>();

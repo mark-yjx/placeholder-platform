@@ -1,8 +1,8 @@
 import {
   CredentialRecord,
   CredentialRepository
-} from '@packages/application/src/auth/PasswordCredentialAuthService';
-import { Role } from '@packages/domain/src/identity';
+} from '@placeholder/application/src/auth/PasswordCredentialAuthService';
+import { Role } from '@placeholder/domain/src/identity';
 
 export type PostgresCredentialSqlClient = {
   query: <T>(sql: string, params?: readonly unknown[]) => Promise<readonly T[]>;

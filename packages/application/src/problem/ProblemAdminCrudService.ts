@@ -1,6 +1,6 @@
-import { Role } from '@packages/domain/src/identity';
-import { Problem, ProblemVersion } from '@packages/domain/src/problem';
-import { ProblemRepository } from '@packages/domain/src/ports';
+import { Role } from '@placeholder/domain/src/identity';
+import { Problem, ProblemVersion } from '@placeholder/domain/src/problem';
+import { ProblemRepository } from '@placeholder/domain/src/ports';
 
 export interface ProblemCrudRepository extends ProblemRepository {
   deleteById(id: string): Promise<void>;

@@ -1,11 +1,11 @@
 {
-  "name": "@packages/infrastructure",
+  "name": "@placeholder/infrastructure",
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "@packages/application": "*",
-    "@packages/contracts": "*",
-    "@packages/domain": "*"
+    "@placeholder/application": "*",
+    "@placeholder/contracts": "*",
+    "@placeholder/domain": "*"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

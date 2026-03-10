@@ -1,4 +1,4 @@
-# COMP9021 OJ Constitution
+# Placeholder Platform Constitution
 
 ## Core Principles
 

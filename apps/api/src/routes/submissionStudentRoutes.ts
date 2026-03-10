@@ -1,5 +1,5 @@
-import { CreateSubmissionUseCase } from '@packages/application/src/submission/CreateSubmissionUseCase';
-import { Role } from '@packages/domain/src/identity';
+import { CreateSubmissionUseCase } from '@placeholder/application/src/submission/CreateSubmissionUseCase';
+import { Role } from '@placeholder/domain/src/identity';
 
 type CreateSubmissionRequest = {
   submissionId: string;

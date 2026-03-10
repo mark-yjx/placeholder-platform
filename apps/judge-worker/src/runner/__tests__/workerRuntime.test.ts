@@ -56,7 +56,7 @@ function registerTsHook(): void {
       isMain: boolean,
       options?: unknown
     ) {
-      if (request === '@packages/infrastructure/src') {
+      if (request === '@placeholder/infrastructure/src') {
         return resolver(
           path.join(repoRoot, 'packages', 'infrastructure', 'src', 'index.ts'),
           parent,
@@ -64,7 +64,7 @@ function registerTsHook(): void {
           options
         );
       }
-      if (request === '@packages/domain/src/judge') {
+      if (request === '@placeholder/domain/src/judge') {
         return resolver(
           path.join(repoRoot, 'packages', 'domain', 'src', 'judge', 'index.ts'),
           parent,
@@ -72,7 +72,7 @@ function registerTsHook(): void {
           options
         );
       }
-      if (request === '@packages/domain/src/submission') {
+      if (request === '@placeholder/domain/src/submission') {
         return resolver(
           path.join(repoRoot, 'packages', 'domain', 'src', 'submission', 'index.ts'),
           parent,
@@ -216,7 +216,7 @@ test('worker tick uses problem tests and records AC for a correct submission', a
           problemVersionId: 'collapse-v1',
           language: 'python',
           sourceCode: 'def collapse(number):\n    return 0 if number == 0 else int(str(number)[0])\n',
-          status: currentStatus as import('@packages/domain/src/submission').SubmissionStatus
+          status: currentStatus as import('@placeholder/domain/src/submission').SubmissionStatus
         };
       },
       async save(submission) {
@@ -299,7 +299,7 @@ test('worker tick logs lifecycle events with both jobId and submissionId identif
           problemVersionId: 'collapse-v-log',
           language: 'python',
           sourceCode: 'def solve(*args):\n    return 42\n',
-          status: currentStatus as import('@packages/domain/src/submission').SubmissionStatus
+          status: currentStatus as import('@placeholder/domain/src/submission').SubmissionStatus
         };
       },
       async save(submission) {
@@ -408,7 +408,7 @@ test('worker tick returns WA when hidden tests fail and result does not leak hid
           problemVersionId: 'collapse-v2',
           language: 'python',
           sourceCode: 'def collapse(number):\n    return number\n',
-          status: 'queued' as import('@packages/domain/src/submission').SubmissionStatus
+          status: 'queued' as import('@placeholder/domain/src/submission').SubmissionStatus
         };
       },
       async save() {
@@ -500,7 +500,7 @@ test('worker tick marks submission failed with CE and acknowledges job when judg
           problemVersionId: 'problem-1-v1',
           language: 'python',
           sourceCode: 'def solve():\n    return 42\n',
-          status: 'queued' as import('@packages/domain/src/submission').SubmissionStatus
+          status: 'queued' as import('@placeholder/domain/src/submission').SubmissionStatus
         };
       },
       async save(submission) {
@@ -586,7 +586,7 @@ test('worker tick persists unavailable memory without coercing it to zero', asyn
           problemVersionId: 'collapse-v1',
           language: 'python',
           sourceCode: 'def collapse(number):\n    return number\n',
-          status: 'queued' as import('@packages/domain/src/submission').SubmissionStatus
+          status: 'queued' as import('@placeholder/domain/src/submission').SubmissionStatus
         };
       },
       async save() {
@@ -669,7 +669,7 @@ test('worker tick persists failure reason and acknowledges job when result inges
           problemVersionId: 'collapse-v2',
           language: 'python',
           sourceCode: 'def solve(*args):\n    return 0\n',
-          status: 'queued' as import('@packages/domain/src/submission').SubmissionStatus
+          status: 'queued' as import('@placeholder/domain/src/submission').SubmissionStatus
         };
       },
       async save(submission) {
@@ -780,7 +780,7 @@ test('worker tick acknowledges and logs duplicate completion without rewriting t
           problemVersionId: 'collapse-v2',
           language: 'python',
           sourceCode: 'def solve(*args):\n    return 0\n',
-          status: 'finished' as import('@packages/domain/src/submission').SubmissionStatus
+          status: 'finished' as import('@placeholder/domain/src/submission').SubmissionStatus
         };
       },
       async save(submission) {
@@ -791,7 +791,7 @@ test('worker tick acknowledges and logs duplicate completion without rewriting t
       async findBySubmissionId() {
         return {
           submissionId: 'submission-duplicate',
-          verdict: 'WA' as import('@packages/domain/src/judge').Verdict,
+          verdict: 'WA' as import('@placeholder/domain/src/judge').Verdict,
           timeMs: 1083,
           memoryKb: 0
         };

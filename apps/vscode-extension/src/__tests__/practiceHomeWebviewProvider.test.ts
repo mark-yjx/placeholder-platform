@@ -42,7 +42,7 @@ test('practice home renders signed-out auth state in the sidebar', () => {
     })
   );
 
-  assert.match(html, /OJ Practice/);
+  assert.match(html, /Placeholder Practice/);
   assert.match(html, /Solve problems directly in VS Code\./);
   assert.match(html, /Sign in to start practicing/);
   assert.match(html, /data-command="signIn"/);

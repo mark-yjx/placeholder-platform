@@ -42,7 +42,7 @@ function hasCompleteStudentIdentity(tokenStore: SessionTokenStore): boolean {
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const output = vscode.window.createOutputChannel('OJ VSCode');
+  const output = vscode.window.createOutputChannel('Placeholder Practice');
   output.show(true);
   const configuration = vscode.workspace.getConfiguration(OJ_CONFIGURATION_NAMESPACE);
   let apiBaseUrl: string;
@@ -147,7 +147,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     tokenStore,
     vscode.window,
     () =>
-      vscode.window.createWebviewPanel('ojAccountPanel', 'OJ Account', vscode.ViewColumn.Beside, {
+      vscode.window.createWebviewPanel('ojAccountPanel', 'Placeholder Practice', vscode.ViewColumn.Beside, {
         enableScripts: true
       }),
     refreshStudentUi,
@@ -211,7 +211,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const logoutDisposable = vscode.commands.registerCommand('oj.logout', async () => {
     await authCommands.logout();
     refreshStudentUi();
-    vscode.window.showInformationMessage('Logged out of OJ.');
+    vscode.window.showInformationMessage('Logged out of Placeholder Practice.');
   });
   const revealSubmissionDisposable = vscode.commands.registerCommand(
     'oj.practice.selectSubmission',
@@ -246,7 +246,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(accountPanelDisposable);
   context.subscriptions.push(logoutDisposable);
 
-  output.appendLine('OJ VSCode extension activated');
+  output.appendLine('Placeholder Practice extension activated');
   output.appendLine(`API base URL: ${apiBaseUrl}`);
   output.appendLine(`Request timeout: ${requestTimeoutMs}ms`);
   output.appendLine(describeTokenStorageBehavior());

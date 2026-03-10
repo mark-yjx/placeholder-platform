@@ -32,7 +32,7 @@ export function LoginPage() {
     <main className="login-shell">
       <section className="login-panel">
         <div className="login-intro">
-          <p className="eyebrow">OJ Admin Web</p>
+          <p className="eyebrow">Placeholder Admin</p>
           <h1>Admin Login</h1>
           <p className="message">
             Sign in with local admin credentials or Microsoft, then complete local admin

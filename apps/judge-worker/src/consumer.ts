@@ -1,4 +1,4 @@
-import { Judge } from '@packages/contracts/src';
+import { Judge } from '@placeholder/contracts/src';
 import { createWorkerLogger } from './observability/WorkerLogger';
 import { RunnerRegistry } from './runner';
 import { ExecutionPlanner } from './sandbox/ExecutionPlanner';

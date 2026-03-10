@@ -1,4 +1,4 @@
-import { validateProblemPayload } from '@packages/domain/src/problem';
+import { validateProblemPayload } from '@placeholder/domain/src/problem';
 
 type ProblemRequestPayload = {
   title?: string;

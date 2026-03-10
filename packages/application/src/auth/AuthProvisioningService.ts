@@ -1,4 +1,4 @@
-import { Email, PasswordHash, Role, User } from '@packages/domain/src/identity';
+import { Email, PasswordHash, Role, User } from '@placeholder/domain/src/identity';
 
 export type InviteRecord = {
   token: string;

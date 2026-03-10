@@ -73,7 +73,7 @@ function printEndpoints() {
   console.log('');
   console.log('Local stack endpoints:');
   console.log('- Postgres: localhost:5432');
-  console.log('- Real OJ API runtime: http://localhost:3100');
+  console.log('- Real Placeholder student API runtime: http://localhost:3100');
   console.log('- Extension setting: oj.apiBaseUrl=http://localhost:3100');
   console.log('');
   console.log('Next commands:');

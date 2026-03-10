@@ -136,7 +136,7 @@ Admin auth pages are available at:
 Run Admin Web against the local admin API:
 
 ```bash
-VITE_ADMIN_API_BASE_URL='http://127.0.0.1:8200' npm -w @apps/admin-web run dev -- --host 127.0.0.1 --port 5173
+VITE_ADMIN_API_BASE_URL='http://127.0.0.1:8200' npm -w @placeholder/admin run dev -- --host 127.0.0.1 --port 5173
 ```
 
 Local mock-OIDC login verification flow:
@@ -159,7 +159,7 @@ npm run extension:package
 Install the VSIX:
 
 ```bash
-code --install-extension dist/oj-vscode.vsix
+code --install-extension dist/placeholder-extension.vsix
 ```
 
 Configure VS Code:

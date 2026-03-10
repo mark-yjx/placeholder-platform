@@ -1,5 +1,5 @@
 {
-  "name": "comp9021-practice-platform",
+  "name": "placeholder-platform",
   "private": true,
   "version": "0.0.0",
   "workspaces": [
@@ -9,8 +9,8 @@
   "scripts": {
     "check:boundaries": "node tools/scripts/check-boundaries.mjs",
     "check:openapi": "node tools/scripts/validate-openapi.mjs",
-    "check:env:api": "npm -w @apps/api run validate:env",
-    "check:env:worker": "npm -w @apps/judge-worker run validate:env",
+    "check:env:api": "npm -w @placeholder/student-api run validate:env",
+    "check:env:worker": "npm -w @placeholder/judge-worker run validate:env",
     "check:env": "npm run check:env:api && npm run check:env:worker",
     "typecheck": "npm run -ws --if-present typecheck",
     "lint": "npm run check:boundaries && npm run check:openapi && npm run -ws lint",
@@ -28,9 +28,9 @@
     "local:problems:verify": "node tools/scripts/local-problems-verify.mjs",
     "import:problems": "node tools/scripts/import-problems.mjs",
     "smoke:local": "node tools/scripts/local-smoke.mjs",
-    "api:start": "PORT=${PORT:-3100} DATABASE_URL=${DATABASE_URL:-postgresql://oj:oj@127.0.0.1:5432/oj} npm -w @apps/api run start",
-    "worker:start": "npm -w @apps/judge-worker run start",
-    "extension:package": "mkdir -p dist && npm -w oj-vscode-extension run package:vsix && cp apps/vscode-extension/oj-vscode-extension-$(node -p \"require('./apps/vscode-extension/package.json').version\").vsix dist/oj-vscode.vsix"
+    "api:start": "PORT=${PORT:-3100} DATABASE_URL=${DATABASE_URL:-postgresql://oj:oj@127.0.0.1:5432/oj} npm -w @placeholder/student-api run start",
+    "worker:start": "npm -w @placeholder/judge-worker run start",
+    "extension:package": "mkdir -p dist && npm -w placeholder-extension run package:vsix && cp apps/vscode-extension/placeholder-extension-$(node -p \"require('./apps/vscode-extension/package.json').version\").vsix dist/placeholder-extension.vsix"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

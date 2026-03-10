@@ -81,8 +81,8 @@ export class BrowserAuthFlow implements BrowserAuthFlowLike {
       this.options.output?.appendLine(`Browser auth started via ${mode}.`);
       this.window.showInformationMessage(
         mode === 'sign-in'
-          ? 'Student sign-in opened in your browser. Finish there and VS Code will complete sign-in automatically. If the callback does not return, use the fallback code shown in the browser from the OJ Account window.'
-          : 'Student sign-up opened in your browser. Finish there and VS Code will complete sign-in automatically. If the callback does not return, use the fallback code shown in the browser from the OJ Account window.'
+          ? 'Student sign-in opened in your browser. Finish there and VS Code will complete sign-in automatically. If the callback does not return, use the fallback code shown in the browser from the Placeholder Practice window.'
+          : 'Student sign-up opened in your browser. Finish there and VS Code will complete sign-in automatically. If the callback does not return, use the fallback code shown in the browser from the Placeholder Practice window.'
       );
     } catch (error) {
       await this.clearPendingAuth();
@@ -112,7 +112,7 @@ export class BrowserAuthFlow implements BrowserAuthFlowLike {
     const pending = this.readPendingAuth();
     if (!pending) {
       this.window.showErrorMessage(
-        'Received a browser auth callback, but no student sign-in is pending. Start again from OJ Login or Sign up.'
+        'Received a browser auth callback, but no student sign-in is pending. Start again from Placeholder Practice Login or Sign up.'
       );
       return;
     }
@@ -120,7 +120,7 @@ export class BrowserAuthFlow implements BrowserAuthFlowLike {
     if (pending.createdAt + PENDING_BROWSER_AUTH_TTL_MS < this.now()) {
       await this.clearPendingAuth();
       this.window.showErrorMessage(
-        'The pending browser auth callback has expired. Start again from OJ Login or Sign up.'
+        'The pending browser auth callback has expired. Start again from Placeholder Practice Login or Sign up.'
       );
       return;
     }
@@ -131,7 +131,7 @@ export class BrowserAuthFlow implements BrowserAuthFlowLike {
 
     if (!state) {
       this.window.showErrorMessage(
-        'The browser auth callback is missing its state value. If the browser shows a code, use the fallback code entry from the OJ Account window.'
+        'The browser auth callback is missing its state value. If the browser shows a code, use the fallback code entry from the Placeholder Practice window.'
       );
       return;
     }
@@ -145,7 +145,7 @@ export class BrowserAuthFlow implements BrowserAuthFlowLike {
 
     if (!code) {
       this.window.showErrorMessage(
-        'The browser auth callback did not include a sign-in code. If the browser shows a code, use the fallback code entry from the OJ Account window.'
+        'The browser auth callback did not include a sign-in code. If the browser shows a code, use the fallback code entry from the Placeholder Practice window.'
       );
       return;
     }
@@ -185,8 +185,8 @@ export class BrowserAuthFlow implements BrowserAuthFlowLike {
     }
 
     return mapExtensionError(error).userMessage.replace(
-      'Run OJ: Sign In and try again.',
-      'Open OJ Account and try again.'
+      'Run Placeholder Practice: Sign In and try again.',
+      'Open Placeholder Practice and try again.'
     );
   }
 
@@ -242,5 +242,5 @@ export class BrowserAuthFlow implements BrowserAuthFlowLike {
 }
 
 export function createStudentAuthCallbackUri(uriScheme: string): string {
-  return `${uriScheme}://local.oj-vscode-extension${STUDENT_AUTH_CALLBACK_PATH}`;
+  return `${uriScheme}://local.placeholder-extension${STUDENT_AUTH_CALLBACK_PATH}`;
 }

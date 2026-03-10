@@ -23,8 +23,8 @@ test('account status bar shows a visible sign-in entry point before login', () =
 
   controller.refresh();
 
-  assert.equal(item.text, '$(account) OJ');
-  assert.equal(item.tooltip, 'Open OJ account and sign in to start practicing');
+  assert.equal(item.text, '$(account) Placeholder');
+  assert.equal(item.tooltip, 'Open Placeholder account and sign in to start practicing');
   assert.equal(item.command, 'oj.account.show');
   assert.equal(item.shown, 1);
 });
@@ -35,8 +35,8 @@ test('account status bar shows the student email after login', () => {
 
   controller.refresh({ isAuthenticated: true, email: 'student1@example.com' });
 
-  assert.equal(item.text, '$(account) OJ');
-  assert.equal(item.tooltip, 'Signed in as student1@example.com. Open OJ account and stats');
+  assert.equal(item.text, '$(account) Placeholder');
+  assert.equal(item.tooltip, 'Signed in as student1@example.com. Open Placeholder account and stats');
   assert.equal(item.shown, 1);
 });
 
@@ -47,6 +47,6 @@ test('account status bar remains stable after repeated refreshes', () => {
   controller.refresh();
   controller.refresh({ isAuthenticated: true, email: 'student1@example.com' });
 
-  assert.equal(item.text, '$(account) OJ');
+  assert.equal(item.text, '$(account) Placeholder');
   assert.equal(item.shown, 2);
 });

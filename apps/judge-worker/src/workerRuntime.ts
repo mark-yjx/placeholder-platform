@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
-import { PostgresJudgeResultRepository, PostgresJudgeJobQueue, PostgresSubmissionRepository } from '@packages/infrastructure/src';
-import type { Verdict } from '@packages/domain/src/judge';
-import type { SubmissionStatus } from '@packages/domain/src/submission';
+import { PostgresJudgeResultRepository, PostgresJudgeJobQueue, PostgresSubmissionRepository } from '@placeholder/infrastructure/src';
+import type { Verdict } from '@placeholder/domain/src/judge';
+import type { SubmissionStatus } from '@placeholder/domain/src/submission';
 import { createWorkerLogger } from './observability/WorkerLogger';
 import { PythonRunnerPlugin } from './runner/PythonRunnerPlugin';
 import { RunnerRegistry } from './runner/RunnerRegistry';
@@ -26,7 +26,7 @@ export type WorkerRuntimeHandle = {
 };
 
 type WorkerTickDependencies = {
-  queue: { claimNext: () => Promise<import('@packages/contracts/src').Judge.JudgeJob | null>; acknowledge: (submissionId: string) => Promise<void> };
+  queue: { claimNext: () => Promise<import('@placeholder/contracts/src').Judge.JudgeJob | null>; acknowledge: (submissionId: string) => Promise<void> };
   submissions: {
     findById: (id: string) => Promise<{
       id: string;

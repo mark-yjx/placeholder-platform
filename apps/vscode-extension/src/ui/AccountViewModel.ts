@@ -52,7 +52,7 @@ function createInitials(displayName: string, email: string): string {
   const source = displayName.trim() || email.trim();
   const parts = source.split(/[\s@._-]+/).filter((part) => part.length > 0);
   const initials = parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
-  return initials || 'OJ';
+  return initials || 'PP';
 }
 
 function renderBarChart(
@@ -253,7 +253,7 @@ export function createAccountViewModel(input: {
 
   if (!input.isAuthenticated || !email || !role) {
     return {
-      title: 'OJ Practice',
+      title: 'Placeholder Practice',
       status: 'Solve problems directly in VS Code.',
       email: '',
       role: '',
@@ -778,7 +778,7 @@ ${sharedHead}
           <div class="profile-hero-main">
             <div class="profile-avatar" aria-hidden="true">${escapeHtml(profileInitials)}</div>
             <div class="profile-hero-copy">
-              <p class="eyebrow">OJ Practice</p>
+              <p class="eyebrow">Placeholder Practice</p>
               <h2 class="hero-title">${escapeHtml(displayName)}</h2>
               <p class="hero-copy">${status}</p>
               <div class="profile-meta">

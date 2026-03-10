@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import type { Verdict } from '@packages/domain/src/judge';
+import type { Verdict } from '@placeholder/domain/src/judge';
 
 function resolveRepoRoot(): string {
   const candidates = [process.cwd(), path.resolve(process.cwd(), '..', '..')];

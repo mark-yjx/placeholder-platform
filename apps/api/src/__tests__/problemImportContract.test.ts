@@ -72,7 +72,7 @@ test('problem import creates collapse on first import and skips an identical re-
   assert.equal(definitions[0].difficulty, 'easy');
   assert.deepEqual(definitions[0].tags, ['digits', 'iteration']);
   assert.equal(definitions[0].version, '1.0.0');
-  assert.equal(definitions[0].author, 'COMP9021 Staff');
+  assert.equal(definitions[0].author, 'Placeholder Staff');
   assert.deepEqual(definitions[0].examples, [
     { inputJson: '111', expectedJson: '1' },
     { inputJson: '111122223333', expectedJson: '123' }

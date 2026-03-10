@@ -1,8 +1,8 @@
 import {
   CredentialRecord,
   CredentialRepository
-} from '@packages/application/src/auth/PasswordCredentialAuthService';
-import { Role } from '@packages/domain/src/identity';
+} from '@placeholder/application/src/auth/PasswordCredentialAuthService';
+import { Role } from '@placeholder/domain/src/identity';
 
 export class InMemoryCredentialRepository implements CredentialRepository {
   private readonly credentialsByEmail = new Map<string, CredentialRecord>();

@@ -1,5 +1,5 @@
-import { JudgeJobQueue } from '@packages/application/src/submission/CreateSubmissionUseCase';
-import { Judge } from '@packages/contracts/src';
+import { JudgeJobQueue } from '@placeholder/application/src/submission/CreateSubmissionUseCase';
+import { Judge } from '@placeholder/contracts/src';
 
 export interface PostgresJudgeJobQueueSqlClient {
   query<T>(sql: string, params?: readonly unknown[]): Promise<readonly T[]>;

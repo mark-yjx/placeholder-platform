@@ -756,7 +756,7 @@ test('fallback browser auth command reports invalid credentials and does not per
   await restoredStore.hydrate();
   assert.equal(restoredStore.getAccessToken(), null);
   assert.ok(
-    shownErrors.includes('[oj.auth.enterBrowserCode] Invalid email or password. Run OJ: Sign In and try again.')
+    shownErrors.includes('[oj.auth.enterBrowserCode] Invalid email or password. Run Placeholder Practice: Sign In and try again.')
   );
   assert.ok(
     outputLines.some((line) => line.includes('[oj.auth.enterBrowserCode] error: API 401 AUTH_INVALID_CREDENTIALS'))
@@ -1727,7 +1727,7 @@ test('running submission result shows actionable progress notification', async (
 
   assert.ok(
     infoMessages.some((message) =>
-      message.includes('Submission is still running. Run OJ: View Result again shortly.')
+      message.includes('Submission is still running. Run Placeholder Practice: View Result again shortly.')
     )
   );
 });
@@ -2120,7 +2120,7 @@ test('judged compile/runtime/timeout failures and API transport failures surface
 
   assert.ok(
     transportErrors.some((message) =>
-      message.includes('Unable to reach the OJ API. Check that the server is running and verify oj.apiBaseUrl')
+      message.includes('Unable to reach the Placeholder student API. Check that the server is running and verify oj.apiBaseUrl')
     )
   );
 });

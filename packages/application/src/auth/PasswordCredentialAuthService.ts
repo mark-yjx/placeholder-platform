@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { Email, Role } from '@packages/domain/src/identity';
+import { Email, Role } from '@placeholder/domain/src/identity';
 
 export type CredentialRecord = {
   userId: string;

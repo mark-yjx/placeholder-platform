@@ -1,5 +1,5 @@
-import { Role } from '@packages/domain/src/identity';
-import { AuthorizationPolicyService } from '@packages/domain/src/services';
+import { Role } from '@placeholder/domain/src/identity';
+import { AuthorizationPolicyService } from '@placeholder/domain/src/services';
 
 export type AuthorizationDenialAuditRecord = {
   actorUserId: string;

@@ -19,7 +19,7 @@ From the repository root:
 ```bash
 npm install
 export VITE_ADMIN_API_BASE_URL=http://127.0.0.1:8200
-npm -w @apps/admin-web run dev
+npm -w @placeholder/admin run dev
 ```
 
 By default Vite serves the app on `http://127.0.0.1:5173`.
@@ -27,19 +27,19 @@ By default Vite serves the app on `http://127.0.0.1:5173`.
 ## Build
 
 ```bash
-npm -w @apps/admin-web run build
+npm -w @placeholder/admin run build
 ```
 
 ## Typecheck
 
 ```bash
-npm -w @apps/admin-web run typecheck
+npm -w @placeholder/admin run typecheck
 ```
 
 ## Test
 
 ```bash
-npm -w @apps/admin-web run test
+npm -w @placeholder/admin run test
 ```
 
 Token storage policy:

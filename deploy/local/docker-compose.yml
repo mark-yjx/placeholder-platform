@@ -1,9 +1,9 @@
-name: oj-local
+name: placeholder-local
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: oj-local-postgres
+    container_name: placeholder-local-postgres
     environment:
       POSTGRES_USER: oj
       POSTGRES_PASSWORD: oj
@@ -11,7 +11,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - oj_local_postgres_data:/var/lib/postgresql/data
+      - placeholder_local_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U oj -d oj"]
       interval: 5s
@@ -20,7 +20,7 @@ services:
 
   api:
     image: node:22-alpine
-    container_name: oj-local-api
+    container_name: placeholder-local-api
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,7 +50,7 @@ services:
 
   worker:
     image: node:22-alpine
-    container_name: oj-local-worker
+    container_name: placeholder-local-worker
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,4 +76,4 @@ services:
       retries: 20
 
 volumes:
-  oj_local_postgres_data:
+  placeholder_local_postgres_data:

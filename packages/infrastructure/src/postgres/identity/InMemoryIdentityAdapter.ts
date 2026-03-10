@@ -1,9 +1,9 @@
-import { User } from '@packages/domain/src/identity';
+import { User } from '@placeholder/domain/src/identity';
 import {
   AccountRepository,
   InviteRecord,
   InviteRepository
-} from '@packages/application/src/auth/AuthProvisioningService';
+} from '@placeholder/application/src/auth/AuthProvisioningService';
 
 export class InMemoryIdentityAdapter implements InviteRepository, AccountRepository {
   private readonly invitesByToken = new Map<string, InviteRecord>();

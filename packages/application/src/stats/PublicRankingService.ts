@@ -1,4 +1,4 @@
-import { Ports, Services } from '@packages/domain/src';
+import { Ports, Services } from '@placeholder/domain/src';
 
 export type PublicRankingEntry = Ports.RankingEntry;
 

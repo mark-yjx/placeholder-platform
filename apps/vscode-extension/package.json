@@ -1,9 +1,9 @@
 {
-  "name": "oj-vscode-extension",
-  "displayName": "OJ VSCode",
-  "description": "Local-first COMP9021 online judge workflow for login, problem browsing, starter files, submission polling, and result inspection in VS Code.",
+  "name": "placeholder-extension",
+  "displayName": "Placeholder Practice",
+  "description": "Local-first Placeholder Practice workflow for login, problem browsing, starter files, submission polling, and result inspection in VS Code.",
   "private": true,
-  "publisher": "local",
+  "publisher": "placeholder",
   "version": "0.1.0",
   "license": "UNLICENSED",
   "icon": "media/icon.png",
@@ -20,11 +20,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mark-yjx/comp9021-oj.git"
+    "url": "git+https://github.com/mark-yjx/placeholder-platform.git"
   },
-  "homepage": "https://github.com/mark-yjx/comp9021-oj",
+  "homepage": "https://github.com/mark-yjx/placeholder-platform",
   "bugs": {
-    "url": "https://github.com/mark-yjx/comp9021-oj/issues"
+    "url": "https://github.com/mark-yjx/placeholder-platform/issues"
   },
   "engines": {
     "vscode": "^1.90.0"
@@ -58,50 +58,50 @@
       "activitybar": [
         {
           "id": "ojSidebar",
-          "title": "OJ",
+          "title": "Placeholder",
           "icon": "media/icon.png"
         }
       ],
       "panel": [
         {
           "id": "ojPanel",
-          "title": "OJ Results",
+          "title": "Placeholder Judge",
           "icon": "media/icon.png"
         }
       ]
     },
     "configuration": {
-      "title": "OJ VSCode",
+      "title": "Placeholder Practice",
       "properties": {
         "oj.apiBaseUrl": {
           "type": "string",
           "default": "http://localhost:3100",
-          "description": "Base URL for the OJ API used by the extension."
+          "description": "Base URL for the Placeholder student API used by the extension."
         },
         "oj.requestTimeoutMs": {
           "type": "number",
           "default": 10000,
           "minimum": 1,
-          "description": "HTTP request timeout in milliseconds for OJ API requests. Tokens are stored locally in VS Code SecretStorage."
+          "description": "HTTP request timeout in milliseconds for Placeholder student API requests. Tokens are stored locally in VS Code SecretStorage."
         }
       }
     },
     "commands": [
       {
         "command": "oj.account.show",
-        "title": "OJ: Open Account"
+        "title": "Placeholder Practice: Open Account"
       },
       {
         "command": "oj.logout",
-        "title": "OJ: Logout"
+        "title": "Placeholder Practice: Logout"
       },
       {
         "command": "oj.login",
-        "title": "OJ: Login"
+        "title": "Placeholder Practice: Login"
       },
       {
         "command": "oj.practice.fetchProblems",
-        "title": "OJ: Fetch Problems",
+        "title": "Placeholder Practice: Fetch Problems",
         "icon": {
           "light": "media/fetch-problems-light.svg",
           "dark": "media/fetch-problems-dark.svg"
@@ -109,50 +109,50 @@
       },
       {
         "command": "oj.practice.submitCode",
-        "title": "OJ: Submit Code"
+        "title": "Placeholder Practice: Submit Code"
       },
       {
         "command": "oj.practice.submitCurrentFile",
-        "title": "OJ: Submit Current File"
+        "title": "Placeholder Practice: Submit Current File"
       },
       {
         "command": "oj.practice.runPublicTests",
-        "title": "OJ: Run Public Tests"
+        "title": "Placeholder Practice: Run Public Tests"
       },
       {
         "command": "oj.practice.viewResult",
-        "title": "OJ: View Result"
+        "title": "Placeholder Practice: View Result"
       },
       {
         "command": "oj.practice.cancelPolling",
-        "title": "OJ: Cancel Polling"
+        "title": "Placeholder Practice: Cancel Polling"
       },
       {
         "command": "oj.practice.selectSubmission",
-        "title": "OJ: Show Submission Detail"
+        "title": "Placeholder Practice: Show Submission Detail"
       },
       {
         "command": "oj.engagement.favoriteProblem",
-        "title": "OJ: Favorite Problem"
+        "title": "Placeholder Practice: Favorite Problem"
       },
       {
         "command": "oj.engagement.submitReview",
-        "title": "OJ: Submit Review"
+        "title": "Placeholder Practice: Submit Review"
       },
       {
         "command": "oj.stats.show",
-        "title": "OJ: Show Public Stats"
+        "title": "Placeholder Practice: Show Public Stats"
       },
       {
         "command": "oj.ranking.show",
-        "title": "OJ: Show Public Ranking"
+        "title": "Placeholder Practice: Show Public Ranking"
       }
     ],
     "views": {
       "ojSidebar": [
         {
           "id": "ojPracticeHome",
-          "name": "OJ Practice",
+          "name": "Placeholder Practice",
           "type": "webview",
           "when": "oj.practice.homeVisible"
         },
@@ -194,9 +194,9 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "node -e \"console.log('lint @apps/vscode-extension')\"",
+    "lint": "node -e \"console.log('lint placeholder-extension')\"",
     "test": "rm -rf .tmp-test && tsc -p tsconfig.test.json && node --test .tmp-test/__tests__/*.test.js",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "package:vsix": "npm run build && node ../../node_modules/@vscode/vsce/vsce package --no-dependencies --out oj-vscode-extension-$(node -p \"require('./package.json').version\").vsix"
+    "package:vsix": "npm run build && node ../../node_modules/@vscode/vsce/vsce package --no-dependencies --out placeholder-extension-$(node -p \"require('./package.json').version\").vsix"
   }
 }

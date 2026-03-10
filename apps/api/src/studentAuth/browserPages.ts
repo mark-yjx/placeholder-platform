@@ -8,7 +8,7 @@ function escapeHtml(value: string): string {
 }
 
 const ALLOWED_CALLBACK_SCHEMES = new Set(['vscode', 'vscode-insiders']);
-const ALLOWED_CALLBACK_AUTHORITIES = new Set(['local.oj-vscode-extension']);
+const ALLOWED_CALLBACK_AUTHORITIES = new Set(['local.placeholder-extension']);
 
 function renderLayout(input: { title: string; body: string }): string {
   return `<!doctype html>
@@ -252,7 +252,7 @@ export function renderStudentAuthForm(input: {
   callbackUri?: string | null;
   state?: string | null;
 }): string {
-  const pageTitle = input.mode === 'sign-in' ? 'OJ Practice Sign In' : 'OJ Practice Sign Up';
+  const pageTitle = input.mode === 'sign-in' ? 'Placeholder Practice Sign In' : 'Placeholder Practice Sign Up';
   const action = input.mode === 'sign-in' ? '/auth/sign-in' : '/auth/sign-up';
   const secondaryHref = input.mode === 'sign-in' ? '/auth/sign-up' : '/auth/sign-in';
   const secondaryLabel = input.mode === 'sign-in' ? 'Sign up' : 'Sign in';
@@ -278,7 +278,7 @@ export function renderStudentAuthForm(input: {
     title: pageTitle,
     body: `
       <div class="intro">
-        <h1>OJ Practice</h1>
+        <h1>Placeholder Practice</h1>
         <p class="muted support-copy">${escapeHtml(supportCopy)}</p>
       </div>
       <section class="card form-card">

@@ -529,7 +529,7 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
   <body>
     <main class="webview-shell section-stack problem-detail-shell">
       <section class="hero-card">
-        <p class="eyebrow">OJ Practice</p>
+        <p class="eyebrow">Placeholder Practice</p>
         <h2>${title}</h2>
         <p class="hero-copy">${summary}</p>
         ${

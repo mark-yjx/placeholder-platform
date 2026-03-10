@@ -1,7 +1,7 @@
 import {
   AuthorizationAuditLogRepository,
   AuthorizationDenialAuditRecord
-} from '@packages/application/src/auth/RbacAuthorizationService';
+} from '@placeholder/application/src/auth/RbacAuthorizationService';
 
 export class InMemoryAuthorizationAuditLogRepository implements AuthorizationAuditLogRepository {
   private readonly denials: AuthorizationDenialAuditRecord[] = [];

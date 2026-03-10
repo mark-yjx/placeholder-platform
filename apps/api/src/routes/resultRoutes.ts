@@ -1,6 +1,6 @@
-import { RbacAuthorizationService } from '@packages/application/src/auth';
-import { ResultQueryService } from '@packages/application/src/results';
-import { Role } from '@packages/domain/src/identity';
+import { RbacAuthorizationService } from '@placeholder/application/src/auth';
+import { ResultQueryService } from '@placeholder/application/src/results';
+import { Role } from '@placeholder/domain/src/identity';
 import { SUBMISSION_ADMIN_ROUTE_PERMISSIONS } from './permissionMapping';
 
 type ActorRequest = {

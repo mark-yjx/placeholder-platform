@@ -2,9 +2,9 @@ import {
   ProblemAdminCrudService,
   ProblemPublicationService,
   ProblemVersionHistoryQueryService
-} from '@packages/application/src/problem';
-import { RbacAuthorizationService } from '@packages/application/src/auth';
-import { Role } from '@packages/domain/src/identity';
+} from '@placeholder/application/src/problem';
+import { RbacAuthorizationService } from '@placeholder/application/src/auth';
+import { Role } from '@placeholder/domain/src/identity';
 import { PROBLEM_ADMIN_ROUTE_PERMISSIONS } from './permissionMapping';
 import { validateCreateProblemRequest, validateUpdateProblemRequest } from './problemValidationContracts';
 

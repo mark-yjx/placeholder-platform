@@ -41,7 +41,7 @@ for (const filePath of files) {
   let match;
   while ((match = IMPORT_RE.exec(content)) !== null) {
     const specifier = match[1];
-    if (!specifier.startsWith('@apps/') && !specifier.startsWith('@packages/')) continue;
+    if (!specifier.startsWith('@placeholder/')) continue;
 
     const isAllowed = rule.allowWorkspaceImports.includes(specifier);
     if (!isAllowed) {

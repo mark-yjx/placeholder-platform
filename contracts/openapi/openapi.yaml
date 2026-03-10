@@ -1,5 +1,5 @@
 openapi: 3.1.0
 info:
-  title: COMP9021 Practice Platform API
+  title: Placeholder Platform API
   version: 0.1.0
 paths: {}

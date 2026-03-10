@@ -1,7 +1,7 @@
 import {
   SubmissionAuditLogEntry,
   SubmissionAuditLogRepository
-} from '@packages/application/src/submission/AdminSubmissionManagementService';
+} from '@placeholder/application/src/submission/AdminSubmissionManagementService';
 
 export class InMemorySubmissionAuditLogRepository implements SubmissionAuditLogRepository {
   private readonly entries: SubmissionAuditLogEntry[] = [];

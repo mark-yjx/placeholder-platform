@@ -105,7 +105,7 @@ test('sample collapse manifest problem folder matches the canonical manifest lay
   assert.equal(manifest.difficulty, 'easy');
   assert.deepEqual(manifest.tags, ['digits', 'iteration']);
   assert.equal(manifest.version, '1.0.0');
-  assert.equal(manifest.author, 'COMP9021 Staff');
+  assert.equal(manifest.author, 'Placeholder Staff');
 
   assert.match(statement, /# Collapse Identical Digits/);
   assert.match(starter, /def collapse\(number\):/);

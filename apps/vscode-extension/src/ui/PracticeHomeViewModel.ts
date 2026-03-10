@@ -23,7 +23,7 @@ export function createPracticeHomeViewModel(input: {
 }): PracticeHomeViewModel {
   if (!input.isAuthenticated) {
     return {
-      title: 'OJ Practice',
+      title: 'Placeholder Practice',
       subtitle: 'Solve problems directly in VS Code.',
       cardTitle: 'Sign in to start practicing',
       cardCopy: 'Sign in to browse problems, open coding files, run public tests, and submit solutions.',
@@ -41,7 +41,7 @@ export function createPracticeHomeViewModel(input: {
   }
 
   return {
-    title: 'OJ Practice',
+    title: 'Placeholder Practice',
     subtitle: 'No problems loaded yet.',
     cardTitle: 'Fetch problems to start practicing',
     cardCopy: 'Load the latest practice set, then choose a problem to read in the detail view and solve in your workspace.',
@@ -126,7 +126,7 @@ export function createPracticeHomeHtml(input: PracticeHomeViewModel): string {
   <body>
     <main class="webview-shell section-stack practice-home-shell">
       <section class="home-intro">
-        <p class="eyebrow">OJ Practice</p>
+        <p class="eyebrow">Placeholder Practice</p>
         <h2 class="home-title">${escapeHtml(input.title)}</h2>
         <p class="home-copy">${escapeHtml(input.subtitle)}</p>
       </section>

@@ -137,7 +137,7 @@ function loadSubmissionStatusModule() {
     'src',
     'submission',
     'SubmissionStatus.ts'
-  )) as typeof import('@packages/domain/src/submission');
+  )) as typeof import('@placeholder/domain/src/submission');
 }
 
 test('postgres submission repository preserves status across repository restart simulation', async () => {

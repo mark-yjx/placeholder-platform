@@ -1,5 +1,5 @@
-import { JudgeCallbackIngestionService } from '@packages/application/src/results/JudgeCallbackIngestionService';
-import { Verdict } from '@packages/domain/src/judge';
+import { JudgeCallbackIngestionService } from '@placeholder/application/src/results/JudgeCallbackIngestionService';
+import { Verdict } from '@placeholder/domain/src/judge';
 
 type JudgeCallbackRequest = {
   submissionId: string;

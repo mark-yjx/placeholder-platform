@@ -1,11 +1,11 @@
-import { SubmissionAdminRepository } from '@packages/application/src/submission/AdminSubmissionManagementService';
+import { SubmissionAdminRepository } from '@placeholder/application/src/submission/AdminSubmissionManagementService';
 import {
   SubmissionCreationRepository,
   SubmissionRecord
-} from '@packages/application/src/submission/CreateSubmissionUseCase';
-import { SubmissionStateRepository } from '@packages/application/src/results/JudgeCallbackIngestionService';
-import { SubmissionResultReadRepository } from '@packages/application/src/results/ResultQueryService';
-import { SubmissionStatus } from '@packages/domain/src/submission';
+} from '@placeholder/application/src/submission/CreateSubmissionUseCase';
+import { SubmissionStateRepository } from '@placeholder/application/src/results/JudgeCallbackIngestionService';
+import { SubmissionResultReadRepository } from '@placeholder/application/src/results/ResultQueryService';
+import { SubmissionStatus } from '@placeholder/domain/src/submission';
 import {
   assertSubmissionStartsQueued,
   assertValidSubmissionTransition

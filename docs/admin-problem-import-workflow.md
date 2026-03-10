@@ -72,9 +72,9 @@ Verify it from the real student-facing stack:
 }
 ```
 
-3. Run `OJ: Login`.
-4. Run `OJ: Fetch Problems`.
-5. Select `collapse` in `OJ Problems`.
+3. Run `Placeholder Practice: Login`.
+4. Run `Placeholder Practice: Fetch Problems`.
+5. Select `collapse` in `Problems`.
 
 Expected:
 - the statement shown in VS Code matches `problems/collapse/statement.md`
@@ -86,14 +86,14 @@ Expected:
 Verify that the imported problem can be judged through the supported stack:
 
 1. Edit `.oj/problems/collapse.py`.
-2. Run `OJ: Submit Current File`.
+2. Run `Placeholder Practice: Submit Current File`.
 3. Observe the submission lifecycle:
 
 ```text
 queued -> running -> finished|failed
 ```
 
-4. Run `OJ: View Result`.
+4. Run `Placeholder Practice: View Result`.
 
 Expected:
 - the submission is processed by the real compose worker path

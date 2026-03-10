@@ -1,5 +1,5 @@
-import { Verdict } from '@packages/domain/src/judge';
-import { SubmissionStatus } from '@packages/domain/src/submission';
+import { Verdict } from '@placeholder/domain/src/judge';
+import { SubmissionStatus } from '@placeholder/domain/src/submission';
 import { SubmissionRecord } from '../submission/CreateSubmissionUseCase';
 
 export type JudgeCallback = {

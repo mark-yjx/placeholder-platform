@@ -1,4 +1,4 @@
-import { PublicStatsProjectionRepository, PublicStatsSnapshot } from '@packages/application/src/stats';
+import { PublicStatsProjectionRepository, PublicStatsSnapshot } from '@placeholder/application/src/stats';
 
 export type SeededJudgedSubmission = {
   submissionId: string;

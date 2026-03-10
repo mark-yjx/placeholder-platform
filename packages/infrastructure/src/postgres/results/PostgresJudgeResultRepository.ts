@@ -1,8 +1,8 @@
 import {
   JudgeResultPersistenceRepository,
   PersistedJudgeResult
-} from '@packages/application/src/results/JudgeCallbackIngestionService';
-import { JudgeResultReadRepository } from '@packages/application/src/results/ResultQueryService';
+} from '@placeholder/application/src/results/JudgeCallbackIngestionService';
+import { JudgeResultReadRepository } from '@placeholder/application/src/results/ResultQueryService';
 
 export interface PostgresJudgeResultSqlClient {
   query<T>(sql: string, params?: readonly unknown[]): Promise<readonly T[]>;

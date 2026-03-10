@@ -15,7 +15,7 @@ test('network failures show a user-friendly API unreachable message', () => {
   });
 
   assert.deepEqual(mapExtensionError(error), {
-    userMessage: 'Unable to reach the OJ API. Check that the server is running and verify oj.apiBaseUrl, then try again.',
+    userMessage: 'Unable to reach the Placeholder student API. Check that the server is running and verify oj.apiBaseUrl, then try again.',
     logMessage: 'Network error ECONNREFUSED'
   });
 });
@@ -28,7 +28,7 @@ test('401 errors prompt the user to sign in', () => {
       })
     ),
     {
-      userMessage: 'Please sign in to continue. Run OJ: Sign In and try again.',
+      userMessage: 'Please sign in to continue. Run Placeholder Practice: Sign In and try again.',
       logMessage: 'API 401 AUTH_INVALID_TOKEN'
     }
   );
@@ -42,7 +42,7 @@ test('invalid credential errors show a login-specific message', () => {
       })
     ),
     {
-      userMessage: 'Invalid email or password. Run OJ: Sign In and try again.',
+      userMessage: 'Invalid email or password. Run Placeholder Practice: Sign In and try again.',
       logMessage: 'API 401 AUTH_INVALID_CREDENTIALS'
     }
   );
@@ -81,7 +81,7 @@ test('unexpected failures hide raw stack traces from the user', () => {
     new Error('Error: boom\n    at extension.ts:10:2\n    at runner:1:1')
   );
 
-  assert.equal(mapped.userMessage, 'Something went wrong. Check the OJ output channel for details, then try again.');
+  assert.equal(mapped.userMessage, 'Something went wrong. Check the Placeholder Practice output channel for details, then try again.');
   assert.match(mapped.logMessage, /boom/);
 });
 

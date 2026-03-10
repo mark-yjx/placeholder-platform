@@ -1,5 +1,5 @@
-import { PublicationState } from '@packages/domain/src/problem';
-import { ProblemRepository } from '@packages/domain/src/ports';
+import { PublicationState } from '@placeholder/domain/src/problem';
+import { ProblemRepository } from '@placeholder/domain/src/ports';
 
 export type ManifestProblemAssets = {
   entryFunction: string;

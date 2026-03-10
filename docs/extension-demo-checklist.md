@@ -1,4 +1,4 @@
-# OJ VSCode Student Smoke Checklist
+# Placeholder Practice Student Smoke Checklist
 
 This checklist verifies the current student shell against the real local stack.
 
@@ -36,7 +36,7 @@ Local runtime assumptions:
 - compose `api` service is the real API runtime
 - compose `worker` service is running
 - do not start a second host-side `npm run worker:start` for the same local queue
-- fixture student login is available through `OJ: Login`
+- fixture student login is available through `Placeholder Practice: Login`
 
 Health check before opening VS Code:
 
@@ -56,7 +56,7 @@ Expected:
 
 ### 1. Install and configure the extension
 
-1. Install `apps/vscode-extension/oj-vscode-extension-0.1.0.vsix`.
+1. Install `apps/vscode-extension/placeholder-extension-0.1.0.vsix`.
 2. Open Settings JSON.
 3. Set:
 
@@ -68,16 +68,16 @@ Expected:
 ```
 
 Expected:
-- the `OJ VSCode` output channel opens on activation
+- the `Placeholder Practice` output channel opens on activation
 - activation logs show:
-  - `OJ VSCode extension activated`
+  - `Placeholder Practice extension activated`
   - `API base URL: http://localhost:3100`
   - `Request timeout: 10000ms`
   - `Auth tokens are stored in VS Code SecretStorage on this machine.`
 
 ### 2. Login
 
-1. Run `OJ: Login`.
+1. Run `Placeholder Practice: Login`.
 
 Expected:
 - notification: `[oj.login] success`
@@ -85,10 +85,10 @@ Expected:
 
 ### 3. Fetch published problems
 
-1. Run `OJ: Fetch Problems`.
+1. Run `Placeholder Practice: Fetch Problems`.
 
 Expected:
-- `OJ Problems` and `OJ Submissions` views are available in Explorer
+- `Problems` and `Submissions` views are available in Explorer
 - the problems list is loaded from the real API
 - output includes:
   - `[oj.practice.fetchProblems] start`
@@ -97,10 +97,10 @@ Expected:
 
 ### 4. Open a problem statement and starter file
 
-1. In `OJ Problems`, click a problem item.
+1. In `Problems`, click a problem item.
 
 Expected:
-- the selected problem is revealed in the `OJ Problems` tree
+- the selected problem is revealed in the `Problems` tree
 - the statement is shown in VS Code UI for the selected problem
 - a local editable starter file opens at `.oj/problems/<problemId>.py`
 - the starter file content comes from the backend problem detail, not a hardcoded template
@@ -111,12 +111,12 @@ Manual check:
 ### 5. Submit the current editor file
 
 1. Keep the `.oj/problems/<problemId>.py` file focused.
-2. Run `OJ: Submit Current File`.
+2. Run `Placeholder Practice: Submit Current File`.
 
 Expected:
 - notification confirms submission success
 - output includes `Submitted current file: <submissionId>`
-- a new submission row appears immediately in `OJ Submissions`
+- a new submission row appears immediately in `Submissions`
 - the initial submission state is `queued`
 
 ### 6. Observe polling through terminal state
@@ -127,14 +127,14 @@ Expected without any extra action:
 - polling stops automatically after the terminal state is reached
 
 Optional manual check:
-1. Run `OJ: Cancel Polling` while a submission is still `queued` or `running`.
+1. Run `Placeholder Practice: Cancel Polling` while a submission is still `queued` or `running`.
 2. Confirm the extension reports cancellation cleanly.
 
 ### 7. Inspect the final result
 
-1. Select the submission row in `OJ Submissions`.
-2. Run `OJ: Show Submission Detail`.
-3. Run `OJ: View Result`.
+1. Select the submission row in `Submissions`.
+2. Run `Placeholder Practice: Show Submission Detail`.
+3. Run `Placeholder Practice: View Result`.
 
 Expected:
 - terminal output and/or result UI shows the current terminal state
@@ -170,11 +170,11 @@ Expected:
 2. Reload the VS Code window.
 3. Open the starter file again.
 4. Replace the current file with a deliberately broken implementation for the selected problem.
-5. Run `OJ: Submit Current File`.
+5. Run `Placeholder Practice: Submit Current File`.
 
 Expected:
 - the submission still transitions `queued` -> `running` -> `finished|failed`
-- if the result is `failed`, `OJ: View Result` shows a non-empty failure reason
+- if the result is `failed`, `Placeholder Practice: View Result` shows a non-empty failure reason
 - if the result is `finished` with `CE` or `RE`, the extension shows that terminal verdict instead of collapsing it into a generic transport error
 
 ## Persistence Check

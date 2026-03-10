@@ -105,8 +105,8 @@ class FakeAuthService:
             raise TotpVerificationError("Admin session is invalid.")
         return TotpEnrollment(
             secret="ABCDEF123456",
-            otpauth_uri="otpauth://totp/OJ%20Admin%20Web:admin@example.com?secret=ABCDEF123456",
-            issuer="OJ Admin Web",
+            otpauth_uri="otpauth://totp/Placeholder%20Admin:admin@example.com?secret=ABCDEF123456",
+            issuer="Placeholder Admin",
             account_name="admin@example.com",
         )
 
@@ -273,7 +273,7 @@ def test_oidc_email_fallback_relinks_existing_provider_mapping_for_same_user(mon
             microsoft_oidc_mode="mock",
             microsoft_mock_email="fresh-admin@example.com",
             microsoft_mock_subject="fresh-admin-microsoft-subject",
-            totp_issuer="OJ Admin Web",
+            totp_issuer="Placeholder Admin",
             session_ttl_seconds=3600,
             pending_tfa_ttl_seconds=600,
         ),
@@ -450,7 +450,7 @@ def test_totp_enrollment_routes_work_for_authenticated_admin(monkeypatch) -> Non
 
     assert init_response.status_code == 200
     assert init_response.json()["secret"] == "ABCDEF123456"
-    assert init_response.json()["issuer"] == "OJ Admin Web"
+    assert init_response.json()["issuer"] == "Placeholder Admin"
     assert confirm_response.status_code == 204
     assert service.enrollment_confirmed is True
 

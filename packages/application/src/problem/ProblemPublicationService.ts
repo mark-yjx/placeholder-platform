@@ -1,5 +1,5 @@
-import { Problem } from '@packages/domain/src/problem';
-import { ProblemRepository } from '@packages/domain/src/ports';
+import { Problem } from '@placeholder/domain/src/problem';
+import { ProblemRepository } from '@placeholder/domain/src/ports';
 
 export interface ProblemPublicationRepository extends ProblemRepository {}
 

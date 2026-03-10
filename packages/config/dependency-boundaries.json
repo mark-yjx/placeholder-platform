@@ -2,11 +2,11 @@
   "rules": {
     "apps": {
       "allowWorkspaceImports": [
-        "@packages/application",
-        "@packages/domain",
-        "@packages/contracts",
-        "@packages/infrastructure",
-        "@packages/config"
+        "@placeholder/application",
+        "@placeholder/domain",
+        "@placeholder/contracts",
+        "@placeholder/infrastructure",
+        "@placeholder/config"
       ]
     },
     "packages/domain": {

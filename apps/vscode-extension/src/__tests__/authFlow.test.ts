@@ -96,7 +96,7 @@ test('admin login is rejected and clears any existing extension session', async 
 
 test('login view model exposes auth fields', () => {
   const view = createLoginViewModel();
-  assert.equal(view.title, 'OJ Login');
+  assert.equal(view.title, 'Placeholder Practice Login');
   assert.deepEqual(view.fields, ['email', 'password']);
 });
 
@@ -109,7 +109,7 @@ test('browser auth completion stores a student session', async () => {
 
   assert.equal(
     commands.getBrowserAuthUrl('sign-in', {
-      callbackUri: 'vscode://local.oj-vscode-extension/auth-complete',
+      callbackUri: 'vscode://local.placeholder-extension/auth-complete',
       state: 'state-123'
     }),
     'http://oj.test/auth/sign-in'

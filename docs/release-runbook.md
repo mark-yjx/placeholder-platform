@@ -95,12 +95,12 @@ npm run extension:package
 ```
 
 Expected artifacts:
-- `apps/vscode-extension/oj-vscode-extension-<version>.vsix`
-- `dist/oj-vscode.vsix`
+- `apps/vscode-extension/placeholder-extension-<version>.vsix`
+- `dist/placeholder-extension.vsix`
 
 Packaging behavior:
 - the versioned VSIX filename is derived from `apps/vscode-extension/package.json`
-- `dist/oj-vscode.vsix` is the stable copy used by the release workflow artifact upload
+- `dist/placeholder-extension.vsix` is the stable copy used by the release workflow artifact upload
 - run packaging from a clean checkout after `npm install` to keep the result reproducible
 
 ### 5. Smoke Check The Package
@@ -108,8 +108,8 @@ Packaging behavior:
 Recommended:
 1. Install the generated VSIX into VS Code.
 2. Set `oj.apiBaseUrl`.
-3. Run the manual checklist in [OJ VSCode Demo Checklist](./extension-demo-checklist.md).
-4. Confirm the installed extension activates and loads the `OJ Problems` and `OJ Submissions` views.
+3. Run the manual checklist in [Placeholder Practice Demo Checklist](./extension-demo-checklist.md).
+4. Confirm the installed extension activates and loads the `Problems` and `Submissions` views.
 5. Remove the installed VSIX if the rehearsal build should not remain installed.
 
 Minimum expected flow:
@@ -119,7 +119,7 @@ Minimum expected flow:
 - view result
 
 Fresh-install validation reference:
-- run the [OJ VSCode Demo Checklist](./extension-demo-checklist.md) end-to-end on a clean profile or clean VS Code instance
+- run the [Placeholder Practice Demo Checklist](./extension-demo-checklist.md) end-to-end on a clean profile or clean VS Code instance
 
 ### 6. Create Release Notes
 
@@ -155,7 +155,7 @@ Use either:
 - or the `Release` workflow via GitHub Actions
 
 Attach:
-- `dist/oj-vscode.vsix`
+- `dist/placeholder-extension.vsix`
 
 Expected release workflow behavior:
 - installs dependencies
@@ -163,7 +163,7 @@ Expected release workflow behavior:
 - runs tests
 - runs builds
 - packages the VSIX
-- uploads `dist/oj-vscode.vsix` as an artifact
+- uploads `dist/placeholder-extension.vsix` as an artifact
 
 ## Rollback Guidance
 
@@ -196,7 +196,7 @@ Use these checks before publishing a VSIX.
 ### 1) Login failures
 
 Symptoms:
-- `OJ: Login` fails with invalid credentials or authentication errors.
+- `Placeholder Practice: Login` fails with invalid credentials or authentication errors.
 
 Checks:
 
@@ -266,7 +266,7 @@ Expected:
 2. Run `npm install`.
 3. Run typecheck, tests, and build.
 4. Run `npm run extension:package`.
-5. Confirm `apps/vscode-extension/oj-vscode-extension-<version>.vsix` and `dist/oj-vscode.vsix` exist.
+5. Confirm `apps/vscode-extension/placeholder-extension-<version>.vsix` and `dist/placeholder-extension.vsix` exist.
 6. Install and smoke-test the VSIX.
 7. Create release notes.
 8. Tag `v<version>`.
