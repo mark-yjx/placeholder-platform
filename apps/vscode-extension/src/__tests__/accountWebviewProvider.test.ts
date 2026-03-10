@@ -85,6 +85,12 @@ test('account panel renders browser auth actions when unauthenticated', () => {
   );
 
   assert.match(html, /Student authentication now happens in your browser\./);
+  assert.match(html, /Primary action/);
+  assert.match(html, /New to OJ\?/);
+  assert.match(html, /How it works/);
+  assert.match(html, /Open browser auth/);
+  assert.match(html, /Return to VS Code/);
+  assert.match(html, /keep this window open/i);
   assert.doesNotMatch(html, /Administrators must use Web Admin/);
   assert.match(html, /data-command="signIn"/);
   assert.match(html, /data-command="signUp"/);

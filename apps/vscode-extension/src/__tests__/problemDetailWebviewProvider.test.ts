@@ -21,7 +21,12 @@ test('fetched problem detail renders expected fields', () => {
   assert.match(html, /What the problem is asking/);
   assert.match(html, /Expected input format/);
   assert.match(html, /Expected output format/);
+  assert.match(html, /Input and output contract/);
+  assert.match(html, /class="format-panel"/);
   assert.match(html, /Student-visible examples/);
+  assert.match(html, /class="action-cluster"/);
+  assert.match(html, /class="secondary-actions"/);
+  assert.match(html, /class="primary-action"/);
   assert.doesNotMatch(html, /Entry Function:/);
   assert.doesNotMatch(html, /Language:/);
   assert.match(html, /<h1>Collapse Identical Digits<\/h1>/);
@@ -29,6 +34,11 @@ test('fetched problem detail renders expected fields', () => {
   assert.match(html, /<ul><li>Keep the sign<\/li><li>Keep the order<\/li><\/ul>/);
   assert.match(html, /Use <code>collapse\(number\)<\/code>\./);
   assert.doesNotMatch(html, /<pre style="white-space: pre-wrap;">/);
+  assert.match(html, /max-width: 720px/);
+  assert.match(html, /font-size: 0\.92rem/);
+  assert.match(html, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/);
+  assert.match(html, /font-size: 0\.86rem/);
+  assert.match(html, /width: 100%/);
   assert.match(html, /Starter File:<\/strong> <code>collapse\.py<\/code>/);
   assert.doesNotMatch(html, /\/home\/mark\/src\/oj-vscode\/\.oj\/problems\/collapse\.py/);
   assert.match(html, /<vscode-button data-command="openStarter">Open Coding File<\/vscode-button>/);
@@ -85,7 +95,7 @@ test('problem detail renders fenced code blocks as HTML code blocks', () => {
   assert.match(html, /<pre><code class="language-python">def collapse\(number\):\n    return number<\/code><\/pre>/);
 });
 
-test('problem detail renders manifest examples as structured cards', () => {
+test('problem detail renders manifest examples as rows inside one shared panel', () => {
   const html = createProblemDetailHtml(
     createProblemDetailViewModel(
       {
@@ -102,8 +112,14 @@ test('problem detail renders manifest examples as structured cards', () => {
     )
   );
 
-  assert.match(html, /Example 1/);
+  assert.match(html, /class="examples-panel"/);
+  assert.match(html, /class="example-row"/);
+  assert.match(html, /class="example-label-rail"/);
+  assert.match(html, /<p class="example-label">Example 1<\/p>/);
+  assert.match(html, /class="example-io"/);
   assert.match(html, /<p class="field-label">Input<\/p>/);
   assert.match(html, /112233/);
   assert.match(html, /123/);
+  assert.doesNotMatch(html, /class="example-card"/);
+  assert.doesNotMatch(html, /class="example-index"/);
 });

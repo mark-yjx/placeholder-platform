@@ -51,10 +51,127 @@ export function createAccountHtml(input: AccountViewModel): string {
   const role = escapeHtml(input.role);
   const errorMessage = input.errorMessage ? `<p role="alert">${escapeHtml(input.errorMessage)}</p>` : '';
   const toolkitScript = 'https://unpkg.com/@vscode/webview-ui-toolkit@1.4.0/dist/toolkit.min.js';
+  const accountStyles = `
+      .account-shell {
+        width: min(100%, 560px);
+      }
+
+      .account-shell .login-card {
+        gap: 18px;
+      }
+
+      .account-shell .hero-copy {
+        max-width: 44ch;
+      }
+
+      .account-shell .account-intro {
+        display: grid;
+        gap: 8px;
+      }
+
+      .account-shell .account-hero {
+        display: grid;
+        gap: 14px;
+      }
+
+      .account-shell .account-section {
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 70%, transparent), transparent 150%),
+          var(--surface-muted);
+      }
+
+      .account-shell .account-section-title {
+        margin: 0;
+        font-size: 0.84rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+      }
+
+      .account-shell .account-section-copy {
+        margin: 0;
+        color: var(--text-secondary);
+      }
+
+      .account-shell .account-actions {
+        display: grid;
+        gap: 10px;
+      }
+
+      .account-shell .account-actions vscode-button,
+      .account-shell .account-secondary-actions vscode-button {
+        width: 100%;
+      }
+
+      .account-shell .account-actions vscode-button::part(control),
+      .account-shell .account-secondary-actions vscode-button::part(control) {
+        justify-content: center;
+        min-height: 38px;
+      }
+
+      .account-shell .account-secondary-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+      }
+
+      .account-shell .account-steps {
+        display: grid;
+        gap: 10px;
+      }
+
+      .account-shell .account-step {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+      }
+
+      .account-shell .account-step-number {
+        display: inline-grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .account-shell .account-step-copy {
+        display: grid;
+        gap: 4px;
+      }
+
+      .account-shell .account-step-copy strong {
+        font-size: 0.95rem;
+      }
+
+      .account-shell .account-note {
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px dashed var(--border);
+        background: color-mix(in srgb, var(--surface) 72%, transparent);
+        color: var(--text-secondary);
+      }
+
+      .account-shell .account-note strong {
+        color: var(--vscode-foreground);
+      }
+    `;
   const sharedHead = `    <meta charset="UTF-8" />
     <script type="module" src="${toolkitScript}"></script>
     <style>
       ${createWebviewStyles({ centered: true })}
+      ${accountStyles}
     </style>`;
 
   if (!input.isAuthenticated) {
@@ -64,19 +181,58 @@ export function createAccountHtml(input: AccountViewModel): string {
 ${sharedHead}
   </head>
   <body>
-    <main class="webview-shell">
+    <main class="webview-shell account-shell">
       <section class="hero-card login-card">
-        <p class="eyebrow">Student Auth</p>
-        <h2 class="hero-title">${title}</h2>
-        <p class="hero-copy">${status}</p>
+        <div class="account-hero">
+          <div class="account-intro">
+            <p class="eyebrow">Student Auth</p>
+            <h2 class="hero-title">${title}</h2>
+            <p class="hero-copy">${status}</p>
+          </div>
+          <p class="hero-copy">Continue in your system browser, then return to VS Code to finish with the one-time code you receive.</p>
+        </div>
         ${errorMessage ? `<div class="alert-card error-text">${errorMessage}</div>` : ''}
-        <div class="field-stack">
-          <p class="hero-copy">Use the system browser to sign in or create a student account, then paste the one-time code back into VS Code.</p>
-          <div class="login-actions">
+        <section class="account-section">
+          <p class="account-section-title">Primary action</p>
+          <p class="account-section-copy">Already have an account? Open the browser sign-in flow, authenticate there, then paste the returned code back into VS Code.</p>
+          <div class="account-actions">
             <vscode-button appearance="primary" data-command="signIn">Sign in</vscode-button>
+          </div>
+        </section>
+        <section class="account-section">
+          <p class="account-section-title">New to OJ?</p>
+          <p class="account-section-copy">Create your student account in the browser first, then come back here to complete setup in the extension.</p>
+          <div class="account-secondary-actions">
             <vscode-button data-command="signUp">Sign up</vscode-button>
           </div>
-        </div>
+        </section>
+        <section class="account-section">
+          <p class="account-section-title">How it works</p>
+          <div class="account-steps">
+            <div class="account-step">
+              <span class="account-step-number">1</span>
+              <div class="account-step-copy">
+                <strong>Open browser auth</strong>
+                <p class="account-section-copy">Choose Sign in or Sign up to launch the student auth page in your browser.</p>
+              </div>
+            </div>
+            <div class="account-step">
+              <span class="account-step-number">2</span>
+              <div class="account-step-copy">
+                <strong>Finish in the browser</strong>
+                <p class="account-section-copy">Complete the login or registration flow there. The browser will show a one-time code when it finishes.</p>
+              </div>
+            </div>
+            <div class="account-step">
+              <span class="account-step-number">3</span>
+              <div class="account-step-copy">
+                <strong>Return to VS Code</strong>
+                <p class="account-section-copy">Paste that code into the VS Code prompt to activate your session in the extension.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <p class="account-note"><strong>Note:</strong> keep this window open. After browser auth finishes, return here and complete the one-time code prompt.</p>
       </section>
     </main>
     <script>
