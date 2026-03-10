@@ -6,6 +6,7 @@ import { HmacSessionTokenIssuer } from '../sessionTokens';
 
 function createRuntime() {
   const tokenIssuer = new HmacSessionTokenIssuer('local-dev-jwt-secret');
+  const issuedBrowserCodes = new Map<string, { accessToken: string; email: string; role: 'student' }>();
 
   return {
     auth: {
@@ -27,6 +28,64 @@ function createRuntime() {
         }
 
         throw new Error('Authentication failed');
+      },
+      async browserSignIn(input: { email: string; password: string }) {
+        if (input.email === 'student1@example.com' && input.password === 'secret') {
+          const accessToken = await tokenIssuer.issue({
+            userId: 'student-1',
+            roles: ['student' as Role]
+          });
+          issuedBrowserCodes.set('SIGNIN1234', {
+            accessToken,
+            email: 'student1@example.com',
+            role: 'student'
+          });
+          return {
+            code: 'SIGNIN1234',
+            expiresAt: '2026-03-10T10:00:00.000Z',
+            email: 'student1@example.com',
+            displayName: 'Student One'
+          };
+        }
+
+        if (input.email === 'student2@example.com' && input.password === 'secret') {
+          throw new Error('This account is disabled. Contact the platform administrator.');
+        }
+
+        if (input.email === 'admin@example.com' && input.password === 'ignored') {
+          throw new Error('This sign-in is for students only. Administrators must use Web Admin.');
+        }
+
+        throw new Error('Invalid email or password.');
+      },
+      async browserSignUp(input: { email: string; displayName: string; password: string }) {
+        if (input.email === 'existing@example.com') {
+          throw new Error('An account with that email already exists. Sign in instead.');
+        }
+
+        const accessToken = await tokenIssuer.issue({
+          userId: 'student-new',
+          roles: ['student' as Role]
+        });
+        issuedBrowserCodes.set('SIGNUP1234', {
+          accessToken,
+          email: input.email,
+          role: 'student'
+        });
+        return {
+          code: 'SIGNUP1234',
+          expiresAt: '2026-03-10T10:00:00.000Z',
+          email: input.email,
+          displayName: input.displayName
+        };
+      },
+      async exchangeBrowserCode(input: { code: string }) {
+        const match = issuedBrowserCodes.get(input.code);
+        if (!match) {
+          throw new Error('That sign-in code is invalid or has already been used.');
+        }
+        issuedBrowserCodes.delete(input.code);
+        return match;
       }
     },
     persistence: {
@@ -167,6 +226,52 @@ async function invoke(options: {
   };
 }
 
+async function invokeRaw(options: {
+  path: string;
+  method?: string;
+  headers?: Record<string, string>;
+  rawBody?: string;
+  runtime?: unknown;
+}): Promise<{ statusCode: number; body: string; headers: Record<string, string> }> {
+  const handler = createApiRequestHandler([
+    { name: 'postgres', check: async () => true },
+    { name: 'queue', check: async () => true }
+  ], options.runtime as never);
+
+  const request = {
+    url: options.path,
+    method: options.method ?? 'GET',
+    headers: options.headers ?? {},
+    async *[Symbol.asyncIterator]() {
+      if (options.rawBody && options.rawBody.length > 0) {
+        yield Buffer.from(options.rawBody);
+      }
+    }
+  };
+
+  let ended = false;
+  const response = {
+    statusCode: 0,
+    headers: {} as Record<string, string>,
+    body: '',
+    setHeader(name: string, value: string) {
+      this.headers[name] = value;
+    },
+    end(value: string) {
+      this.body = value;
+      ended = true;
+    }
+  };
+
+  await handler(request as never, response as never);
+  assert.equal(ended, true);
+  return {
+    statusCode: response.statusCode,
+    body: response.body,
+    headers: response.headers
+  };
+}
+
 async function loginAs(
   runtime: unknown,
   request: { email: string; password: string }
@@ -304,6 +409,124 @@ test('api errors use unified auth and not-found structure', async () => {
       code: 'NOT_FOUND',
       message: 'Not Found'
     }
+  });
+});
+
+test('student browser auth pages render and complete sign-in/sign-up handoff flows', async () => {
+  const runtime = createRuntime();
+
+  const signInPage = await invokeRaw({
+    path: '/auth/sign-in',
+    runtime
+  });
+  assert.equal(signInPage.statusCode, 200);
+  assert.match(signInPage.headers['content-type'], /text\/html/);
+  assert.match(signInPage.body, /Student Sign In/);
+  assert.match(signInPage.body, /name="email"/);
+  assert.match(signInPage.body, /name="password"/);
+
+  const signUpPage = await invokeRaw({
+    path: '/auth/sign-up',
+    runtime
+  });
+  assert.equal(signUpPage.statusCode, 200);
+  assert.match(signUpPage.body, /Student Sign Up/);
+  assert.match(signUpPage.body, /name="displayName"/);
+  assert.match(signUpPage.body, /name="confirmPassword"/);
+
+  const signInSuccess = await invokeRaw({
+    path: '/auth/sign-in',
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    rawBody: 'email=student1%40example.com&password=secret',
+    runtime
+  });
+  assert.equal(signInSuccess.statusCode, 200);
+  assert.match(signInSuccess.body, /SIGNIN1234/);
+  assert.match(signInSuccess.body, /Student Sign In Complete/);
+
+  const signUpSuccess = await invokeRaw({
+    path: '/auth/sign-up',
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    rawBody: 'email=newstudent%40example.com&displayName=New%20Student&password=secret&confirmPassword=secret',
+    runtime
+  });
+  assert.equal(signUpSuccess.statusCode, 200);
+  assert.match(signUpSuccess.body, /SIGNUP1234/);
+  assert.match(signUpSuccess.body, /Student Account Created/);
+});
+
+test('student browser auth rejects duplicate email, disabled users, and invalid exchange codes cleanly', async () => {
+  const runtime = createRuntime();
+
+  const duplicateSignUp = await invokeRaw({
+    path: '/auth/sign-up',
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    rawBody: 'email=existing%40example.com&displayName=Existing&password=secret&confirmPassword=secret',
+    runtime
+  });
+  assert.equal(duplicateSignUp.statusCode, 409);
+  assert.match(duplicateSignUp.body, /already exists/i);
+
+  const disabledSignIn = await invokeRaw({
+    path: '/auth/sign-in',
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    rawBody: 'email=student2%40example.com&password=secret',
+    runtime
+  });
+  assert.equal(disabledSignIn.statusCode, 403);
+  assert.match(disabledSignIn.body, /disabled/i);
+
+  const mismatchSignUp = await invokeRaw({
+    path: '/auth/sign-up',
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    rawBody: 'email=student3%40example.com&displayName=Mismatch&password=secret&confirmPassword=wrong',
+    runtime
+  });
+  assert.equal(mismatchSignUp.statusCode, 400);
+  assert.match(mismatchSignUp.body, /does not match/i);
+
+  const exchange = await invoke({
+    path: '/auth/extension/exchange',
+    method: 'POST',
+    body: { code: 'NOPE' },
+    runtime
+  });
+  assert.equal(exchange.statusCode, 401);
+  assert.deepEqual(exchange.body, {
+    error: {
+      code: 'AUTH_INVALID_EXCHANGE_CODE',
+      message: 'That sign-in code is invalid or has already been used.'
+    }
+  });
+});
+
+test('student browser auth exchange returns a student session token for the extension', async () => {
+  const runtime = createRuntime();
+  await invokeRaw({
+    path: '/auth/sign-in',
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    rawBody: 'email=student1%40example.com&password=secret',
+    runtime
+  });
+
+  const exchange = await invoke({
+    path: '/auth/extension/exchange',
+    method: 'POST',
+    body: { code: 'SIGNIN1234' },
+    runtime
+  });
+
+  assert.equal(exchange.statusCode, 200);
+  assert.deepEqual(exchange.body, {
+    accessToken: (exchange.body as { accessToken: string }).accessToken,
+    email: 'student1@example.com',
+    role: 'student'
   });
 });
 

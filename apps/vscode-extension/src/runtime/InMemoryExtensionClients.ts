@@ -1,5 +1,5 @@
 import { EngagementApiClient, ProblemReview, PublicRankingEntry, PublicStatsView } from '../api/EngagementApiClient';
-import { AuthClient, LoginRequest, LoginResponse } from '../auth/AuthClient';
+import { AuthClient, BrowserAuthMode, LoginRequest, LoginResponse } from '../auth/AuthClient';
 import {
   CreateSubmissionRequest,
   CreateSubmissionResponse,
@@ -19,6 +19,18 @@ export class InMemoryAuthClient implements AuthClient {
 
   async login(_request: LoginRequest): Promise<LoginResponse> {
     return { accessToken: 'dev-student-token', role: 'student' };
+  }
+
+  getBrowserAuthUrl(mode: BrowserAuthMode): string {
+    return `http://localhost:3000/auth/${mode}`;
+  }
+
+  async exchangeBrowserCode(_input: { code: string }): Promise<LoginResponse> {
+    return {
+      accessToken: 'dev-student-token',
+      email: 'student@example.com',
+      role: 'student'
+    };
   }
 }
 

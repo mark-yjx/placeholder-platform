@@ -44,8 +44,8 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
       return {
         userMessage:
           errorCode === 'AUTH_INVALID_CREDENTIALS'
-            ? 'Invalid email or password. Run OJ: Login and try again.'
-            : 'Please login to continue. Run OJ: Login and try again.',
+            ? 'Invalid email or password. Run OJ: Sign In and try again.'
+            : 'Please sign in to continue. Run OJ: Sign In and try again.',
         logMessage: `API 401 ${errorCode}`
       };
     }
@@ -97,7 +97,7 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
 
   if (normalizedMessage.includes('authentication required')) {
     return {
-      userMessage: 'Please login to continue. Run OJ: Login and try again.',
+      userMessage: 'Please sign in to continue. Run OJ: Sign In and try again.',
       logMessage: rawMessage
     };
   }

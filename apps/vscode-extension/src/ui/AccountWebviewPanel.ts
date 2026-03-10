@@ -5,7 +5,8 @@ import { mapExtensionError } from '../errors/ExtensionErrorMapper';
 import { createAccountHtml, createAccountViewModel } from './AccountViewModel';
 
 type AccountWebviewMessage =
-  | { command: 'login'; email?: unknown; password?: unknown }
+  | { command: 'signIn' }
+  | { command: 'signUp' }
   | { command: 'logout' };
 
 export type AccountWebviewLike = {
@@ -23,7 +24,7 @@ export type AccountWebviewPanelLike = {
   dispose(): void;
 };
 
-type AccountWindowLike = Pick<typeof vscode.window, 'showErrorMessage' | 'showInformationMessage'>;
+type AccountWindowLike = Pick<typeof vscode.window, 'showErrorMessage' | 'showInformationMessage' | 'showInputBox'>;
 
 export class AccountWebviewPanel {
   private currentPanel: AccountWebviewPanelLike | null = null;
@@ -33,7 +34,8 @@ export class AccountWebviewPanel {
     private readonly authCommands: AuthCommands,
     private readonly tokenStore: SessionTokenStore,
     private readonly window: AccountWindowLike,
-    private readonly createPanel: () => AccountWebviewPanelLike
+    private readonly createPanel: () => AccountWebviewPanelLike,
+    private readonly openExternalUrl: (url: string) => Promise<void>
   ) {}
 
   show(): void {
@@ -64,10 +66,8 @@ export class AccountWebviewPanel {
       return;
     }
 
-    if (message.command === 'login') {
-      const email = typeof message.email === 'string' ? message.email : '';
-      const password = typeof message.password === 'string' ? message.password : '';
-      await this.login(email, password);
+    if (message.command === 'signIn' || message.command === 'signUp') {
+      await this.startBrowserAuth(message.command === 'signIn' ? 'sign-in' : 'sign-up');
       return;
     }
 
@@ -76,9 +76,27 @@ export class AccountWebviewPanel {
     }
   }
 
-  private async login(email: string, password: string): Promise<void> {
+  private async startBrowserAuth(mode: 'sign-in' | 'sign-up'): Promise<void> {
     try {
-      const session = await this.authCommands.login({ email, password });
+      await this.openExternalUrl(this.authCommands.getBrowserAuthUrl(mode));
+      this.window.showInformationMessage(
+        mode === 'sign-in'
+          ? 'Student sign-in opened in your browser. Paste the one-time code here when you finish.'
+          : 'Student sign-up opened in your browser. Paste the one-time code here when you finish.'
+      );
+      const code = await this.window.showInputBox({
+        prompt:
+          mode === 'sign-in'
+            ? 'Paste the student sign-in code from your browser'
+            : 'Paste the student sign-up code from your browser',
+        placeHolder: 'Example: 8F2A9C4D10',
+        ignoreFocusOut: true
+      });
+      if (code === undefined) {
+        return;
+      }
+
+      const session = await this.authCommands.completeBrowserAuth(code);
       if (!isCompleteAccountIdentity(session)) {
         await this.authCommands.logout();
         throw new Error('Login succeeded but account details are incomplete.');
@@ -111,7 +129,7 @@ export class AccountWebviewPanel {
     }
 
     return mapExtensionError(error).userMessage.replace(
-      'Run OJ: Login and try again.',
+      'Run OJ: Sign In and try again.',
       'Try again from the Account window.'
     );
   }
@@ -139,7 +157,7 @@ function isAccountWebviewMessage(message: unknown): message is AccountWebviewMes
   }
 
   const command = (message as { command?: unknown }).command;
-  return command === 'login' || command === 'logout';
+  return command === 'signIn' || command === 'signUp' || command === 'logout';
 }
 
 function isCompleteAccountIdentity(input: { email?: string | null; role?: string | null }): input is {

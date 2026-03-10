@@ -17,6 +17,14 @@ class FakeAuthClient implements AuthClient {
   async login(): Promise<{ accessToken: string }> {
     return { accessToken: 'student-token' };
   }
+
+  getBrowserAuthUrl(): string {
+    return 'http://oj.test/auth/sign-in';
+  }
+
+  async exchangeBrowserCode(): Promise<{ accessToken: string }> {
+    return { accessToken: 'student-token' };
+  }
 }
 
 class FakePracticeApiClient implements PracticeApiClient {

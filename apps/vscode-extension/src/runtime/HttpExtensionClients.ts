@@ -8,7 +8,7 @@ import {
   PublishedProblem,
   SubmissionResult
 } from '../api/PracticeApiClient';
-import { AuthClient, LoginRequest, LoginResponse } from '../auth/AuthClient';
+import { AuthClient, BrowserAuthMode, LoginRequest, LoginResponse } from '../auth/AuthClient';
 import { ApiErrorPayload, ExtensionApiError } from '../errors/ExtensionErrorMapper';
 
 export type ExtensionApiClientConfig = {
@@ -94,6 +94,17 @@ export class HttpAuthClient implements AuthClient {
     return requestJson<LoginResponse>(this.config, '/auth/login', {
       method: 'POST',
       body: request
+    });
+  }
+
+  getBrowserAuthUrl(mode: BrowserAuthMode): string {
+    return `${this.config.apiBaseUrl}${mode === 'sign-in' ? '/auth/sign-in' : '/auth/sign-up'}`;
+  }
+
+  async exchangeBrowserCode(input: { code: string }): Promise<LoginResponse> {
+    return requestJson<LoginResponse>(this.config, '/auth/extension/exchange', {
+      method: 'POST',
+      body: input
     });
   }
 }

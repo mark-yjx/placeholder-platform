@@ -8,13 +8,21 @@ import { runProtectedCommand } from '../commands/ProtectedCommands';
 
 class FakeAuthClient implements AuthClient {
   constructor(
-    private readonly response: { accessToken: string; role?: 'admin' | 'student' } = {
+    private readonly response: { accessToken: string; email?: string; role?: 'admin' | 'student' } = {
       accessToken: 'student-token',
       role: 'student'
     }
   ) {}
 
-  async login(): Promise<{ accessToken: string; role?: 'admin' | 'student' }> {
+  async login(): Promise<{ accessToken: string; email?: string; role?: 'admin' | 'student' }> {
+    return this.response;
+  }
+
+  getBrowserAuthUrl(): string {
+    return 'http://oj.test/auth/sign-in';
+  }
+
+  async exchangeBrowserCode(): Promise<{ accessToken: string; email?: string; role?: 'admin' | 'student' }> {
     return this.response;
   }
 }
@@ -90,4 +98,21 @@ test('login view model exposes auth fields', () => {
   const view = createLoginViewModel();
   assert.equal(view.title, 'OJ Login');
   assert.deepEqual(view.fields, ['email', 'password']);
+});
+
+test('browser auth completion stores a student session', async () => {
+  const tokenStore = new SessionTokenStore();
+  const commands = new AuthCommands(
+    new FakeAuthClient({ accessToken: 'student-token', email: 'student@example.com', role: 'student' }),
+    tokenStore
+  );
+
+  assert.equal(commands.getBrowserAuthUrl('sign-in'), 'http://oj.test/auth/sign-in');
+  await commands.completeBrowserAuth('ABC123');
+
+  assert.equal(tokenStore.getAccessToken(), 'student-token');
+  assert.deepEqual(tokenStore.getSessionIdentity(), {
+    email: 'student@example.com',
+    role: 'student'
+  });
 });

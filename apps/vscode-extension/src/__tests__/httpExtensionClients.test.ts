@@ -38,11 +38,39 @@ test('http auth client posts credentials and surfaces invalid login mapping', as
         assert.ok(error instanceof ExtensionApiError);
         assert.equal(
           mapExtensionError(error).userMessage,
-          'Invalid email or password. Run OJ: Login and try again.'
+          'Invalid email or password. Run OJ: Sign In and try again.'
         );
         return true;
       }
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('http auth client exposes browser auth URLs and exchanges one-time codes', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    assert.equal(String(input), 'http://oj.test/auth/extension/exchange');
+    assert.equal(init?.method, 'POST');
+    assert.equal(init?.body, JSON.stringify({ code: 'ABC123' }));
+
+    return createJsonResponse({
+      accessToken: 'student-token',
+      email: 'student@example.com',
+      role: 'student'
+    });
+  };
+
+  try {
+    const client = new HttpAuthClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 });
+    assert.equal(client.getBrowserAuthUrl('sign-in'), 'http://oj.test/auth/sign-in');
+    assert.equal(client.getBrowserAuthUrl('sign-up'), 'http://oj.test/auth/sign-up');
+    assert.deepEqual(await client.exchangeBrowserCode({ code: 'ABC123' }), {
+      accessToken: 'student-token',
+      email: 'student@example.com',
+      role: 'student'
+    });
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -100,6 +100,7 @@ test('extension package keeps production packaging whitelist and activation even
     'onCommand:oj.account.show',
     'onCommand:oj.logout',
     'onCommand:oj.login',
+    'onCommand:oj.signup',
     'onCommand:oj.practice.fetchProblems',
     'onCommand:oj.practice.submitCode',
     'onCommand:oj.practice.submitCurrentFile',
@@ -123,11 +124,12 @@ test('extension package keeps production packaging whitelist and activation even
     { id: 'ojPanel', title: 'OJ Results', icon: 'media/icon.png' }
   ]);
   assert.deepEqual(
-    (manifest.contributes.commands ?? []).slice(0, 3),
+    (manifest.contributes.commands ?? []).slice(0, 4),
     [
       { command: 'oj.account.show', title: 'OJ: Open Account' },
       { command: 'oj.logout', title: 'OJ: Logout' },
-      { command: 'oj.login', title: 'OJ: Login' }
+      { command: 'oj.login', title: 'OJ: Sign In' },
+      { command: 'oj.signup', title: 'OJ: Sign Up' }
     ]
   );
   assert.deepEqual(

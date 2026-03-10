@@ -20,7 +20,7 @@ test('network failures show a user-friendly API unreachable message', () => {
   });
 });
 
-test('401 errors prompt the user to login', () => {
+test('401 errors prompt the user to sign in', () => {
   assert.deepEqual(
     mapExtensionError(
       new ExtensionApiError(401, {
@@ -28,7 +28,7 @@ test('401 errors prompt the user to login', () => {
       })
     ),
     {
-      userMessage: 'Please login to continue. Run OJ: Login and try again.',
+      userMessage: 'Please sign in to continue. Run OJ: Sign In and try again.',
       logMessage: 'API 401 AUTH_INVALID_TOKEN'
     }
   );
@@ -42,7 +42,7 @@ test('invalid credential errors show a login-specific message', () => {
       })
     ),
     {
-      userMessage: 'Invalid email or password. Run OJ: Login and try again.',
+      userMessage: 'Invalid email or password. Run OJ: Sign In and try again.',
       logMessage: 'API 401 AUTH_INVALID_CREDENTIALS'
     }
   );

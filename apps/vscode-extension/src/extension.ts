@@ -67,10 +67,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
   const submissionDetailProvider = new SubmissionDetailWebviewProvider();
-  const accountPanel = new AccountWebviewPanel(authCommands, tokenStore, vscode.window, () =>
-    vscode.window.createWebviewPanel('ojAccountPanel', 'OJ Account', vscode.ViewColumn.Beside, {
-      enableScripts: true
-    })
+  const accountPanel = new AccountWebviewPanel(
+    authCommands,
+    tokenStore,
+    vscode.window,
+    () =>
+      vscode.window.createWebviewPanel('ojAccountPanel', 'OJ Account', vscode.ViewColumn.Beside, {
+        enableScripts: true
+      }),
+    async (url) => {
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+    }
   );
   const accountStatusBar = new AccountStatusBarController(
     vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100)
@@ -96,6 +103,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       accountStatusBar.refresh();
     },
     output,
+    openExternalUrl: async (url) => {
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+    },
     window: vscode.window,
     registerCommand: (commandId, callback) => vscode.commands.registerCommand(commandId, callback)
   });

@@ -34,6 +34,7 @@
     "onCommand:oj.account.show",
     "onCommand:oj.logout",
     "onCommand:oj.login",
+    "onCommand:oj.signup",
     "onCommand:oj.practice.fetchProblems",
     "onCommand:oj.practice.submitCode",
     "onCommand:oj.practice.submitCurrentFile",
@@ -95,7 +96,11 @@
       },
       {
         "command": "oj.login",
-        "title": "OJ: Login"
+        "title": "OJ: Sign In"
+      },
+      {
+        "command": "oj.signup",
+        "title": "OJ: Sign Up"
       },
       {
         "command": "oj.practice.fetchProblems",

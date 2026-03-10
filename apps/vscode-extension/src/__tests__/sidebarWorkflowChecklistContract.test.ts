@@ -22,7 +22,7 @@ test('sidebar no longer registers account login as primary UI', () => {
   assert.doesNotMatch(manifestSource, /"id": "ojAccount"/);
 });
 
-test('status bar account entry and fallback login command both remain available', () => {
+test('status bar account entry and browser auth commands remain available', () => {
   const extensionSource = readFromRepoRoot('apps', 'vscode-extension', 'src', 'extension.ts');
   const statusBarSource = readFromRepoRoot(
     'apps',
@@ -43,7 +43,9 @@ test('status bar account entry and fallback login command both remain available'
   assert.match(statusBarSource, /this\.item\.text = '\$\(account\)'/);
   assert.match(statusBarSource, /commandId = 'oj\.account\.show'/);
   assert.match(extensionSource, /new AccountWebviewPanel/);
-  assert.match(panelSource, /message\.command === 'login'/);
+  assert.match(panelSource, /message\.command === 'signIn'/);
+  assert.match(panelSource, /message\.command === 'signUp'/);
   assert.match(panelSource, /message\.command === 'logout'/);
   assert.match(manifestSource, /"command": "oj\.login"/);
+  assert.match(manifestSource, /"command": "oj\.signup"/);
 });

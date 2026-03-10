@@ -33,6 +33,18 @@ type LocalApiRuntime = {
       token: string;
       roles: readonly Role[];
     }>;
+    browserSignIn: (input: {
+      email: string;
+      password: string;
+    }) => Promise<{ code: string; expiresAt: string; email: string; displayName: string }>;
+    browserSignUp: (input: {
+      email: string;
+      displayName: string;
+      password: string;
+    }) => Promise<{ code: string; expiresAt: string; email: string; displayName: string }>;
+    exchangeBrowserCode: (input: {
+      code: string;
+    }) => Promise<{ accessToken: string; email: string; role: 'student' }>;
   };
   persistence: {
     problemAdmin: {
@@ -157,6 +169,12 @@ function sendJson(response: ServerResponse, statusCode: number, payload: unknown
   response.end(JSON.stringify(payload));
 }
 
+function sendHtml(response: ServerResponse, statusCode: number, html: string): void {
+  response.statusCode = statusCode;
+  response.setHeader('content-type', 'text/html; charset=utf-8');
+  response.end(html);
+}
+
 function sendError(response: ServerResponse, error: ApiError): void {
   sendJson(response, error.statusCode, createErrorPayload(error));
 }
@@ -171,6 +189,16 @@ async function readJsonBody(request: IncomingMessage): Promise<Record<string, un
     return {};
   }
   return JSON.parse(raw) as Record<string, unknown>;
+}
+
+async function readFormBody(request: IncomingMessage): Promise<Record<string, string>> {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of request) {
+    chunks.push(chunk as Uint8Array);
+  }
+  const raw = Buffer.concat(chunks).toString('utf8').trim();
+  const params = new URLSearchParams(raw);
+  return Object.fromEntries(Array.from(params.entries()));
 }
 
 function resolveActorFromAuthorizationHeader(
@@ -267,17 +295,26 @@ function createLocalApiRuntime(): LocalApiRuntime {
   // Load workspace-bound adapters only when the local Postgres runtime is enabled.
   const { PasswordCredentialAuthService } = require('@packages/application/src/auth/PasswordCredentialAuthService') as typeof import('@packages/application/src/auth/PasswordCredentialAuthService');
   const { PostgresCredentialRepository } = require('@packages/infrastructure/src/postgres/identity/PostgresCredentialRepository') as typeof import('@packages/infrastructure/src/postgres/identity/PostgresCredentialRepository');
+  const { BrowserStudentAuthService, InMemoryBrowserAuthCodeStore, PostgresStudentAuthUserRepository } = require('./studentAuth/BrowserStudentAuthService') as typeof import('./studentAuth/BrowserStudentAuthService');
   const { createLocalPersistenceServices } = require('./runtime/localPersistenceWiring') as typeof import('./runtime/localPersistenceWiring');
-  const { createLocalPostgresSqlClient } = require('./runtime/localPostgresSqlClient') as typeof import('./runtime/localPostgresSqlClient');
   const sqlClient = createLocalPostgresSqlClient();
   const sessionSecret = process.env.JWT_SECRET?.trim() || 'local-dev-jwt-secret';
+  const tokenIssuer = new HmacSessionTokenIssuer(sessionSecret);
   const authService = new PasswordCredentialAuthService(
     new PostgresCredentialRepository(sqlClient),
-    new HmacSessionTokenIssuer(sessionSecret)
+    tokenIssuer
+  );
+  const browserAuthService = new BrowserStudentAuthService(
+    new PostgresStudentAuthUserRepository(sqlClient),
+    tokenIssuer,
+    new InMemoryBrowserAuthCodeStore()
   );
   return {
     auth: {
-      login: authService.login.bind(authService)
+      login: authService.login.bind(authService),
+      browserSignIn: browserAuthService.signIn.bind(browserAuthService),
+      browserSignUp: browserAuthService.signUp.bind(browserAuthService),
+      exchangeBrowserCode: browserAuthService.exchange.bind(browserAuthService)
     },
     persistence: createLocalPersistenceServices({
       mode: 'postgres',
@@ -306,6 +343,10 @@ export function createApiRequestHandler(
   localRuntime?: LocalApiRuntime
 ): (request: IncomingMessage, response: ServerResponse) => void | Promise<void> {
   const sessionSecret = process.env.JWT_SECRET?.trim() || 'local-dev-jwt-secret';
+  const {
+    renderStudentAuthForm,
+    renderStudentAuthSuccess
+  } = require('./studentAuth/browserPages') as typeof import('./studentAuth/browserPages');
 
   return async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
@@ -328,6 +369,159 @@ export function createApiRequestHandler(
     }
 
     const { persistence } = localRuntime;
+
+    if (path === '/auth/sign-in' && method === 'GET') {
+      sendHtml(response, 200, renderStudentAuthForm({ mode: 'sign-in' }));
+      return;
+    }
+
+    if (path === '/auth/sign-up' && method === 'GET') {
+      sendHtml(response, 200, renderStudentAuthForm({ mode: 'sign-up' }));
+      return;
+    }
+
+    if (path === '/auth/sign-in' && method === 'POST') {
+      const form = await readFormBody(request);
+      const email = String(form.email ?? '').trim();
+      const password = String(form.password ?? '').trim();
+
+      if (!email || !password) {
+        sendHtml(
+          response,
+          400,
+          renderStudentAuthForm({
+            mode: 'sign-in',
+            errorMessage: !email ? 'Email is required.' : 'Password is required.',
+            values: { email }
+          })
+        );
+        return;
+      }
+
+      try {
+        const handoff = await requireAuth(localRuntime).browserSignIn({ email, password });
+        sendHtml(
+          response,
+          200,
+          renderStudentAuthSuccess({
+            mode: 'sign-in',
+            email: handoff.email,
+            code: handoff.code,
+            expiresAt: handoff.expiresAt
+          })
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to sign in.';
+        const statusCode =
+          error instanceof Error && error.message.includes('disabled')
+            ? 403
+            : error instanceof Error && error.message.includes('Administrators must use Web Admin')
+              ? 403
+              : 401;
+        sendHtml(
+          response,
+          statusCode,
+          renderStudentAuthForm({
+            mode: 'sign-in',
+            errorMessage: message,
+            values: { email }
+          })
+        );
+      }
+      return;
+    }
+
+    if (path === '/auth/sign-up' && method === 'POST') {
+      const form = await readFormBody(request);
+      const email = String(form.email ?? '').trim();
+      const displayName = String(form.displayName ?? '').trim();
+      const password = String(form.password ?? '').trim();
+      const confirmPassword = String(form.confirmPassword ?? '').trim();
+
+      if (!email || !displayName || !password || !confirmPassword) {
+        sendHtml(
+          response,
+          400,
+          renderStudentAuthForm({
+            mode: 'sign-up',
+            errorMessage: 'Email, display name, password, and confirm password are required.',
+            values: { email, displayName }
+          })
+        );
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        sendHtml(
+          response,
+          400,
+          renderStudentAuthForm({
+            mode: 'sign-up',
+            errorMessage: 'Password confirmation does not match.',
+            values: { email, displayName }
+          })
+        );
+        return;
+      }
+
+      try {
+        const handoff = await requireAuth(localRuntime).browserSignUp({
+          email,
+          displayName,
+          password
+        });
+        sendHtml(
+          response,
+          200,
+          renderStudentAuthSuccess({
+            mode: 'sign-up',
+            email: handoff.email,
+            code: handoff.code,
+            expiresAt: handoff.expiresAt
+          })
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to create account.';
+        const statusCode =
+          error instanceof Error && error.message.includes('already exists')
+            ? 409
+            : 400;
+        sendHtml(
+          response,
+          statusCode,
+          renderStudentAuthForm({
+            mode: 'sign-up',
+            errorMessage: message,
+            values: { email, displayName }
+          })
+        );
+      }
+      return;
+    }
+
+    if (path === '/auth/extension/exchange' && method === 'POST') {
+      try {
+        const body = await readJsonBody(request);
+        const code = String(body.code ?? '').trim();
+        if (!code) {
+          sendError(
+            response,
+            createValidationError('invalid exchange payload', [missingFieldDetail('code')])
+          );
+          return;
+        }
+
+        const session = await requireAuth(localRuntime).exchangeBrowserCode({ code });
+        sendJson(response, 200, session);
+      } catch (error) {
+        if (error instanceof Error) {
+          sendError(response, new ApiError(401, 'AUTH_INVALID_EXCHANGE_CODE', error.message));
+          return;
+        }
+        sendError(response, mapUnknownError(error));
+      }
+      return;
+    }
 
     if (path === '/auth/login' && method === 'POST') {
       try {

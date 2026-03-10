@@ -46,6 +46,7 @@ declare module 'vscode' {
   export class Uri {
     readonly fsPath: string;
     static file(path: string): Uri;
+    static parse(value: string): Uri;
   }
   export const TreeItemCollapsibleState: {
     None: 0;
@@ -81,6 +82,10 @@ declare module 'vscode' {
   export const commands: {
     registerCommand(commandId: string, callback: (...args: unknown[]) => unknown): Disposable;
     executeCommand(commandId: string, ...args: unknown[]): Thenable<unknown>;
+  };
+
+  export const env: {
+    openExternal(target: Uri): Thenable<boolean>;
   };
 
   export const workspace: {
@@ -136,6 +141,7 @@ declare module 'vscode' {
       prompt?: string;
       placeHolder?: string;
       value?: string;
+      password?: boolean;
       ignoreFocusOut?: boolean;
     }): Thenable<string | undefined>;
     showQuickPick<T extends { label: string }>(

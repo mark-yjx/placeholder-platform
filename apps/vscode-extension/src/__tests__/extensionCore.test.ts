@@ -570,41 +570,50 @@ test('fetch problems handles an empty list gracefully', async () => {
   assert.ok(infoMessages.includes('No published problems available.'));
 });
 
-test('login command prompts for email and password before calling auth login', async () => {
+test('login command opens the browser and exchanges the returned sign-in code', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
-  let receivedRequest: { email: string; password: string } | null = null;
+  const openedUrls: string[] = [];
   const shownPrompts: string[] = [];
-  const shownPlaceholders: string[] = [];
-  const inputBoxValues = ['student@example.com', 'ignored'];
+  const secrets = new FakeSecretStorage();
+  const tokenStore = new SessionTokenStore(secrets);
 
-  class RecordingAuthCommands extends AuthCommands {
-    override async login(request: { email: string; password: string }): Promise<{
-      email: string | null;
-      role: string | null;
+  class RecordingAuthClient extends InMemoryAuthClient {
+    override getBrowserAuthUrl(mode: 'sign-in' | 'sign-up'): string {
+      assert.equal(mode, 'sign-in');
+      return 'http://oj.test/auth/sign-in';
+    }
+
+    override async exchangeBrowserCode(input: { code: string }): Promise<{
+      accessToken: string;
+      email: string;
+      role: 'student';
     }> {
-      receivedRequest = request;
+      assert.deepEqual(input, { code: 'ABC123' });
       return {
-        email: request.email,
-        role: null
+        accessToken: 'student-token',
+        email: 'student@example.com',
+        role: 'student'
       };
     }
   }
 
   registerExtensionCommands({
-    authCommands: new RecordingAuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
+    authCommands: new AuthCommands(new RecordingAuthClient(), tokenStore),
     practiceCommands: new PracticeCommands(new InMemoryPracticeApiClient(), new SessionTokenStore()),
     engagementCommands: new EngagementCommands(
       new InMemoryEngagementApiClient(),
       new SessionTokenStore()
     ),
+    openExternalUrl: async (url) => {
+      openedUrls.push(url);
+    },
     output: { appendLine: () => undefined },
     window: {
       showErrorMessage: () => undefined,
       showInformationMessage: () => undefined,
       showInputBox: async (options) => {
         shownPrompts.push(options?.prompt ?? '');
-        shownPlaceholders.push(options?.placeHolder ?? '');
-        return inputBoxValues.shift();
+        return 'ABC123';
       },
       showQuickPick: async (items) => items[0]
     },
@@ -616,24 +625,21 @@ test('login command prompts for email and password before calling auth login', a
 
   await handlers.get('oj.login')?.();
 
-  assert.deepEqual(receivedRequest, {
-    email: 'student@example.com',
-    password: 'ignored'
-  });
-  assert.deepEqual(shownPrompts, ['OJ Login: email', 'OJ Login: password']);
-  assert.deepEqual(shownPlaceholders, ['student1@example.com', 'Enter your password']);
+  assert.deepEqual(openedUrls, ['http://oj.test/auth/sign-in']);
+  assert.ok(shownPrompts.some((prompt) => prompt.includes('Paste the one-time student sign-in code')));
+  assert.equal(tokenStore.getAccessToken(), 'student-token');
 });
 
-test('login command cancels cleanly when email prompt is dismissed', async () => {
+test('login command cancels cleanly when sign-in code prompt is dismissed', async () => {
   const outputLines: string[] = [];
   const infoMessages: string[] = [];
   const shownErrors: string[] = [];
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
-  let loginCalls = 0;
+  let exchangeCalls = 0;
 
   class RecordingAuthCommands extends AuthCommands {
-    override async login(): Promise<{ email: string | null; role: string | null }> {
-      loginCalls += 1;
+    override async completeBrowserAuth(): Promise<{ email: string | null; role: string | null }> {
+      exchangeCalls += 1;
       return {
         email: null,
         role: null
@@ -663,51 +669,11 @@ test('login command cancels cleanly when email prompt is dismissed', async () =>
 
   await handlers.get('oj.login')?.();
 
-  assert.equal(loginCalls, 0);
+  assert.equal(exchangeCalls, 0);
   assert.deepEqual(shownErrors, []);
-  assert.deepEqual(infoMessages, []);
-  assert.ok(outputLines.includes('[oj.login] cancelled'));
-});
-
-test('login command cancels cleanly when password prompt is dismissed', async () => {
-  const outputLines: string[] = [];
-  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
-  let loginCalls = 0;
-  const inputBoxValues = ['student1@example.com', undefined];
-
-  class RecordingAuthCommands extends AuthCommands {
-    override async login(): Promise<{ email: string | null; role: string | null }> {
-      loginCalls += 1;
-      return {
-        email: null,
-        role: null
-      };
-    }
-  }
-
-  registerExtensionCommands({
-    authCommands: new RecordingAuthCommands(new InMemoryAuthClient(), new SessionTokenStore()),
-    practiceCommands: new PracticeCommands(new InMemoryPracticeApiClient(), new SessionTokenStore()),
-    engagementCommands: new EngagementCommands(
-      new InMemoryEngagementApiClient(),
-      new SessionTokenStore()
-    ),
-    output: { appendLine: (line) => outputLines.push(line) },
-    window: {
-      showErrorMessage: () => undefined,
-      showInformationMessage: () => undefined,
-      showInputBox: async () => inputBoxValues.shift(),
-      showQuickPick: async (items) => items[0]
-    },
-    registerCommand: (commandId, callback) => {
-      handlers.set(commandId, callback);
-      return { dispose: () => undefined };
-    }
-  });
-
-  await handlers.get('oj.login')?.();
-
-  assert.equal(loginCalls, 0);
+  assert.deepEqual(infoMessages, [
+    'Student sign-in opened in your browser. Complete it there, then paste the one-time code back here.'
+  ]);
   assert.ok(outputLines.includes('[oj.login] cancelled'));
 });
 
@@ -717,10 +683,9 @@ test('login command reports invalid credentials and does not persist token', asy
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const secrets = new FakeSecretStorage();
   const tokenStore = new SessionTokenStore(secrets);
-  const inputBoxValues = ['student1@example.com', 'wrong'];
 
   class FailingAuthClient extends InMemoryAuthClient {
-    override async login(): Promise<{ accessToken: string }> {
+    override async exchangeBrowserCode(): Promise<{ accessToken: string }> {
       throw new ExtensionApiError(401, {
         error: {
           code: 'AUTH_INVALID_CREDENTIALS',
@@ -741,7 +706,7 @@ test('login command reports invalid credentials and does not persist token', asy
     window: {
       showErrorMessage: (message) => shownErrors.push(message),
       showInformationMessage: () => undefined,
-      showInputBox: async () => inputBoxValues.shift(),
+      showInputBox: async () => 'BADCODE',
       showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
@@ -757,7 +722,7 @@ test('login command reports invalid credentials and does not persist token', asy
   await restoredStore.hydrate();
   assert.equal(restoredStore.getAccessToken(), null);
   assert.ok(
-    shownErrors.includes('[oj.login] Invalid email or password. Run OJ: Login and try again.')
+    shownErrors.includes('[oj.login] Invalid email or password. Run OJ: Sign In and try again.')
   );
   assert.ok(outputLines.some((line) => line.includes('[oj.login] error: API 401 AUTH_INVALID_CREDENTIALS')));
 });
@@ -768,15 +733,15 @@ test('login command stores token in SecretStorage on success', async () => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
   const secrets = new FakeSecretStorage();
   const tokenStore = new SessionTokenStore(secrets);
-  const inputBoxValues = ['student@example.com', 'ignored'];
 
   class RecordingAuthClient extends InMemoryAuthClient {
-    override async login(request: { email: string; password: string }): Promise<{ accessToken: string; role: 'student' }> {
-      assert.deepEqual(request, {
-        email: 'student@example.com',
-        password: 'ignored'
-      });
-      return { accessToken: 'student-token', role: 'student' };
+    override async exchangeBrowserCode(request: { code: string }): Promise<{
+      accessToken: string;
+      email: string;
+      role: 'student';
+    }> {
+      assert.deepEqual(request, { code: 'ABC123' });
+      return { accessToken: 'student-token', email: 'student@example.com', role: 'student' };
     }
   }
 
@@ -791,7 +756,7 @@ test('login command stores token in SecretStorage on success', async () => {
     window: {
       showErrorMessage: () => undefined,
       showInformationMessage: (message) => infoMessages.push(message),
-      showInputBox: async () => inputBoxValues.shift(),
+      showInputBox: async () => 'ABC123',
       showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
@@ -806,7 +771,7 @@ test('login command stores token in SecretStorage on success', async () => {
   const restoredStore = new SessionTokenStore(secrets);
   await restoredStore.hydrate();
   assert.equal(restoredStore.getAccessToken(), 'student-token');
-  assert.ok(outputLines.includes('Authenticated'));
+  assert.ok(outputLines.includes('Browser auth completed via sign-in.'));
   assert.ok(infoMessages.includes('[oj.login] success'));
 });
 
@@ -821,11 +786,10 @@ test('login command rejects admin-role logins and clears the existing session', 
     email: 'student@example.com',
     role: 'student'
   });
-  const inputBoxValues = ['admin@example.com', 'ignored'];
   let authSessionChangedCount = 0;
 
   class AdminAuthClient extends InMemoryAuthClient {
-    override async login(): Promise<{ accessToken: string; role: 'admin' }> {
+    override async exchangeBrowserCode(): Promise<{ accessToken: string; role: 'admin' }> {
       return { accessToken: 'admin-token', role: 'admin' };
     }
   }
@@ -844,7 +808,7 @@ test('login command rejects admin-role logins and clears the existing session', 
     window: {
       showErrorMessage: (message) => shownErrors.push(message),
       showInformationMessage: () => undefined,
-      showInputBox: async () => inputBoxValues.shift(),
+      showInputBox: async () => 'ADMIN123',
       showQuickPick: async (items) => items[0]
     },
     registerCommand: (commandId, callback) => {
@@ -870,6 +834,61 @@ test('login command rejects admin-role logins and clears the existing session', 
   });
   assert.ok(shownErrors.includes(`[oj.login] ${STUDENT_ONLY_EXTENSION_MESSAGE}`));
   assert.ok(outputLines.includes(`[oj.login] error: ${STUDENT_ONLY_EXTENSION_MESSAGE}`));
+});
+
+test('signup command opens the browser and exchanges the returned sign-up code', async () => {
+  const handlers = new Map<string, (...args: unknown[]) => Promise<void>>();
+  const openedUrls: string[] = [];
+  const secrets = new FakeSecretStorage();
+  const tokenStore = new SessionTokenStore(secrets);
+
+  class RecordingAuthClient extends InMemoryAuthClient {
+    override getBrowserAuthUrl(mode: 'sign-in' | 'sign-up'): string {
+      assert.equal(mode, 'sign-up');
+      return 'http://oj.test/auth/sign-up';
+    }
+
+    override async exchangeBrowserCode(input: { code: string }): Promise<{
+      accessToken: string;
+      email: string;
+      role: 'student';
+    }> {
+      assert.deepEqual(input, { code: 'NEWCODE1' });
+      return {
+        accessToken: 'student-token',
+        email: 'new-student@example.com',
+        role: 'student'
+      };
+    }
+  }
+
+  registerExtensionCommands({
+    authCommands: new AuthCommands(new RecordingAuthClient(), tokenStore),
+    practiceCommands: new PracticeCommands(new InMemoryPracticeApiClient(), new SessionTokenStore()),
+    engagementCommands: new EngagementCommands(
+      new InMemoryEngagementApiClient(),
+      new SessionTokenStore()
+    ),
+    openExternalUrl: async (url) => {
+      openedUrls.push(url);
+    },
+    output: { appendLine: () => undefined },
+    window: {
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => 'NEWCODE1',
+      showQuickPick: async (items) => items[0]
+    },
+    registerCommand: (commandId, callback) => {
+      handlers.set(commandId, callback);
+      return { dispose: () => undefined };
+    }
+  });
+
+  await handlers.get('oj.signup')?.();
+
+  assert.deepEqual(openedUrls, ['http://oj.test/auth/sign-up']);
+  assert.equal(tokenStore.getAccessToken(), 'student-token');
 });
 
 test('command error is reported cleanly', async () => {
@@ -983,7 +1002,7 @@ test('auth failures prompt login instead of showing raw auth error text', async 
   await handlers.get('oj.practice.fetchProblems')?.();
 
   assert.ok(outputLines.some((line) => line.includes('API 401 AUTH_INVALID_TOKEN')));
-  assert.ok(shownErrors.some((line) => line.includes('Please login to continue.')));
+  assert.ok(shownErrors.some((line) => line.includes('Please sign in to continue.')));
   assert.equal(shownErrors.some((line) => line.includes('Authentication token is invalid')), false);
 });
 

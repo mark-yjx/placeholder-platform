@@ -24,6 +24,7 @@ class FakeSecretStorage implements SecretStorageLike {
 
 class FakeAuthClient implements AuthClient {
   requests: Array<{ email: string; password: string }> = [];
+  exchangedCodes: string[] = [];
 
   constructor(
     private readonly outcome:
@@ -37,6 +38,22 @@ class FakeAuthClient implements AuthClient {
     role?: 'admin' | 'student';
   }> {
     this.requests.push(request);
+    if (this.outcome instanceof Error) {
+      throw this.outcome;
+    }
+    return this.outcome;
+  }
+
+  getBrowserAuthUrl(mode: 'sign-in' | 'sign-up'): string {
+    return `http://oj.test/auth/${mode}`;
+  }
+
+  async exchangeBrowserCode(input: { code: string }): Promise<{
+    accessToken: string;
+    email?: string;
+    role?: 'admin' | 'student';
+  }> {
+    this.exchangedCodes.push(input.code);
     if (this.outcome instanceof Error) {
       throw this.outcome;
     }
@@ -78,32 +95,37 @@ class FakePanel {
   }
 }
 
-test('account webview panel login path remains functional', async () => {
+test('account webview panel browser sign-in path remains functional', async () => {
   const panel = new FakePanel();
   const tokenStore = new SessionTokenStore(new FakeSecretStorage());
   const infoMessages: string[] = [];
+  const openedUrls: string[] = [];
   const webviewPanel = new AccountWebviewPanel(
-    new AuthCommands(new FakeAuthClient({ accessToken: 'student-token', role: 'student' }), tokenStore),
+    new AuthCommands(
+      new FakeAuthClient({ accessToken: 'student-token', email: 'student@example.com', role: 'student' }),
+      tokenStore
+    ),
     tokenStore,
     {
+      showInputBox: async () => 'ABC123',
       showInformationMessage: (message) => infoMessages.push(message),
       showErrorMessage: () => undefined
     },
-    () => panel
+    () => panel,
+    async (url) => {
+      openedUrls.push(url);
+    }
   );
 
   webviewPanel.show();
-  await panel.webview.dispatch({
-    command: 'login',
-    email: 'student@example.com',
-    password: 'secret'
-  });
+  await panel.webview.dispatch({ command: 'signIn' });
 
   assert.equal(tokenStore.getAccessToken(), 'student-token');
   assert.deepEqual(tokenStore.getSessionIdentity(), {
     email: 'student@example.com',
     role: 'student'
   });
+  assert.deepEqual(openedUrls, ['http://oj.test/auth/sign-in']);
   assert.match(panel.webview.html, /Logged in as <strong>student@example\.com<\/strong>/);
   assert.ok(infoMessages.some((message) => message.includes('Logged in as student@example.com')));
 });
@@ -114,10 +136,12 @@ test('account webview panel reuses the existing panel when reopened', () => {
     new AuthCommands(new FakeAuthClient({ accessToken: 'student-token', role: 'student' }), new SessionTokenStore()),
     new SessionTokenStore(),
     {
+      showInputBox: async () => undefined,
       showInformationMessage: () => undefined,
       showErrorMessage: () => undefined
     },
-    () => panel
+    () => panel,
+    async () => undefined
   );
 
   webviewPanel.show();
@@ -126,7 +150,7 @@ test('account webview panel reuses the existing panel when reopened', () => {
   assert.equal(panel.revealCount, 1);
 });
 
-test('account webview panel reports friendly failed login errors', async () => {
+test('account webview panel reports friendly failed browser auth errors', async () => {
   const panel = new FakePanel();
   const tokenStore = new SessionTokenStore(new FakeSecretStorage());
   const errorMessages: string[] = [];
@@ -144,18 +168,16 @@ test('account webview panel reports friendly failed login errors', async () => {
     ),
     tokenStore,
     {
+      showInputBox: async () => 'BADCODE',
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errorMessages.push(message)
     },
-    () => panel
+    () => panel,
+    async () => undefined
   );
 
   webviewPanel.show();
-  await panel.webview.dispatch({
-    command: 'login',
-    email: 'student@example.com',
-    password: 'wrong-password'
-  });
+  await panel.webview.dispatch({ command: 'signIn' });
 
   assert.equal(tokenStore.isAuthenticated(), false);
   assert.match(panel.webview.html, /Invalid email or password\. Try again from the Account window\./);

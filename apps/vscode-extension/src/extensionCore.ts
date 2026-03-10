@@ -8,7 +8,6 @@ import { ProblemStarterWorkspace } from './ui/ProblemStarterWorkspace';
 import { extractSubmitPayload } from './submission/SubmissionPayloadExtraction';
 import { runLocalPublicTests } from './practice/PublicTestRunner';
 import { LocalPracticeStateStore } from './runtime/LocalPracticeStateStore';
-import { createLoginViewModel } from './auth/AuthViews';
 import { resolveProblemStatementMarkdown } from './ui/PracticeViewState';
 
 export type DisposableLike = { dispose: () => void };
@@ -71,6 +70,7 @@ export type ExtensionCommandDependencies = {
   problemStarterWorkspace?: ProblemStarterWorkspace;
   localStateStore?: LocalPracticeStateStore;
   onAuthSessionChanged?: () => void;
+  openExternalUrl?: (url: string) => Promise<void>;
   output: OutputChannelLike;
   window: WindowLike;
   registerCommand: RegisterCommand;
@@ -82,6 +82,9 @@ export function registerExtensionCommands(
   const waitForNextPoll =
     dependencies.waitForNextPoll ??
     ((delayMs: number) => new Promise<void>((resolve) => setTimeout(resolve, delayMs)));
+  const openExternalUrl =
+    dependencies.openExternalUrl ??
+    (async () => undefined);
   const pollIntervalMs = 1_000;
   const maxPollBackoffMs = 8_000;
 
@@ -322,45 +325,55 @@ export function registerExtensionCommands(
     );
   };
 
-  const promptForLoginRequest = async (): Promise<{ email: string; password: string } | null> => {
-    const loginView = createLoginViewModel();
-    const email = await dependencies.window.showInputBox({
-      prompt: `${loginView.title}: email`,
-      placeHolder: 'student1@example.com',
+  const promptForBrowserAuthCode = async (mode: 'sign-in' | 'sign-up'): Promise<string | null> => {
+    const code = await dependencies.window.showInputBox({
+      prompt:
+        mode === 'sign-in'
+          ? 'Paste the one-time student sign-in code from your browser'
+          : 'Paste the one-time student sign-up code from your browser',
+      placeHolder: 'Example: 8F2A9C4D10',
       ignoreFocusOut: true
     });
-    if (email === undefined) {
+    if (code === undefined) {
       return null;
     }
 
-    const password = await dependencies.window.showInputBox({
-      prompt: `${loginView.title}: password`,
-      placeHolder: 'Enter your password',
-      password: true,
-      ignoreFocusOut: true
-    });
-    if (password === undefined) {
-      return null;
+    return code;
+  };
+
+  const completeBrowserAuth = async (mode: 'sign-in' | 'sign-up') => {
+    const browserUrl = dependencies.authCommands.getBrowserAuthUrl(mode);
+    await openExternalUrl(browserUrl);
+    dependencies.window.showInformationMessage(
+      mode === 'sign-in'
+        ? 'Student sign-in opened in your browser. Complete it there, then paste the one-time code back here.'
+        : 'Student sign-up opened in your browser. Complete it there, then paste the one-time code back here.'
+    );
+
+    const code = await promptForBrowserAuthCode(mode);
+    if (code === null) {
+      return false;
     }
 
-    return { email, password };
+    try {
+      await dependencies.authCommands.completeBrowserAuth(code);
+      dependencies.output.appendLine(`Browser auth completed via ${mode}.`);
+    } finally {
+      dependencies.onAuthSessionChanged?.();
+    }
   };
 
   return [
     dependencies.registerCommand(
       'oj.login',
       runWithHandling('oj.login', async () => {
-        const request = await promptForLoginRequest();
-        if (!request) {
-          return false;
-        }
-
-        try {
-          await dependencies.authCommands.login(request);
-          dependencies.output.appendLine('Authenticated');
-        } finally {
-          dependencies.onAuthSessionChanged?.();
-        }
+        return completeBrowserAuth('sign-in');
+      })
+    ),
+    dependencies.registerCommand(
+      'oj.signup',
+      runWithHandling('oj.signup', async () => {
+        return completeBrowserAuth('sign-up');
       })
     ),
     dependencies.registerCommand(

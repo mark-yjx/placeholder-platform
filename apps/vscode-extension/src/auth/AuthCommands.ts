@@ -1,4 +1,4 @@
-import { AuthClient, LoginRequest } from './AuthClient';
+import { AuthClient, BrowserAuthMode, LoginRequest, LoginResponse } from './AuthClient';
 import { SessionTokenStore } from './SessionTokenStore';
 import { validateLoginInput } from './AuthViews';
 
@@ -21,19 +21,41 @@ export class AuthCommands {
   async login(request: LoginRequest): Promise<{ email: string | null; role: string | null }> {
     validateLoginInput(request);
     const response = await this.authClient.login(request);
+    await this.persistStudentSession(response, request.email.trim());
+    return this.tokenStore.getSessionIdentity();
+  }
+
+  getBrowserAuthUrl(mode: BrowserAuthMode): string {
+    return this.authClient.getBrowserAuthUrl(mode);
+  }
+
+  async completeBrowserAuth(code: string): Promise<{ email: string | null; role: string | null }> {
+    const normalizedCode = code.trim();
+    if (!normalizedCode) {
+      throw new Error('Sign-in code is required');
+    }
+
+    const response = await this.authClient.exchangeBrowserCode({ code: normalizedCode });
+    await this.persistStudentSession(response, response.email ?? null);
+    return this.tokenStore.getSessionIdentity();
+  }
+
+  async logout(): Promise<void> {
+    await this.tokenStore.clear();
+  }
+
+  private async persistStudentSession(
+    response: LoginResponse,
+    fallbackEmail: string | null
+  ): Promise<void> {
     if (response.role === 'admin') {
       await this.tokenStore.clear();
       throw new StudentOnlyExtensionError();
     }
     await this.tokenStore.setSession({
       accessToken: response.accessToken,
-      email: response.email ?? request.email.trim(),
+      email: response.email ?? fallbackEmail ?? undefined,
       role: response.role
     });
-    return this.tokenStore.getSessionIdentity();
-  }
-
-  async logout(): Promise<void> {
-    await this.tokenStore.clear();
   }
 }

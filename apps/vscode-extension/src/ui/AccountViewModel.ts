@@ -26,7 +26,7 @@ export function createAccountViewModel(input: {
   if (!input.isAuthenticated || !email || !role) {
     return {
       title: 'Account',
-      status: 'Sign in to OJ as a student.',
+      status: 'Student authentication now happens in your browser.',
       email: '',
       role: '',
       errorMessage: input.errorMessage ?? '',
@@ -66,42 +66,26 @@ ${sharedHead}
   <body>
     <main class="webview-shell">
       <section class="hero-card login-card">
-        <p class="eyebrow">OJ Login</p>
+        <p class="eyebrow">Student Auth</p>
         <h2 class="hero-title">${title}</h2>
         <p class="hero-copy">${status}</p>
-        <form class="field-stack">
-          ${errorMessage ? `<div class="alert-card error-text">${errorMessage}</div>` : ''}
-          <label for="oj-account-email">
-            <span>Email</span>
-            <vscode-text-field id="oj-account-email" type="email"></vscode-text-field>
-          </label>
-          <label for="oj-account-password">
-            <span>Password</span>
-            <vscode-text-field id="oj-account-password" type="password"></vscode-text-field>
-          </label>
-          <div class="checkbox-row">
-            <vscode-checkbox id="oj-account-remember-me">Remember me</vscode-checkbox>
-          </div>
+        ${errorMessage ? `<div class="alert-card error-text">${errorMessage}</div>` : ''}
+        <div class="field-stack">
+          <p class="hero-copy">Use the system browser to sign in or create a student account, then paste the one-time code back into VS Code.</p>
           <div class="login-actions">
-            <vscode-button appearance="primary" data-command="login">Login</vscode-button>
+            <vscode-button appearance="primary" data-command="signIn">Sign in</vscode-button>
+            <vscode-button data-command="signUp">Sign up</vscode-button>
           </div>
-        </form>
+        </div>
       </section>
     </main>
     <script>
       const vscodeApi = acquireVsCodeApi();
-      const emailInput = document.getElementById('oj-account-email');
-      const passwordInput = document.getElementById('oj-account-password');
-      const rememberMeInput = document.getElementById('oj-account-remember-me');
-      const loginButton = document.querySelector('vscode-button[data-command="login"]');
-      loginButton?.addEventListener('click', () => {
-        vscodeApi.postMessage({
-          command: 'login',
-          email: emailInput?.value ?? '',
-          password: passwordInput?.value ?? '',
-          rememberMe: Boolean(rememberMeInput?.checked)
+      for (const button of document.querySelectorAll('vscode-button[data-command]')) {
+        button.addEventListener('click', () => {
+          vscodeApi.postMessage({ command: button.dataset.command });
         });
-      });
+      }
     </script>
   </body>
 </html>`;
