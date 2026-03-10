@@ -10,4 +10,6 @@ apps/vscode-extension/*.vsix
 .oj/
 coverage/
 build/
+__pycache__/
+*.pyc
 *.log
