@@ -1,0 +1,22 @@
+{
+  "problemId": "two-sum",
+  "title": "Two Sum",
+  "entryFunction": "two_sum",
+  "language": "python",
+  "timeLimitMs": 2000,
+  "memoryLimitKb": 65536,
+  "visibility": "public",
+  "examples": [
+    { "input": {"nums":[2,7,11,15],"target":9}, "output": [0,1] },
+    { "input": {"nums":[3,2,4],"target":6}, "output": [1,2] }
+  ],
+  "publicTests": [
+    { "input": {"nums":[3,3],"target":6}, "output": [0,1] },
+    { "input": {"nums":[-3,4,3,90],"target":0}, "output": [0,2] },
+    { "input": {"nums":[1,5,3,7],"target":8}, "output": [1,2] }
+  ],
+  "difficulty": "easy",
+  "tags": ["array","hashing"],
+  "version": "1.0.0",
+  "author": "Curated Staff"
+}

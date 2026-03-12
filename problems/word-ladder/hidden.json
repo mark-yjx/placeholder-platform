@@ -1,0 +1,7 @@
+[
+  { "input": {"beginWord":"talk","endWord":"tail","wordList":["tall","tail","balk","talk"]}, "output": 3 },
+  { "input": {"beginWord":"red","endWord":"tax","wordList":["ted","tex","red","tax","tad","den","rex","pee"]}, "output": 4 },
+  { "input": {"beginWord":"toon","endWord":"plea","wordList":["poon","plee","same","poie","plea","plie","poin"]}, "output": 7 },
+  { "input": {"beginWord":"hit","endWord":"hot","wordList":["hot"]}, "output": 2 },
+  { "input": {"beginWord":"spin","endWord":"spot","wordList":["span","spot"]}, "output": 0 }
+]

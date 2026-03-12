@@ -1,0 +1,22 @@
+{
+  "problemId": "longest-substring-without-repeating-characters",
+  "title": "Longest Substring Without Repeating Characters",
+  "entryFunction": "length_of_longest_substring",
+  "language": "python",
+  "timeLimitMs": 2000,
+  "memoryLimitKb": 65536,
+  "visibility": "public",
+  "examples": [
+    { "input": "abcabcbb", "output": 3 },
+    { "input": "bbbbb", "output": 1 }
+  ],
+  "publicTests": [
+    { "input": "pwwkew", "output": 3 },
+    { "input": "", "output": 0 },
+    { "input": "au", "output": 2 }
+  ],
+  "difficulty": "medium",
+  "tags": ["string","sliding-window","hashing"],
+  "version": "1.0.0",
+  "author": "Curated Staff"
+}

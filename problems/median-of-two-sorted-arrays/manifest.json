@@ -1,0 +1,22 @@
+{
+  "problemId": "median-of-two-sorted-arrays",
+  "title": "Median of Two Sorted Arrays",
+  "entryFunction": "find_median_sorted_arrays",
+  "language": "python",
+  "timeLimitMs": 2000,
+  "memoryLimitKb": 65536,
+  "visibility": "public",
+  "examples": [
+    { "input": {"nums1":[1,3],"nums2":[2]}, "output": 2.0 },
+    { "input": {"nums1":[1,2],"nums2":[3,4]}, "output": 2.5 }
+  ],
+  "publicTests": [
+    { "input": {"nums1":[],"nums2":[1]}, "output": 1.0 },
+    { "input": {"nums1":[0,0],"nums2":[0,0]}, "output": 0.0 },
+    { "input": {"nums1":[2],"nums2":[]}, "output": 2.0 }
+  ],
+  "difficulty": "hard",
+  "tags": ["array","binary-search","divide-and-conquer"],
+  "version": "1.0.0",
+  "author": "Curated Staff"
+}

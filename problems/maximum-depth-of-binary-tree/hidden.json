@@ -1,0 +1,7 @@
+[
+  { "input": [1, 2, 3, 4, 5, null, null, 6], "output": 4 },
+  { "input": [1, null, 2, null, 3], "output": 3 },
+  { "input": [1, 2, null, 3, null, 4, null, 5], "output": 5 },
+  { "input": [1, 2, 3, null, 4, null, null, 5], "output": 4 },
+  { "input": [0, -3, 9, -10, null, 5], "output": 3 }
+]

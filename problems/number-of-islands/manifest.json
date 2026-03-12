@@ -1,0 +1,22 @@
+{
+  "problemId": "number-of-islands",
+  "title": "Number of Islands",
+  "entryFunction": "num_islands",
+  "language": "python",
+  "timeLimitMs": 2000,
+  "memoryLimitKb": 65536,
+  "visibility": "public",
+  "examples": [
+    { "input": [["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]], "output": 1 },
+    { "input": [["1","1","0","0","0"],["1","1","0","0","0"],["0","0","1","0","0"],["0","0","0","1","1"]], "output": 3 }
+  ],
+  "publicTests": [
+    { "input": [["1"]], "output": 1 },
+    { "input": [["0"]], "output": 0 },
+    { "input": [["0","1","0"],["1","0","1"]], "output": 3 }
+  ],
+  "difficulty": "medium",
+  "tags": ["graph","dfs","bfs","matrix"],
+  "version": "1.0.0",
+  "author": "Curated Staff"
+}

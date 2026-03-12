@@ -1,0 +1,22 @@
+{
+  "problemId": "regular-expression-matching",
+  "title": "Regular Expression Matching",
+  "entryFunction": "is_match",
+  "language": "python",
+  "timeLimitMs": 2000,
+  "memoryLimitKb": 65536,
+  "visibility": "public",
+  "examples": [
+    { "input": {"s":"aa","p":"a"}, "output": false },
+    { "input": {"s":"aa","p":"a*"}, "output": true }
+  ],
+  "publicTests": [
+    { "input": {"s":"ab","p":".*"}, "output": true },
+    { "input": {"s":"aab","p":"c*a*b"}, "output": true },
+    { "input": {"s":"mississippi","p":"mis*is*p*."}, "output": false }
+  ],
+  "difficulty": "hard",
+  "tags": ["string","dynamic-programming"],
+  "version": "1.0.0",
+  "author": "Curated Staff"
+}

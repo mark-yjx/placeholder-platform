@@ -1,0 +1,7 @@
+[
+  { "input": {"s":"aaa","p":"ab*a*c*a"}, "output": true },
+  { "input": {"s":"ab","p":".*c"}, "output": false },
+  { "input": {"s":"aaa","p":"a*a"}, "output": true },
+  { "input": {"s":"a","p":"ab*"}, "output": true },
+  { "input": {"s":"abcd","p":"d*"}, "output": false }
+]

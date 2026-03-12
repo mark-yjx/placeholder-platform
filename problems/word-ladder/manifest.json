@@ -1,0 +1,22 @@
+{
+  "problemId": "word-ladder",
+  "title": "Word Ladder",
+  "entryFunction": "ladder_length",
+  "language": "python",
+  "timeLimitMs": 2000,
+  "memoryLimitKb": 65536,
+  "visibility": "public",
+  "examples": [
+    { "input": {"beginWord":"hit","endWord":"cog","wordList":["hot","dot","dog","lot","log","cog"]}, "output": 5 },
+    { "input": {"beginWord":"hit","endWord":"cog","wordList":["hot","dot","dog","lot","log"]}, "output": 0 }
+  ],
+  "publicTests": [
+    { "input": {"beginWord":"a","endWord":"c","wordList":["a","b","c"]}, "output": 2 },
+    { "input": {"beginWord":"lost","endWord":"cost","wordList":["most","fist","lost","cost","fish"]}, "output": 2 },
+    { "input": {"beginWord":"game","endWord":"math","wordList":["fame","fath","gath","math"]}, "output": 0 }
+  ],
+  "difficulty": "hard",
+  "tags": ["graph","bfs","string"],
+  "version": "1.0.0",
+  "author": "Curated Staff"
+}

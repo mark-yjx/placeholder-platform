@@ -1,0 +1,22 @@
+{
+  "problemId": "valid-parentheses",
+  "title": "Valid Parentheses",
+  "entryFunction": "is_valid_parentheses",
+  "language": "python",
+  "timeLimitMs": 2000,
+  "memoryLimitKb": 65536,
+  "visibility": "public",
+  "examples": [
+    { "input": "()", "output": true },
+    { "input": "([)]", "output": false }
+  ],
+  "publicTests": [
+    { "input": "()[]{}", "output": true },
+    { "input": "(]", "output": false },
+    { "input": "([])", "output": true }
+  ],
+  "difficulty": "easy",
+  "tags": ["string","stack"],
+  "version": "1.0.0",
+  "author": "Curated Staff"
+}
