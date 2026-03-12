@@ -1,76 +1,118 @@
 # Admin Web
 
-## Purpose
+Admin Web is the browser-based administrator client for the Online Judge.
 
-Admin Web is the browser-based operational surface for staff and platform operators.
-It exists to keep admin workflows out of the student extension while still sharing the
-same imported problem data and submission history stored in Postgres.
+## Product Boundary
 
-## Admin System Boundaries
+- Admin Web is the admin-facing frontend.
+- The VS Code extension is student-only.
+- Administrators must use Admin Web instead of the extension.
 
-| Area | Owner | Notes |
-| --- | --- | --- |
-| Admin UI | `apps/admin-web` | Browser-based React frontend for admin operators |
-| Admin API | `apps/admin-api` | FastAPI backend for admin-only auth and operational routes |
-| Shared storage | Postgres | Shared durable store with the student-facing stack |
-| Student surface | `apps/vscode-extension` | Explicitly out of scope for admin operations |
+Admin workflows need different data visibility, editing flows, and access controls from student practice workflows. That is why the project now uses a separate admin frontend and a separate admin API.
 
-## Core Capabilities
+## Current Architecture
 
-The current admin system is responsible for:
+Admin stack:
 
-- admin authentication
-- analytics overview
-- problem list and problem detail editing
-- public and hidden test management
-- cross-user submission inspection
-- platform user management
+- frontend: `apps/admin-web`
+- API: `apps/admin-api`
 
-The admin system does not replace the student API or the student extension.
+Shared backend:
 
-## Authentication Boundary
+- Postgres
+- existing judge worker
 
-Admin access is separate from student auth.
+Student stack, kept separate:
 
-- Primary admin login may use local email/password or Microsoft OIDC.
-- Successful primary authentication is not sufficient on its own.
-- Access still requires a local platform user with `role = admin` and `status = active`.
-- TOTP is enforced after local user verification or identity mapping when enabled.
+- `apps/vscode-extension`
+- `apps/api`
 
-Session states:
+## Admin Responsibilities
 
-- `unauthenticated`
-- `pending_tfa`
-- `authenticated_admin`
+Admin Web is the place for administrator workflows such as:
 
-## Data Visibility Rules
+- problem management
+- public test editing
+- hidden test editing
+- submission inspection
+- admin-only failure detail inspection
 
-Admin surfaces can inspect data that must never be exposed to the student path:
+Those workflows must not live in the student extension.
 
+## Current MVP Scope
+
+The current Admin Web MVP includes:
+
+- admin login
+- problems list
+- problem detail and edit
+- tests management with separate public and hidden sections
+- submissions list
+- submission detail inspection
+
+These implemented pages provide the first working admin flow without changing the student-facing extension or judge lifecycle.
+
+## Problem Management
+
+Admin problem management is the broader responsibility area for Admin Web.
+
+Current implemented problem-management capabilities:
+
+- list problems
+- inspect a problem
+- edit problem metadata
+- edit statement markdown
+- edit starter code
+
+Broader CRUD remains the long-term admin boundary, but the currently implemented MVP is focused on list and edit rather than full create/delete flows.
+
+## Tests Management
+
+Admin Web separates:
+
+- public tests
 - hidden tests
-- cross-user submission history
-- admin-only analytics
-- platform user-management operations
 
-The student-facing API and extension remain restricted to student-visible content and
-student-owned submission feedback.
+That separation is intentional:
 
-## Relationship To The Judge Pipeline
+- public tests are visible execution cases
+- hidden tests are judge-only and admin-only
 
-Admin Web does not execute code. It reads operational data produced elsewhere:
+Hidden tests must remain inaccessible to student-facing routes and the VS Code extension.
 
-- imported problem versions from the importer
-- submission lifecycle state and terminal results from the judge path
-- user and admin-session state from shared persistence
+## Submission Inspection
 
-The judge worker remains the execution authority for both student and admin-observed outcomes.
+Admin Web supports operational inspection of submissions across users.
 
-## Local Development Notes
+Current inspection scope includes:
 
-The standard local setup keeps Admin Web separate from the compose-managed student stack:
+- submission metadata
+- owner user
+- problem ID
+- submission status
+- verdict
+- runtime metrics
+- failure or error detail when it is truly available
 
-- run `admin-api` independently
-- run Admin Web with the local `VITE_ADMIN_API_BASE_URL`
-- use the mock OIDC mode when you need a provider-free local flow
+This is different from the student experience, which is limited to the student's own submissions.
 
-See [local-development.md](./local-development.md) for commands and environment variables.
+## Hidden Failure Detail
+
+Admin-facing inspection may include failure detail that is not appropriate for student-facing views. That does not change the student contract:
+
+- students must not see hidden tests
+- students must not see hidden-case inputs or expected outputs
+
+Admin Web exists partly to keep that operational visibility separate from student UX.
+
+## Out Of Scope
+
+The current Admin Web MVP does not include:
+
+- analytics dashboard
+- user management
+- 2FA
+- contest features
+- replacement of the student-facing Node API
+
+Those remain future expansion areas, not current implementation claims.

@@ -1,32 +1,63 @@
 # Local Development
 
+This repository supports local development for both product surfaces:
+
+- student stack: VS Code extension, Node API, Postgres, judge worker
+- admin stack: Admin Web and FastAPI `admin-api`
+
 ## Prerequisites
 
 - Node.js and npm
-- Docker Engine with the Compose plugin
+- Docker Engine
+- Docker Compose plugin
 - VS Code
-- optional `code` CLI for installing the packaged extension
-- Python tooling for `admin-api` local development
+- optional `code` CLI for VSIX installation
+- `uv` for the current `admin-api` local workflow
 
-## Core Student Stack
-
-Install dependencies:
+## Install Dependencies
 
 ```bash
 npm install
 ```
 
-Start the compose-managed local stack:
+## Start The Student Runtime
+
+Start the compose-managed local stack for the student runtime:
 
 ```bash
 npm run local:up
 ```
 
-Set up the local database:
+Direct equivalent:
+
+```bash
+docker compose -f deploy/local/docker-compose.yml up -d --wait
+```
+
+This starts:
+
+- Postgres on `127.0.0.1:5432`
+- the student API on `http://localhost:3100`
+- judge worker in the compose `worker` service
+
+For normal local verification, the compose `api` and `worker` services are the supported student runtime path.
+
+## Database Setup
+
+Apply migrations and seed baseline data:
 
 ```bash
 npm run local:db:setup
 ```
+
+Other useful commands:
+
+```bash
+npm run local:db:migrate
+npm run local:db:seed
+```
+
+## Import Problems
 
 Import repository-authored problems:
 
@@ -34,100 +65,150 @@ Import repository-authored problems:
 npm run import:problems -- --dir problems
 ```
 
-The standard local stack includes:
+This imports canonical problem folders from `problems/` into Postgres.
 
-- Postgres
-- the student API on `http://localhost:3100`
-- the judge worker
+## Run The VS Code Extension
 
-## Student Workflow Verification
-
-Package and install the extension:
+Package the extension:
 
 ```bash
 npm run extension:package
+```
+
+Install it:
+
+```bash
 code --install-extension dist/placeholder-extension.vsix
 ```
 
-Recommended VS Code settings:
+Recommended settings:
 
 ```json
 {
-  "oj.apiBaseUrl": "http://localhost:3100",
+  "oj.apiBaseUrl": "http://127.0.0.1:3100",
   "oj.requestTimeoutMs": 10000
 }
 ```
 
-Typical verification flow:
+The extension is student-only. Use it for:
 
-1. Start the local stack and import problems.
-2. Install the packaged extension.
-3. Open the account surface and sign in as a student.
-4. Refresh the published problem list.
-5. Open `.oj/problems/<problemId>.py`.
-6. Optionally run public tests locally.
-7. Submit and observe `queued -> running -> finished | failed`.
+- student login
+- fetching problems
+- opening starter files
+- running public tests locally
+- submitting code
+- viewing the student's own submissions
 
-## Admin Stack Development
+## Run admin-api
 
-The admin system is developed separately from the compose-managed student stack.
-
-Create a temporary Python environment for `admin-api`:
+Run `admin-api` locally from the repository root:
 
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv venv --clear /tmp/oj-admin-api-venv
+source /tmp/oj-admin-api-venv/bin/activate
 UV_CACHE_DIR=/tmp/uv-cache uv pip install --python /tmp/oj-admin-api-venv/bin/python -r apps/admin-api/requirements.txt
+ADMIN_EMAIL=admin@example.com \
+ADMIN_PASSWORD='correct horse' \
+ADMIN_TOKEN_SECRET='local-admin-secret' \
+uvicorn app.main:app --app-dir apps/admin-api --reload --port 8200
 ```
 
-Run `admin-api` locally:
+`admin-api` runs separately from Docker Compose today and listens on `http://127.0.0.1:8200`.
+
+## Run Admin Web
+
+From the repository root:
 
 ```bash
-ADMIN_SESSION_SECRET='local-admin-session-secret' \
-ADMIN_WEB_BASE_URL='http://127.0.0.1:5173' \
-ADMIN_MICROSOFT_CLIENT_ID='local-microsoft-client' \
-ADMIN_MICROSOFT_REDIRECT_URI='http://127.0.0.1:8200/admin/auth/callback/microsoft' \
-ADMIN_MICROSOFT_OIDC_MODE='mock' \
-ADMIN_MICROSOFT_MOCK_EMAIL='admin@example.com' \
-DATABASE_URL='postgresql://oj:oj@127.0.0.1:5432/oj' \
-/tmp/oj-admin-api-venv/bin/python -m uvicorn app.main:app --app-dir apps/admin-api --reload --port 8200
+export VITE_ADMIN_API_BASE_URL='http://127.0.0.1:8200'
+npm -w @placeholder/admin run dev
 ```
 
-Run the admin frontend:
+By default, Admin Web runs on `http://127.0.0.1:5173`.
+
+Admin Web is the admin-facing client. Use it for:
+
+- admin login
+- problem edit flows
+- public and hidden tests management
+- submission inspection
+
+## Verify Local Services
+
+Check compose services:
 
 ```bash
-VITE_ADMIN_API_BASE_URL='http://127.0.0.1:8200' npm -w @placeholder/admin run dev -- --host 127.0.0.1 --port 5173
+npm run local:ps
 ```
 
-Run admin tests:
+Check student API health:
 
 ```bash
-PYTHONPATH=apps/admin-api PYTHONDONTWRITEBYTECODE=1 /tmp/oj-admin-api-venv/bin/python -m pytest -p no:cacheprovider apps/admin-api/tests
+curl http://127.0.0.1:3100/healthz
+curl http://127.0.0.1:3100/readyz
 ```
 
-## Useful Commands
+Check admin API health:
+
+```bash
+curl http://127.0.0.1:8200/healthz
+```
+
+Recommended quality gate:
 
 ```bash
 npm run typecheck
 npm run test
 npm run build
+```
+
+## Suggested Full Local Flow
+
+1. `npm install`
+2. `npm run local:up`
+3. `npm run local:db:setup`
+4. `npm run import:problems -- --dir problems`
+5. `npm run extension:package`
+6. install the VSIX in VS Code
+7. run `admin-api` locally
+8. start Admin Web with `npm -w @placeholder/admin run dev`
+9. configure `oj.apiBaseUrl` in VS Code
+10. verify the student flow in the extension
+11. verify the admin flow in Admin Web
+
+Typical verification flow:
+
+1. start the compose-managed student stack
+2. import repository problems
+3. package and install the extension
+4. verify the student submission lifecycle `queued -> running -> finished | failed`
+5. run `npm run smoke:local`
+
+Operational note: ensure only one worker is active during local verification so submission processing remains deterministic.
+
+## Smoke And Cleanup
+
+Student runtime smoke test:
+
+```bash
 npm run smoke:local
-npm run local:ps
+```
+
+Stop the compose stack:
+
+```bash
 npm run local:down
+```
+
+Reset local compose state:
+
+```bash
 npm run local:reset
 ```
 
-## Local Ports
-
-| Service | URL / Port |
-| --- | --- |
-| Student API | `http://localhost:3100` |
-| Admin API | `http://127.0.0.1:8200` |
-| Admin Web | `http://127.0.0.1:5173` |
-| Postgres | `127.0.0.1:5432` |
-
 ## Troubleshooting
 
-- If the extension cannot reach the API, verify `oj.apiBaseUrl`.
-- If submissions remain `queued`, inspect the worker logs and ensure only one worker is active.
-- If the API is healthy but not ready, check Postgres availability and migration state.
-- If Admin Web cannot log in, verify `VITE_ADMIN_API_BASE_URL` and the local `admin-api` env vars.
+- If the extension cannot connect, verify `oj.apiBaseUrl`.
+- If submissions stay `queued`, inspect the compose worker logs.
+- If the student API is healthy but not ready, inspect Postgres and migration state.
+- If Admin Web cannot log in, verify `VITE_ADMIN_API_BASE_URL` and the `admin-api` env vars.
