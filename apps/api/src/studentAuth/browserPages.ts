@@ -8,7 +8,10 @@ function escapeHtml(value: string): string {
 }
 
 const ALLOWED_CALLBACK_SCHEMES = new Set(['vscode', 'vscode-insiders']);
-const ALLOWED_CALLBACK_AUTHORITIES = new Set(['local.placeholder-extension']);
+const ALLOWED_CALLBACK_AUTHORITIES = new Set([
+  'placeholder.placeholder-extension',
+  'local.placeholder-extension'
+]);
 
 function renderLayout(input: { title: string; body: string }): string {
   return `<!doctype html>

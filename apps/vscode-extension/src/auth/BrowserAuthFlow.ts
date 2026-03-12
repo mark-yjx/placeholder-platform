@@ -6,6 +6,7 @@ import { mapExtensionError } from '../errors/ExtensionErrorMapper';
 const PENDING_BROWSER_AUTH_KEY = 'oj.auth.pendingBrowserAuth';
 const PENDING_BROWSER_AUTH_TTL_MS = 10 * 60 * 1000;
 const STUDENT_AUTH_CALLBACK_PATH = '/auth-complete';
+const STUDENT_AUTH_EXTENSION_AUTHORITY = 'placeholder.placeholder-extension';
 
 type PendingBrowserAuth = {
   mode: BrowserAuthMode;
@@ -242,5 +243,5 @@ export class BrowserAuthFlow implements BrowserAuthFlowLike {
 }
 
 export function createStudentAuthCallbackUri(uriScheme: string): string {
-  return `${uriScheme}://local.placeholder-extension${STUDENT_AUTH_CALLBACK_PATH}`;
+  return `${uriScheme}://${STUDENT_AUTH_EXTENSION_AUTHORITY}${STUDENT_AUTH_CALLBACK_PATH}`;
 }

@@ -497,7 +497,7 @@ test('api errors use unified auth and not-found structure', async () => {
 
 test('student browser auth pages render and complete sign-in/sign-up handoff flows', async () => {
   const runtime = createRuntime();
-  const callbackUri = encodeURIComponent('vscode://local.placeholder-extension/auth-complete');
+  const callbackUri = encodeURIComponent('vscode://placeholder.placeholder-extension/auth-complete');
 
   const signInPage = await invokeRaw({
     path: `/auth/sign-in?callback_uri=${callbackUri}&state=signin-state`,
@@ -540,7 +540,7 @@ test('student browser auth pages render and complete sign-in/sign-up handoff flo
   assert.match(signInSuccess.body, /SIGNIN1234/);
   assert.match(
     signInSuccess.body,
-    /vscode:\/\/local\.placeholder-extension\/auth-complete\?code=SIGNIN1234&amp;state=signin-state/
+    /vscode:\/\/placeholder\.placeholder-extension\/auth-complete\?code=SIGNIN1234&amp;state=signin-state/
   );
 
   const signUpSuccess = await invokeRaw({
@@ -560,13 +560,13 @@ test('student browser auth pages render and complete sign-in/sign-up handoff flo
   assert.match(signUpSuccess.body, /SIGNUP1234/);
   assert.match(
     signUpSuccess.body,
-    /vscode:\/\/local\.placeholder-extension\/auth-complete\?code=SIGNUP1234&amp;state=signup-state/
+    /vscode:\/\/placeholder\.placeholder-extension\/auth-complete\?code=SIGNUP1234&amp;state=signup-state/
   );
 });
 
 test('student browser auth rejects duplicate email, disabled users, and invalid exchange codes cleanly', async () => {
   const runtime = createRuntime();
-  const callbackUri = encodeURIComponent('vscode://local.placeholder-extension/auth-complete');
+  const callbackUri = encodeURIComponent('vscode://placeholder.placeholder-extension/auth-complete');
 
   const duplicateSignUp = await invokeRaw({
     path: '/auth/sign-up',
@@ -629,7 +629,7 @@ test('student browser auth rejects invalid callback configuration cleanly', asyn
     path: '/auth/sign-up',
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    rawBody: 'email=student3%40example.com&displayName=Mismatch&password=secret&confirmPassword=secret&callbackUri=vscode%3A%2F%2Flocal.placeholder-extension%2Fauth-complete',
+    rawBody: 'email=student3%40example.com&displayName=Mismatch&password=secret&confirmPassword=secret&callbackUri=vscode%3A%2F%2Fplaceholder.placeholder-extension%2Fauth-complete',
     runtime
   });
   assert.equal(incompleteCallbackSubmit.statusCode, 400);
@@ -638,7 +638,7 @@ test('student browser auth rejects invalid callback configuration cleanly', asyn
 
 test('student browser auth exchange returns a student session token for the extension', async () => {
   const runtime = createRuntime();
-  const callbackUri = encodeURIComponent('vscode://local.placeholder-extension/auth-complete');
+  const callbackUri = encodeURIComponent('vscode://placeholder.placeholder-extension/auth-complete');
   await invokeRaw({
     path: '/auth/sign-in',
     method: 'POST',

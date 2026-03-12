@@ -109,7 +109,7 @@ test('browser auth completion stores a student session', async () => {
 
   assert.equal(
     commands.getBrowserAuthUrl('sign-in', {
-      callbackUri: 'vscode://local.placeholder-extension/auth-complete',
+      callbackUri: 'vscode://placeholder.placeholder-extension/auth-complete',
       state: 'state-123'
     }),
     'http://oj.test/auth/sign-in'
