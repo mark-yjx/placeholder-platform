@@ -1,3 +1,5 @@
+import { fetchAdminApi, parseJsonResponse, responseDetail } from './client';
+
 export type AdminProblemListItem = {
   problemId: string;
   title: string;
@@ -47,31 +49,6 @@ export type AdminProblemDetail = {
   updatedAt: string;
 };
 
-const DEFAULT_ADMIN_API_BASE_URL = 'http://127.0.0.1:8200';
-
-function adminApiBaseUrl(): string {
-  const configuredBaseUrl = import.meta.env.VITE_ADMIN_API_BASE_URL ?? DEFAULT_ADMIN_API_BASE_URL;
-  return configuredBaseUrl.replace(/\/$/, '');
-}
-
-async function parseResponse(response: Response): Promise<unknown> {
-  const contentType = response.headers.get('content-type') ?? '';
-  if (!contentType.includes('application/json')) {
-    return null;
-  }
-
-  return response.json();
-}
-
-function responseDetail(body: unknown): string | null {
-  if (typeof body !== 'object' || body === null || !('detail' in body)) {
-    return null;
-  }
-
-  const detail = body.detail;
-  return typeof detail === 'string' ? detail : null;
-}
-
 function publishReadinessDetail(body: unknown): string | null {
   if (
     typeof body !== 'object' ||
@@ -92,12 +69,12 @@ function publishReadinessDetail(body: unknown): string | null {
 }
 
 export async function fetchAdminProblems(token: string): Promise<AdminProblemListItem[]> {
-  const response = await fetch(`${adminApiBaseUrl()}/admin/problems`, {
+  const response = await fetchAdminApi('/admin/problems', {
     headers: {
       authorization: `Bearer ${token}`
     }
   });
-  const body = (await parseResponse(response)) as
+  const body = (await parseJsonResponse(response)) as
     | AdminProblemListItem[]
     | { detail?: string }
     | null;
@@ -113,12 +90,12 @@ export async function fetchAdminProblem(
   token: string,
   problemId: string
 ): Promise<AdminProblemDetail> {
-  const response = await fetch(`${adminApiBaseUrl()}/admin/problems/${encodeURIComponent(problemId)}`, {
+  const response = await fetchAdminApi(`/admin/problems/${encodeURIComponent(problemId)}`, {
     headers: {
       authorization: `Bearer ${token}`
     }
   });
-  const body = (await parseResponse(response)) as AdminProblemDetail | { detail?: string } | null;
+  const body = (await parseJsonResponse(response)) as AdminProblemDetail | { detail?: string } | null;
 
   if (!response.ok) {
     throw new Error(responseDetail(body) ?? 'Admin problem detail is unavailable.');
@@ -131,15 +108,15 @@ export async function fetchAdminProblemPreview(
   token: string,
   problemId: string
 ): Promise<AdminProblemPreview> {
-  const response = await fetch(
-    `${adminApiBaseUrl()}/admin/problems/${encodeURIComponent(problemId)}/preview`,
-    {
-      headers: {
-        authorization: `Bearer ${token}`
-      }
+  const response = await fetchAdminApi(`/admin/problems/${encodeURIComponent(problemId)}/preview`, {
+    headers: {
+      authorization: `Bearer ${token}`
     }
-  );
-  const body = (await parseResponse(response)) as AdminProblemPreview | { detail?: string } | null;
+  });
+  const body = (await parseJsonResponse(response)) as
+    | AdminProblemPreview
+    | { detail?: string }
+    | null;
 
   if (!response.ok) {
     throw new Error(responseDetail(body) ?? 'Admin problem preview is unavailable.');
@@ -152,7 +129,7 @@ export async function createAdminProblem(
   token: string,
   payload: AdminProblemCreateRequest
 ): Promise<AdminProblemDetail> {
-  const response = await fetch(`${adminApiBaseUrl()}/admin/problems`, {
+  const response = await fetchAdminApi('/admin/problems', {
     method: 'POST',
     headers: {
       authorization: `Bearer ${token}`,
@@ -160,7 +137,10 @@ export async function createAdminProblem(
     },
     body: JSON.stringify(payload)
   });
-  const body = (await parseResponse(response)) as AdminProblemDetail | { detail?: string } | null;
+  const body = (await parseJsonResponse(response)) as
+    | AdminProblemDetail
+    | { detail?: string }
+    | null;
 
   if (!response.ok) {
     throw new Error(responseDetail(body) ?? 'Admin problem creation is unavailable.');
@@ -173,16 +153,13 @@ export async function publishAdminProblem(
   token: string,
   problemId: string
 ): Promise<AdminProblemDetail> {
-  const response = await fetch(
-    `${adminApiBaseUrl()}/admin/problems/${encodeURIComponent(problemId)}/publish`,
-    {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${token}`
-      }
+  const response = await fetchAdminApi(`/admin/problems/${encodeURIComponent(problemId)}/publish`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`
     }
-  );
-  const body = (await parseResponse(response)) as
+  });
+  const body = (await parseJsonResponse(response)) as
     | AdminProblemDetail
     | { detail?: string }
     | { error?: string; missing?: string[] }
@@ -202,7 +179,7 @@ export async function updateAdminProblem(
   problemId: string,
   payload: AdminProblemDetail
 ): Promise<AdminProblemDetail> {
-  const response = await fetch(`${adminApiBaseUrl()}/admin/problems/${encodeURIComponent(problemId)}`, {
+  const response = await fetchAdminApi(`/admin/problems/${encodeURIComponent(problemId)}`, {
     method: 'PUT',
     headers: {
       authorization: `Bearer ${token}`,
@@ -210,7 +187,10 @@ export async function updateAdminProblem(
     },
     body: JSON.stringify(payload)
   });
-  const body = (await parseResponse(response)) as AdminProblemDetail | { detail?: string } | null;
+  const body = (await parseJsonResponse(response)) as
+    | AdminProblemDetail
+    | { detail?: string }
+    | null;
 
   if (!response.ok) {
     throw new Error(responseDetail(body) ?? 'Admin problem update is unavailable.');

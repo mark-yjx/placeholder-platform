@@ -54,7 +54,9 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(viewModelSource, /Run Public Tests/);
   assert.match(viewModelSource, /data-command="submitCurrentFile"/);
   assert.match(viewModelSource, />Submit</);
-  assert.match(viewModelSource, /appearance="primary"\$\{openStarterAttributes\}/);
+  assert.match(viewModelSource, /appearance="primary"\$\{submitAttributes\}/);
+  assert.match(viewModelSource, /action-cluster/);
+  assert.match(viewModelSource, /format-panel/);
   assert.match(viewModelSource, /input\.isEmpty\s*\?\s*''/);
   assert.doesNotMatch(viewModelSource, /refreshProblem/);
   assert.match(viewModelSource, /postMessage\(\{ command: button\.dataset\.command \}\)/);

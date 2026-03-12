@@ -39,6 +39,18 @@ def _load_admin_web_origins() -> list[str]:
     return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 
+def _load_admin_web_origin_regex() -> str | None:
+    raw_regex = os.getenv(
+        "ADMIN_WEB_ORIGIN_REGEX",
+        (
+            r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+            r"|https://([a-z0-9-]+\.)*(app\.github\.dev|githubpreview\.dev|gitpod\.io)$"
+        ),
+    )
+    cleaned = raw_regex.strip()
+    return cleaned or None
+
+
 def create_app(
     auth_service: AdminAuthService | None = None,
     oidc_service: MicrosoftOidcService | None = None,
@@ -52,6 +64,7 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_load_admin_web_origins(),
+        allow_origin_regex=_load_admin_web_origin_regex(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

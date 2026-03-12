@@ -126,20 +126,29 @@ describe('dashboard page', () => {
     expect(screen.getAllByText('Active users').length).toBeGreaterThan(0);
     expect(screen.getByText('Language usage')).toBeTruthy();
     expect(screen.getByText('Difficulty completion')).toBeTruthy();
-    expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8200/admin/analytics/overview', {
-      headers: {
-        authorization: 'Bearer signed-token'
-      }
-    });
-    expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8200/admin/submissions', {
-      headers: {
-        authorization: 'Bearer signed-token'
-      }
-    });
-    expect(fetch).toHaveBeenCalledWith('http://127.0.0.1:8200/admin/problems', {
-      headers: {
-        authorization: 'Bearer signed-token'
-      }
-    });
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:8200/admin/analytics/overview',
+      expect.objectContaining({
+        headers: {
+          authorization: 'Bearer signed-token'
+        }
+      })
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:8200/admin/submissions',
+      expect.objectContaining({
+        headers: {
+          authorization: 'Bearer signed-token'
+        }
+      })
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:8200/admin/problems',
+      expect.objectContaining({
+        headers: {
+          authorization: 'Bearer signed-token'
+        }
+      })
+    );
   });
 });

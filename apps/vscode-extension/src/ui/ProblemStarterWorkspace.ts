@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { access, constants } from 'node:fs';
 import path from 'node:path';
+import { resolveProblemStatementMarkdown } from './PracticeViewState';
 
 type WorkspaceFolderLike = {
   uri: {
@@ -45,7 +46,12 @@ export class ProblemStarterWorkspace {
     private readonly workspace: ProblemStarterWorkspaceLike
   ) {}
 
-  async openProblemStarter(problem: { problemId: string; starterCode?: string }): Promise<string> {
+  async openProblemStarter(problem: {
+    problemId: string;
+    starterCode?: string;
+    statementMarkdown?: string;
+    statement?: string;
+  }): Promise<string> {
     const workspaceRoot = this.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceRoot) {
       throw new Error('Open a workspace folder before opening a problem');
@@ -55,6 +61,10 @@ export class ProblemStarterWorkspace {
     if (!starterCode?.trim()) {
       throw new Error('Problem starter code is unavailable');
     }
+    const starterFileContent = formatStarterFileContent(
+      starterCode,
+      resolveProblemStatementMarkdown(problem) ?? problem.statement?.trim() ?? undefined
+    );
 
     const problemDirectory = path.join(workspaceRoot, '.oj', 'problems');
     const problemPath = path.join(problemDirectory, `${problem.problemId}.py`);
@@ -63,7 +73,7 @@ export class ProblemStarterWorkspace {
 
     const exists = await pathExists(problemPath);
     if (!exists) {
-      await writeFile(problemPath, starterCode, 'utf8');
+      await writeFile(problemPath, starterFileContent, 'utf8');
     } else {
       const overwrite = await this.window.showWarningMessage?.(
         `Overwrite existing starter file for ${problem.problemId}?`,
@@ -72,7 +82,7 @@ export class ProblemStarterWorkspace {
       );
 
       if (overwrite === 'Overwrite') {
-        await writeFile(problemPath, starterCode, 'utf8');
+        await writeFile(problemPath, starterFileContent, 'utf8');
       }
     }
 
@@ -90,4 +100,19 @@ export class ProblemStarterWorkspace {
     const document = await this.workspace.openTextDocument(normalizedPath);
     await this.window.showTextDocument(document, { preview: false });
   }
+}
+
+function formatStarterFileContent(starterCode: string, statement?: string): string {
+  const normalizedStarter = starterCode.endsWith('\n') ? starterCode : `${starterCode}\n`;
+  const trimmedStatement = statement?.trim();
+  if (!trimmedStatement) {
+    return normalizedStarter;
+  }
+
+  const commentBlock = trimmedStatement
+    .split(/\r?\n/)
+    .map((line) => `# ${line}`)
+    .join('\n');
+
+  return `${commentBlock}\n\n${normalizedStarter}`;
 }

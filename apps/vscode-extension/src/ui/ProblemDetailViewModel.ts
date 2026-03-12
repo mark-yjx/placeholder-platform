@@ -302,16 +302,18 @@ function renderExamples(
         ${examples
           .map(
             (example, index) => `
-              <article class="example-card">
-                <h4 class="example-title">Example ${index + 1}</h4>
-                <div class="example-grid">
-                  <section class="example-field">
-                    <p class="example-field-label">Input</p>
-                    <pre class="example-surface">${escapeHtml(formatCaseValue(example.input))}</pre>
+              <article class="example-row">
+                <div class="example-label-rail">
+                  <p class="example-label">Example ${index + 1}</p>
+                </div>
+                <div class="example-io">
+                  <section class="example-column">
+                    <p class="field-label">Input</p>
+                    <pre class="case-value">${escapeHtml(formatCaseValue(example.input))}</pre>
                   </section>
-                  <section class="example-field">
-                    <p class="example-field-label">Output</p>
-                    <pre class="example-surface">${escapeHtml(formatCaseValue(example.output))}</pre>
+                  <section class="example-column">
+                    <p class="field-label">Output</p>
+                    <pre class="case-value">${escapeHtml(formatCaseValue(example.output))}</pre>
                   </section>
                 </div>
               </article>
@@ -366,16 +368,23 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
     }
 
     .problem-detail-shell {
-      max-width: 760px;
+      max-width: 720px;
       gap: 16px;
       font-size: 0.92rem;
     }
 
+    .problem-detail-shell .hero-card,
+    .problem-detail-shell .section-card,
+    .problem-detail-shell .case-card {
+      padding: 18px;
+    }
+
     .problem-detail-shell .hero-card h2 {
-      font-size: 1.55rem;
+      font-size: 1.45rem;
     }
 
     .problem-detail-shell .hero-copy,
+    .problem-detail-shell .problem-meta p,
     .problem-detail-shell .markdown-content,
     .problem-detail-shell pre {
       font-size: 0.9rem;
@@ -391,15 +400,10 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
       color: var(--text-secondary);
     }
 
-    .problem-detail-shell .problem-actions {
+    .problem-detail-shell .action-cluster {
       display: grid;
       gap: 10px;
-      margin-top: 6px;
-    }
-
-    .problem-detail-shell .primary-action vscode-button,
-    .problem-detail-shell .secondary-actions vscode-button {
-      width: 100%;
+      margin-top: 18px;
     }
 
     .problem-detail-shell .secondary-actions {
@@ -408,100 +412,155 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
       gap: 10px;
     }
 
-    .problem-detail-shell .problem-sections,
-    .problem-detail-shell .example-grid,
-    .problem-detail-shell .io-grid {
-      display: grid;
-      gap: 12px;
-    }
-
-    .problem-detail-shell .io-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .problem-detail-shell .primary-action vscode-button::part(control) {
-      justify-content: center;
-      min-height: 40px;
-      font-size: 0.86rem;
-      font-weight: 600;
+    .problem-detail-shell .secondary-actions vscode-button,
+    .problem-detail-shell .primary-action vscode-button {
+      width: 100%;
     }
 
     .problem-detail-shell .secondary-actions vscode-button::part(control) {
       justify-content: center;
-      min-height: 38px;
-      font-size: 0.84rem;
+      min-height: 34px;
+      font-size: 0.82rem;
     }
 
-    .problem-detail-shell .io-card .markdown-content,
-    .problem-detail-shell .io-card .muted {
+    .problem-detail-shell .primary-action vscode-button::part(control) {
+      justify-content: center;
+      min-height: 38px;
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+
+    .problem-detail-shell .format-card {
+      overflow: hidden;
+    }
+
+    .problem-detail-shell .format-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0;
       margin-top: 2px;
-      padding: 12px 14px;
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 16px;
       background:
-        linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 76%, transparent), transparent 140%),
-        color-mix(in srgb, var(--surface-muted) 44%, var(--surface));
+        linear-gradient(
+          180deg,
+          var(--vscode-editorWidget-background, var(--surface-muted)),
+          transparent 120%
+        ),
+        var(--surface-muted);
+    }
+
+    .problem-detail-shell .format-column {
+      min-width: 0;
+      padding: 18px 20px 20px;
+    }
+
+    .problem-detail-shell .format-column + .format-column {
+      border-left: 1px solid var(--border);
+    }
+
+    .problem-detail-shell .format-label {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .problem-detail-shell .format-column h4 {
+      margin-top: 8px;
+      font-size: 0.86rem;
+      line-height: 1.3;
+      letter-spacing: 0;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .problem-detail-shell .format-column .markdown-content,
+    .problem-detail-shell .format-column .muted {
+      margin-top: 12px;
     }
 
     .problem-detail-shell .examples-panel {
       display: grid;
-      gap: 12px;
-      margin-top: 2px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background:
+        linear-gradient(
+          180deg,
+          var(--vscode-editorWidget-background, var(--surface-muted)),
+          transparent 150%
+        ),
+        var(--surface);
+      overflow: hidden;
     }
 
     .problem-detail-shell .examples-copy {
       margin-bottom: 12px;
     }
 
-    .problem-detail-shell .example-card {
+    .problem-detail-shell .example-row {
       display: grid;
-      gap: 10px;
-      padding: 14px 16px 16px;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background:
-        linear-gradient(180deg, color-mix(in srgb, var(--surface-muted) 70%, transparent), transparent 150%),
-        color-mix(in srgb, var(--surface-muted) 26%, var(--surface));
+      grid-template-columns: 88px minmax(0, 1fr);
+      gap: 0;
     }
 
-    .problem-detail-shell .example-title {
-      font-size: 0.98rem;
-      line-height: 1.25;
-      letter-spacing: -0.01em;
-      font-weight: 600;
+    .problem-detail-shell .example-row + .example-row {
+      border-top: 1px solid var(--border);
     }
 
-    .problem-detail-shell .example-grid {
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-    }
-
-    .problem-detail-shell .example-field {
+    .problem-detail-shell .example-label-rail {
       display: grid;
-      min-width: 0;
+      align-content: start;
       gap: 6px;
+      padding: 18px 16px;
+      border-right: 1px solid var(--border);
+      background: color-mix(in srgb, var(--surface-muted) 68%, transparent);
     }
 
-    .problem-detail-shell .example-field-label {
+    .problem-detail-shell .example-label {
       margin: 0;
       color: var(--text-secondary);
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0;
-      text-transform: none;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
-    .problem-detail-shell .example-surface {
-      margin: 0;
+    .problem-detail-shell .example-io {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 0;
+    }
+
+    .problem-detail-shell .example-column {
       min-width: 0;
-      padding: 12px 14px;
-      border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-      border-radius: 12px;
-      background:
-        linear-gradient(180deg, color-mix(in srgb, var(--vscode-textCodeBlock-background) 88%, transparent), transparent 160%),
-        color-mix(in srgb, var(--vscode-textCodeBlock-background) 72%, var(--surface));
-      font-size: 0.84rem;
-      line-height: 1.45;
-      white-space: pre-wrap;
+      padding: 18px;
+    }
+
+    .problem-detail-shell .example-column + .example-column {
+      border-left: 1px solid var(--border);
+    }
+
+    .problem-detail-shell .example-column .field-label {
+      font-size: 0.7rem;
+    }
+
+    .problem-detail-shell .example-column .case-value {
+      margin-top: 10px;
+      border-radius: 14px;
+      background: color-mix(
+        in srgb,
+        var(--vscode-textCodeBlock-background) 86%,
+        var(--surface)
+      );
     }
 
     @media (max-width: 640px) {
@@ -509,9 +568,27 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
         grid-template-columns: minmax(0, 1fr);
       }
 
-      .problem-detail-shell .io-grid,
-      .problem-detail-shell .example-grid {
+      .problem-detail-shell .example-row {
         grid-template-columns: minmax(0, 1fr);
+      }
+
+      .problem-detail-shell .example-label-rail {
+        grid-template-columns: auto auto;
+        align-items: center;
+        justify-content: flex-start;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .problem-detail-shell .format-panel,
+      .problem-detail-shell .example-io {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .problem-detail-shell .format-column + .format-column,
+      .problem-detail-shell .example-column + .example-column {
+        border-left: 0;
+        border-top: 1px solid var(--border);
       }
     }
   `;
@@ -546,13 +623,13 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
           input.isEmpty
             ? ''
             : `
-              <div class="problem-actions">
-                <div class="primary-action">
-                  <vscode-button appearance="primary"${openStarterAttributes}>Open Coding File</vscode-button>
-                </div>
+              <div class="action-cluster">
                 <div class="secondary-actions">
+                  <vscode-button${openStarterAttributes}>Open Coding File</vscode-button>
                   <vscode-button${runPublicTestsAttributes}>Run Public Tests</vscode-button>
-                  <vscode-button${submitAttributes}>Submit</vscode-button>
+                </div>
+                <div class="primary-action">
+                  <vscode-button appearance="primary"${submitAttributes}>Submit</vscode-button>
                 </div>
               </div>
             `
@@ -566,32 +643,34 @@ export function createProblemDetailHtml(input: ProblemDetailViewModel): string {
             <section class="section-card">
               <div class="section-header">
                 <p class="section-kicker">Description</p>
-                <h3>Description</h3>
+                <h3>What the problem is asking</h3>
               </div>
               ${statementBody}
             </section>
 
-            <div class="io-grid">
-              <section class="section-card io-card">
-                <div class="section-header">
-                  <p class="section-kicker">Input</p>
-                  <h3>Input</h3>
-                </div>
+            <section class="section-card format-card">
+              <div class="section-header">
+                <p class="section-kicker">Format</p>
+                <h3>Input and output contract</h3>
+              </div>
+              <div class="format-panel">
+                <article class="format-column">
+                  <span class="format-label">Input</span>
+                  <h4>Expected input format</h4>
                   ${inputSection}
-              </section>
-              <section class="section-card io-card">
-                <div class="section-header">
-                  <p class="section-kicker">Output</p>
-                  <h3>Output</h3>
-                </div>
+                </article>
+                <article class="format-column">
+                  <span class="format-label">Output</span>
+                  <h4>Expected output format</h4>
                   ${outputSection}
-              </section>
-            </div>
+                </article>
+              </div>
+            </section>
 
             <section class="section-card">
               <div class="section-header">
                 <p class="section-kicker">Examples</p>
-                <h3>Examples</h3>
+                <h3>Student-visible examples</h3>
               </div>
               ${examplesSection}
             </section>

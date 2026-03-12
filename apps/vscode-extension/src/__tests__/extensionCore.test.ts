@@ -2461,11 +2461,16 @@ test('problem starter workspace creates the starter file when it is missing and 
 
   await workspace.openProblemStarter({
     problemId: 'collapse',
-    starterCode: 'def collapse(number):\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
+    starterCode: 'def collapse(number):\n    # YOUR CODE HERE\n    raise NotImplementedError\n',
+    statementMarkdown: '# Collapse Identical Digits\n\nCollapse duplicate digits.'
   });
 
   const targetPath = path.join(root, '.oj', 'problems', 'collapse.py');
-  assert.equal(await readFile(targetPath, 'utf8'), 'def collapse(number):\n    # YOUR CODE HERE\n    raise NotImplementedError\n');
+  assert.equal(
+    await readFile(targetPath, 'utf8'),
+    '# # Collapse Identical Digits\n# \n# Collapse duplicate digits.\n\n' +
+      'def collapse(number):\n    # YOUR CODE HERE\n    raise NotImplementedError\n'
+  );
   assert.deepEqual(openedPaths, [targetPath]);
   assert.deepEqual(shownPaths, [targetPath]);
 });

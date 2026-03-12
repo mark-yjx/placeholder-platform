@@ -20,12 +20,13 @@ test('fetched problem detail renders expected fields', () => {
   assert.match(html, /<h2>Collapse Identical Digits<\/h2>/);
   assert.match(html, /<p class="hero-copy">Collapse duplicate digits\.<\/p>/);
   assert.match(html, /Problem ID:<\/strong> <code>collapse<\/code>/);
-  assert.match(html, /<h3>Description<\/h3>/);
-  assert.match(html, /<h3>Input<\/h3>/);
-  assert.match(html, /<h3>Output<\/h3>/);
-  assert.match(html, /<h3>Examples<\/h3>/);
-  assert.match(html, /class="io-grid"/);
-  assert.match(html, /class="problem-actions"/);
+  assert.match(html, /What the problem is asking/);
+  assert.match(html, /Expected input format/);
+  assert.match(html, /Expected output format/);
+  assert.match(html, /Input and output contract/);
+  assert.match(html, /Student-visible examples/);
+  assert.match(html, /class="format-panel"/);
+  assert.match(html, /class="action-cluster"/);
   assert.match(html, /class="secondary-actions"/);
   assert.match(html, /class="primary-action"/);
   assert.doesNotMatch(html, /Entry Function:/);
@@ -35,13 +36,15 @@ test('fetched problem detail renders expected fields', () => {
   assert.match(html, /<ul><li>Keep the sign<\/li><li>Keep the order<\/li><\/ul>/);
   assert.match(html, /Use <code>collapse\(number\)<\/code>\./);
   assert.doesNotMatch(html, /<pre style="white-space: pre-wrap;">/);
-  assert.match(html, /max-width: 760px/);
-  assert.match(html, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(html, /max-width: 720px/);
+  assert.match(html, /font-size: 0\.86rem/);
+  assert.match(html, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/);
+  assert.match(html, /width: 100%/);
   assert.match(html, /Starter File:<\/strong> <code>collapse\.py<\/code>/);
   assert.doesNotMatch(html, /\/home\/mark\/src\/oj-vscode\/\.oj\/problems\/collapse\.py/);
-  assert.match(html, /<vscode-button appearance="primary" data-command="openStarter">Open Coding File<\/vscode-button>/);
+  assert.match(html, /<vscode-button data-command="openStarter">Open Coding File<\/vscode-button>/);
   assert.match(html, /<vscode-button data-command="runPublicTests">Run Public Tests<\/vscode-button>/);
-  assert.match(html, /<vscode-button data-command="submitCurrentFile">Submit<\/vscode-button>/);
+  assert.match(html, /<vscode-button appearance="primary" data-command="submitCurrentFile">Submit<\/vscode-button>/);
   assert.doesNotMatch(html, /Refresh/);
 });
 
@@ -115,18 +118,18 @@ test('problem detail renders manifest examples as rows inside one shared panel',
   );
 
   assert.match(html, /class="examples-panel"/);
-  assert.match(html, /class="example-card"/);
-  assert.match(html, /<h4 class="example-title">Example 1<\/h4>/);
-  assert.match(html, /class="example-grid"/);
-  assert.match(html, /<p class="example-field-label">Input<\/p>/);
-  assert.match(html, /<p class="example-field-label">Output<\/p>/);
-  assert.match(html, /class="example-surface">112233<\/pre>/);
-  assert.match(html, /class="example-surface">123<\/pre>/);
+  assert.match(html, /class="example-row"/);
+  assert.match(html, /class="example-label-rail"/);
+  assert.match(html, /<p class="example-label">Example 1<\/p>/);
+  assert.match(html, /class="example-io"/);
+  assert.match(html, /<p class="field-label">Input<\/p>/);
+  assert.match(html, /<p class="field-label">Output<\/p>/);
+  assert.match(html, /class="case-value">112233<\/pre>/);
+  assert.match(html, /class="case-value">123<\/pre>/);
   assert.match(html, /112233/);
   assert.match(html, /123/);
-  assert.doesNotMatch(html, /class="example-row"/);
-  assert.doesNotMatch(html, /class="example-label-rail"/);
-  assert.doesNotMatch(html, /class="field-label">Input<\/p>/);
+  assert.doesNotMatch(html, /class="example-card"/);
+  assert.doesNotMatch(html, /class="example-title"/);
 });
 
 test('problem detail recognizes input format and output format headings', () => {
@@ -145,8 +148,9 @@ test('problem detail recognizes input format and output format headings', () => 
     )
   );
 
-  assert.match(html, /<h3>Input<\/h3>/);
-  assert.match(html, /<h3>Output<\/h3>/);
+  assert.match(html, /Expected input format/);
+  assert.match(html, /Expected output format/);
+  assert.match(html, /Input and output contract/);
   assert.match(html, /One integer per line\./);
   assert.match(html, /Return the collapsed value\./);
   assert.match(html, /<h2>Notes<\/h2>/);
@@ -174,7 +178,7 @@ test('problem detail preserves example markdown alongside structured examples', 
 
   assert.match(html, /class="examples-copy"/);
   assert.match(html, /Use the examples below to verify edge cases\./);
-  assert.match(html, /<h4 class="example-title">Example 1<\/h4>/);
+  assert.match(html, /<p class="example-label">Example 1<\/p>/);
   assert.match(html, /111122223333/);
   assert.match(html, /123/);
   assert.doesNotMatch(html, /<h2>Examples<\/h2>/);
@@ -203,7 +207,7 @@ test('problem detail tolerates sparse example payloads without crashing', () => 
   );
 
   assert.match(html, /class="examples-panel"/);
-  assert.match(html, /<p class="example-field-label">Input<\/p>/);
-  assert.match(html, /<pre class="example-surface"><\/pre>/);
-  assert.match(html, /<pre class="example-surface">42<\/pre>/);
+  assert.match(html, /<p class="field-label">Input<\/p>/);
+  assert.match(html, /<pre class="case-value"><\/pre>/);
+  assert.match(html, /<pre class="case-value">42<\/pre>/);
 });

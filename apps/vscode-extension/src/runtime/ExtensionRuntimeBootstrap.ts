@@ -18,7 +18,12 @@ export type PracticeViewsLike = {
 };
 
 export type ProblemStarterWorkspaceRestoreLike = {
-  openProblemStarter(problem: { problemId: string; starterCode?: string }): Promise<string>;
+  openProblemStarter(problem: {
+    problemId: string;
+    starterCode?: string;
+    statementMarkdown?: string;
+    statement?: string;
+  }): Promise<string>;
   reopenProblemStarter(filePath: string): Promise<void>;
 };
 
