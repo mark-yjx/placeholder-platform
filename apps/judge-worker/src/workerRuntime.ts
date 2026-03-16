@@ -11,6 +11,7 @@ import { runPythonJudgeExecution } from './sandbox/PythonJudgeExecution';
 import { PostgresProblemJudgeConfigRepository } from './sandbox/problemConfig';
 
 const MEMORY_METRIC_PREFIX = '__OJ_MEMORY_KB__=';
+const TIME_METRIC_PREFIX = '__OJ_TIME_MS__=';
 
 export type WorkerRuntimeOptions = {
   pollIntervalMs?: number;
@@ -116,9 +117,38 @@ function resolveDockerRunImage(args: readonly string[]): string {
 
 function buildDockerRunWrapperCommand(): string {
   return [
+    'read_cpu_usage_ms() {',
+    '  if [ -f /sys/fs/cgroup/cpu.stat ]; then',
+    '    while IFS=" " read -r key value _; do',
+    '      if [ "$key" = "usage_usec" ]; then',
+    '        case "$value" in',
+    "          ''|*[!0-9]*) break ;;",
+    '        esac',
+    '        echo $(( (value + 999) / 1000 ))',
+    '        return',
+    '      fi',
+    '    done </sys/fs/cgroup/cpu.stat',
+    '  fi',
+    '  for path in /sys/fs/cgroup/cpuacct/cpuacct.usage /sys/fs/cgroup/cpu,cpuacct/cpuacct.usage; do',
+    '    if [ -f "$path" ]; then',
+    '      value=$(cat "$path" 2>/dev/null || true)',
+    '      case "$value" in',
+    "        ''|*[!0-9]*) continue ;;",
+    '      esac',
+    '      echo $(( (value + 999999) / 1000000 ))',
+    '      return',
+    '    fi',
+    '  done',
+    "  echo ''",
+    '}',
     'cat >/tmp/main.py',
+    'cpu_before=$(read_cpu_usage_ms)',
     'python /tmp/main.py',
     'exit_code=$?',
+    'cpu_after=$(read_cpu_usage_ms)',
+    'if [ -n "$cpu_before" ] && [ -n "$cpu_after" ] && [ "$cpu_after" -ge "$cpu_before" ]; then',
+    `  echo "${TIME_METRIC_PREFIX}$(( cpu_after - cpu_before ))" >&2`,
+    'fi',
     'for path in /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory.max_usage_in_bytes /sys/fs/cgroup/memory/memory.max_usage_in_bytes; do',
     '  if [ -f "$path" ]; then',
     '    value=$(cat "$path" 2>/dev/null || true)',

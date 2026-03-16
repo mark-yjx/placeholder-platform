@@ -79,3 +79,26 @@ test('docker sandbox execution extracts measured memory from sandbox stderr meta
     memoryKb: 4096
   });
 });
+
+test('docker sandbox execution prefers in-container measured time over outer wall-clock time', async () => {
+  const adapter = new DockerSandboxAdapter(async () => ({
+    stdout: 'ok',
+    stderr: '__OJ_TIME_MS__=12\n__OJ_MEMORY_KB__=4096\n',
+    exitCode: 0,
+    timeMs: 41
+  }));
+
+  const execution = await adapter.execute({
+    image: 'python:3.12-alpine',
+    limits: { cpuCores: 1, memoryMb: 256, timeMs: 2000 },
+    sourceCode: 'print("hello")'
+  });
+
+  assert.deepEqual(execution, {
+    stdout: 'ok',
+    stderr: '',
+    exitCode: 0,
+    timeMs: 12,
+    memoryKb: 4096
+  });
+});

@@ -2,6 +2,7 @@ import { CONTAINER_SECURITY_FLAGS } from './containerPolicy';
 import { ResourceLimits } from './judgePolicy';
 
 const MEMORY_METRIC_PREFIX = '__OJ_MEMORY_KB__=';
+const TIME_METRIC_PREFIX = '__OJ_TIME_MS__=';
 
 type RunCommand = {
   command: string;
@@ -34,26 +35,40 @@ export type DockerSandboxExecution = {
 
 export type CommandExecutor = (command: RunCommand) => Promise<DockerSandboxCommandExecution>;
 
-function extractMeasuredMemoryFromStderr(stderr: string): { stderr: string; memoryKb?: number } {
-  if (!stderr.includes(MEMORY_METRIC_PREFIX)) {
+function extractMeasuredMetricsFromStderr(stderr: string): {
+  stderr: string;
+  timeMs?: number;
+  memoryKb?: number;
+} {
+  if (!stderr.includes(MEMORY_METRIC_PREFIX) && !stderr.includes(TIME_METRIC_PREFIX)) {
     return { stderr };
   }
 
   const trailingNewline = stderr.endsWith('\n');
   let measuredMemoryKb: number | undefined;
+  let measuredTimeMs: number | undefined;
   const filteredLines = stderr
     .split(/\r?\n/)
     .filter((line) => {
-      if (!line.startsWith(MEMORY_METRIC_PREFIX)) {
-        return true;
+      if (line.startsWith(MEMORY_METRIC_PREFIX)) {
+        const rawValue = line.slice(MEMORY_METRIC_PREFIX.length).trim();
+        const parsedValue = Number(rawValue);
+        if (Number.isInteger(parsedValue) && parsedValue >= 0) {
+          measuredMemoryKb = parsedValue;
+        }
+        return false;
       }
 
-      const rawValue = line.slice(MEMORY_METRIC_PREFIX.length).trim();
-      const parsedValue = Number(rawValue);
-      if (Number.isInteger(parsedValue) && parsedValue >= 0) {
-        measuredMemoryKb = parsedValue;
+      if (line.startsWith(TIME_METRIC_PREFIX)) {
+        const rawValue = line.slice(TIME_METRIC_PREFIX.length).trim();
+        const parsedValue = Number(rawValue);
+        if (Number.isInteger(parsedValue) && parsedValue >= 0) {
+          measuredTimeMs = parsedValue;
+        }
+        return false;
       }
-      return false;
+
+      return true;
     });
 
   let sanitizedStderr = filteredLines.join('\n');
@@ -63,6 +78,7 @@ function extractMeasuredMemoryFromStderr(stderr: string): { stderr: string; memo
 
   return {
     stderr: sanitizedStderr,
+    timeMs: measuredTimeMs,
     memoryKb: measuredMemoryKb
   };
 }
@@ -93,12 +109,12 @@ export class DockerSandboxAdapter {
     const command = this.buildRunCommand(input);
     const startedAt = Date.now();
     const execution = await this.executeCommand(command);
-    const parsedMetrics = extractMeasuredMemoryFromStderr(execution.stderr);
+    const parsedMetrics = extractMeasuredMetricsFromStderr(execution.stderr);
     return {
       stdout: execution.stdout,
       stderr: parsedMetrics.stderr,
       exitCode: execution.exitCode ?? 0,
-      timeMs: execution.timeMs ?? Math.max(Date.now() - startedAt, 0),
+      timeMs: parsedMetrics.timeMs ?? execution.timeMs ?? Math.max(Date.now() - startedAt, 0),
       memoryKb: execution.memoryKb ?? parsedMetrics.memoryKb
     };
   }
