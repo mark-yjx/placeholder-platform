@@ -118,18 +118,18 @@ test('problem detail renders manifest examples as rows inside one shared panel',
   );
 
   assert.match(html, /class="examples-panel"/);
-  assert.match(html, /class="example-row"/);
-  assert.match(html, /class="example-label-rail"/);
-  assert.match(html, /<p class="example-label">Example 1<\/p>/);
-  assert.match(html, /class="example-io"/);
-  assert.match(html, /<p class="field-label">Input<\/p>/);
-  assert.match(html, /<p class="field-label">Output<\/p>/);
-  assert.match(html, /class="case-value">112233<\/pre>/);
-  assert.match(html, /class="case-value">123<\/pre>/);
+  assert.match(html, /class="example-card"/);
+  assert.match(html, /<h4 class="example-title">Example 1<\/h4>/);
+  assert.match(html, /class="example-grid"/);
+  assert.match(html, /<p class="example-field-label">Input<\/p>/);
+  assert.match(html, /<p class="example-field-label">Output<\/p>/);
+  assert.match(html, /class="example-surface">112233<\/pre>/);
+  assert.match(html, /class="example-surface">123<\/pre>/);
   assert.match(html, /112233/);
   assert.match(html, /123/);
-  assert.doesNotMatch(html, /class="example-card"/);
-  assert.doesNotMatch(html, /class="example-title"/);
+  assert.doesNotMatch(html, /class="example-row"/);
+  assert.doesNotMatch(html, /class="example-label-rail"/);
+  assert.doesNotMatch(html, /class="field-label">Input<\/p>/);
 });
 
 test('problem detail recognizes input format and output format headings', () => {
@@ -178,7 +178,7 @@ test('problem detail preserves example markdown alongside structured examples', 
 
   assert.match(html, /class="examples-copy"/);
   assert.match(html, /Use the examples below to verify edge cases\./);
-  assert.match(html, /<p class="example-label">Example 1<\/p>/);
+  assert.match(html, /<h4 class="example-title">Example 1<\/h4>/);
   assert.match(html, /111122223333/);
   assert.match(html, /123/);
   assert.doesNotMatch(html, /<h2>Examples<\/h2>/);
@@ -207,7 +207,7 @@ test('problem detail tolerates sparse example payloads without crashing', () => 
   );
 
   assert.match(html, /class="examples-panel"/);
-  assert.match(html, /<p class="field-label">Input<\/p>/);
-  assert.match(html, /<pre class="case-value"><\/pre>/);
-  assert.match(html, /<pre class="case-value">42<\/pre>/);
+  assert.match(html, /<p class="example-field-label">Input<\/p>/);
+  assert.match(html, /<pre class="example-surface"><\/pre>/);
+  assert.match(html, /<pre class="example-surface">42<\/pre>/);
 });

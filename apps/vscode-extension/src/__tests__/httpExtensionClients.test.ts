@@ -69,20 +69,48 @@ test('http auth client exposes browser auth URLs and exchanges one-time codes', 
         callbackUri: 'vscode://placeholder.placeholder-extension/auth-complete',
         state: 'sign-in-state'
       }),
-      'http://oj.test/auth/sign-in?callback_uri=vscode%3A%2F%2Fplaceholder.placeholder-extension%2Fauth-complete&state=sign-in-state'
+      'http://oj.test/auth/sign-in?callback_uri=vscode%3A%2F%2Fplaceholder.placeholder-extension%2Fauth-complete&oj_state=sign-in-state'
     );
     assert.equal(
       client.getBrowserAuthUrl('sign-up', {
         callbackUri: 'vscode://placeholder.placeholder-extension/auth-complete',
         state: 'sign-up-state'
       }),
-      'http://oj.test/auth/sign-up?callback_uri=vscode%3A%2F%2Fplaceholder.placeholder-extension%2Fauth-complete&state=sign-up-state'
+      'http://oj.test/auth/sign-up?callback_uri=vscode%3A%2F%2Fplaceholder.placeholder-extension%2Fauth-complete&oj_state=sign-up-state'
     );
     assert.deepEqual(await client.exchangeBrowserCode({ code: 'ABC123' }), {
       accessToken: 'student-token',
       email: 'student@example.com',
       role: 'student'
     });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('http auth client annotates transport failures with request context', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw Object.assign(new Error('fetch failed'), { code: 'ECONNREFUSED' });
+  };
+
+  try {
+    const client = new HttpAuthClient({ apiBaseUrl: 'http://oj.test', requestTimeoutMs: 10_000 });
+    await assert.rejects(
+      client.exchangeBrowserCode({ code: 'ABC123' }),
+      (error: unknown) => {
+        assert.equal(error instanceof Error, true);
+        assert.equal(
+          (error as Error & { requestMethod?: string }).requestMethod,
+          'POST'
+        );
+        assert.equal(
+          (error as Error & { requestUrl?: string }).requestUrl,
+          'http://oj.test/auth/extension/exchange'
+        );
+        return true;
+      }
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -1439,7 +1439,9 @@ test('submit current file rejects non-.py editors', async () => {
 
   assert.equal(submitCalled, false);
   assert.ok(
-    outputLines.some((line) => line.includes('[oj.practice.submitCurrentFile] error: Active editor must be a .py file'))
+    outputLines.some((line) =>
+      line.includes('[oj.practice.submitCurrentFile] error: Active editor must be a Python file')
+    )
   );
 });
 

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   fetchAdminApi,
+  responseDetail,
   resolveAdminApiBaseUrl,
   resolveAdminApiTimeoutMs
 } from '../api/client';
@@ -63,5 +64,24 @@ describe('admin api client', () => {
     await vi.advanceTimersByTimeAsync(8000);
 
     await expectation;
+  });
+
+  it('formats FastAPI validation detail arrays into a readable message', () => {
+    expect(
+      responseDetail({
+        detail: [
+          {
+            loc: ['body', 'problemId'],
+            msg: 'Value error, problemId is required.'
+          },
+          {
+            loc: ['body', 'entryFunction'],
+            msg: 'Value error, entryFunction must be a valid Python identifier.'
+          }
+        ]
+      })
+    ).toBe(
+      'problemId: problemId is required. entryFunction: entryFunction must be a valid Python identifier.'
+    );
   });
 });

@@ -45,6 +45,7 @@ class FakeProblemService:
             memoryLimitKb=payload.memoryLimitKb,
             visibility="draft",
             statementMarkdown=f"# {payload.title}\n\nProblem statement not written yet.\n",
+            examples=[],
             starterCode=(
                 f"def {payload.entryFunction}(number: int) -> int:\n"
                 '    """\n'
@@ -89,6 +90,7 @@ class FakeProblemService:
             memoryLimitKb=current.memoryLimitKb,
             visibility="published",
             statementMarkdown=current.statementMarkdown,
+            examples=current.examples,
             starterCode=current.starterCode,
             updatedAt="2026-03-10T12:00:00Z",
         )
@@ -112,6 +114,7 @@ class FakeProblemService:
             memoryLimitKb=payload.memoryLimitKb,
             visibility=payload.visibility,
             statementMarkdown=payload.statementMarkdown,
+            examples=payload.examples,
             starterCode=payload.starterCode,
             updatedAt="2026-03-10T00:00:00Z",
         )
@@ -307,6 +310,7 @@ def test_admin_problem_create_returns_created_problem_for_valid_token(monkeypatc
         "memoryLimitKb": 262144,
         "visibility": "draft",
         "statementMarkdown": "# Collapse Identical Digits\n\nProblem statement not written yet.\n",
+        "examples": [],
         "starterCode": (
             "def collapse(number: int) -> int:\n"
             '    """\n'
@@ -410,6 +414,7 @@ def test_admin_problem_update_persists_for_valid_token(monkeypatch) -> None:
         "memoryLimitKb": 131072,
         "visibility": "private",
         "statementMarkdown": "# Collapse Digits\n\nUpdated statement.",
+        "examples": [{"input": 111, "output": 1}],
         "starterCode": "def collapse(number):\n    return int(number)\n",
     }
 
@@ -429,6 +434,7 @@ def test_admin_problem_update_persists_for_valid_token(monkeypatch) -> None:
         "memoryLimitKb": 131072,
         "visibility": "private",
         "statementMarkdown": "# Collapse Digits\n\nUpdated statement.",
+        "examples": [{"input": 111, "output": 1}],
         "starterCode": "def collapse(number):\n    return int(number)\n",
         "updatedAt": "2026-03-10T00:00:00Z",
     }
@@ -453,6 +459,7 @@ def test_admin_problem_update_rejects_invalid_payload(monkeypatch) -> None:
             "memoryLimitKb": 131072,
             "visibility": "public",
             "statementMarkdown": "# Collapse Digits",
+            "examples": [],
             "starterCode": "def solve(number):\n    return number\n",
         },
     )
@@ -478,6 +485,7 @@ def test_admin_problem_update_rejects_problem_id_changes(monkeypatch) -> None:
             "memoryLimitKb": 131072,
             "visibility": "public",
             "statementMarkdown": "# Collapse Digits",
+            "examples": [],
             "starterCode": "def collapse(number):\n    return number\n",
         },
     )
@@ -580,6 +588,7 @@ def test_problem_service_reads_and_updates_file_backed_problem(tmp_path) -> None
     loaded = service.get_problem("collapse")
     assert loaded is not None
     assert loaded.visibility == "draft"
+    assert [item.model_dump() for item in loaded.examples] == [{"input": 111, "output": 1}]
 
     updated = service.update_problem(
         "collapse",
@@ -592,6 +601,7 @@ def test_problem_service_reads_and_updates_file_backed_problem(tmp_path) -> None
             memoryLimitKb=131072,
             visibility="draft",
             statementMarkdown="# Collapse Digits\n\nUpdated statement.\n",
+            examples=[{"input": 2222, "output": 2}],
             starterCode="def collapse(number: int) -> int:\n    return number\n",
         ),
     )
@@ -604,6 +614,9 @@ def test_problem_service_reads_and_updates_file_backed_problem(tmp_path) -> None
     assert json.loads((tmp_path / "collapse" / "manifest.json").read_text(encoding="utf-8"))[
         "publicTests"
     ] == [{"input": 0, "output": 0}]
+    assert json.loads((tmp_path / "collapse" / "manifest.json").read_text(encoding="utf-8"))[
+        "examples"
+    ] == [{"input": 2222, "output": 2}]
     assert (tmp_path / "collapse" / "statement.md").read_text(encoding="utf-8") == (
         "# Collapse Digits\n\nUpdated statement."
     )

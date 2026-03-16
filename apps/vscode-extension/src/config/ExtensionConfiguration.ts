@@ -1,7 +1,7 @@
 export const OJ_CONFIGURATION_NAMESPACE = 'oj';
 export const OJ_API_BASE_URL_SETTING = 'apiBaseUrl';
 export const OJ_REQUEST_TIMEOUT_MS_SETTING = 'requestTimeoutMs';
-export const DEFAULT_OJ_API_BASE_URL = 'http://localhost:3100';
+export const DEFAULT_OJ_API_BASE_URL = 'http://127.0.0.1:3100';
 export const DEFAULT_OJ_REQUEST_TIMEOUT_MS = 10_000;
 
 export type WorkspaceConfigurationLike = {

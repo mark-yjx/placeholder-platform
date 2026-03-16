@@ -12,6 +12,86 @@ const ALLOWED_CALLBACK_AUTHORITIES = new Set([
   'placeholder.placeholder-extension',
   'local.placeholder-extension'
 ]);
+const STUDENT_AUTH_CALLBACK_PATH = '/auth-complete';
+
+function normalizePath(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith('/')) {
+    return pathname.slice(0, -1);
+  }
+  return pathname;
+}
+
+function isAllowedStudentCallbackTarget(parsed: URL): boolean {
+  const scheme = parsed.protocol.replace(/:$/, '');
+  return (
+    ALLOWED_CALLBACK_SCHEMES.has(scheme) &&
+    ALLOWED_CALLBACK_AUTHORITIES.has(parsed.host) &&
+    normalizePath(parsed.pathname) === STUDENT_AUTH_CALLBACK_PATH
+  );
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+  return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '[::1]';
+}
+
+function isAllowedExternalStudentCallback(parsed: URL): boolean {
+  if (parsed.protocol === 'https:') {
+    return parsed.host.trim().length > 0;
+  }
+
+  return parsed.protocol === 'http:' && isLoopbackHostname(parsed.hostname);
+}
+
+function parseStudentCallbackUri(callbackUri: string): URL {
+  const parsed = new URL(callbackUri);
+  const decodedPathname = decodeURIComponent(parsed.pathname);
+  const queryStart = decodedPathname.indexOf('?');
+  const hashStart = decodedPathname.indexOf('#');
+  const splitIndex =
+    queryStart === -1
+      ? hashStart
+      : hashStart === -1
+        ? queryStart
+        : Math.min(queryStart, hashStart);
+
+  if (splitIndex === -1) {
+    return parsed;
+  }
+
+  const normalized = new URL(parsed.toString());
+  normalized.pathname = decodedPathname.slice(0, splitIndex);
+
+  const queryEnd = hashStart === -1 ? decodedPathname.length : hashStart;
+  normalized.search = queryStart === -1 ? parsed.search : decodedPathname.slice(queryStart, queryEnd);
+  normalized.hash = hashStart === -1 ? parsed.hash : decodedPathname.slice(hashStart);
+  return normalized;
+}
+
+function resolveDirectStudentCallbackUri(callbackUri: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = parseStudentCallbackUri(callbackUri);
+  } catch {
+    return null;
+  }
+
+  if (isAllowedStudentCallbackTarget(parsed)) {
+    return parsed.toString();
+  }
+
+  const target = parsed.searchParams.get('target')?.trim() ?? '';
+  if (!target) {
+    return null;
+  }
+
+  try {
+    const targetUri = parseStudentCallbackUri(target);
+    return isAllowedStudentCallbackTarget(targetUri) ? targetUri.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 function renderLayout(input: { title: string; body: string }): string {
   return `<!doctype html>
@@ -253,7 +333,7 @@ export function renderStudentAuthForm(input: {
     displayName?: string;
   };
   callbackUri?: string | null;
-  state?: string | null;
+  ojState?: string | null;
 }): string {
   const pageTitle = input.mode === 'sign-in' ? 'Placeholder Practice Sign In' : 'Placeholder Practice Sign Up';
   const action = input.mode === 'sign-in' ? '/auth/sign-in' : '/auth/sign-up';
@@ -268,12 +348,12 @@ export function renderStudentAuthForm(input: {
   const email = escapeHtml(input.values?.email ?? '');
   const displayName = escapeHtml(input.values?.displayName ?? '');
   const callbackUri = input.callbackUri ? escapeHtml(input.callbackUri) : '';
-  const state = input.state ? escapeHtml(input.state) : '';
+  const ojState = input.ojState ? escapeHtml(input.ojState) : '';
   const callbackFields =
-    callbackUri && state
+    callbackUri && ojState
       ? `
         <input type="hidden" name="callbackUri" value="${callbackUri}" />
-        <input type="hidden" name="state" value="${state}" />
+        <input type="hidden" name="oj_state" value="${ojState}" />
       `
       : '';
 
@@ -354,45 +434,41 @@ export function renderStudentAuthSuccess(input: {
 
 export function resolveStudentAuthCallback(input: {
   callbackUri?: string | null;
-  state?: string | null;
-}): { callbackUri: string; state: string } | null {
+  ojState?: string | null;
+}): { callbackUri: string; ojState: string } | null {
   const callbackUri = input.callbackUri?.trim() ?? '';
-  const state = input.state?.trim() ?? '';
+  const ojState = input.ojState?.trim() ?? '';
 
-  if (!callbackUri && !state) {
+  if (!callbackUri && !ojState) {
     return null;
   }
 
-  if (!callbackUri || !state) {
+  if (!callbackUri || !ojState) {
     throw new Error('Browser callback configuration is incomplete. Start again from the VS Code extension.');
   }
 
   let parsed: URL;
   try {
-    parsed = new URL(callbackUri);
+    parsed = parseStudentCallbackUri(callbackUri);
   } catch {
     throw new Error('Browser callback target is invalid. Start again from the VS Code extension.');
   }
 
-  if (!ALLOWED_CALLBACK_SCHEMES.has(parsed.protocol.replace(/:$/, ''))) {
+  if (!isAllowedStudentCallbackTarget(parsed) && !isAllowedExternalStudentCallback(parsed)) {
     throw new Error('Browser callback target is invalid. Start again from the VS Code extension.');
   }
 
-  if (!ALLOWED_CALLBACK_AUTHORITIES.has(parsed.host)) {
-    throw new Error('Browser callback target is invalid. Start again from the VS Code extension.');
-  }
-
-  return { callbackUri, state };
+  return { callbackUri: parsed.toString(), ojState };
 }
 
 export function createStudentAuthCompletionUri(input: {
   callbackUri: string;
-  state: string;
+  ojState: string;
   code: string;
 }): string {
   const callbackUrl = new URL(input.callbackUri);
   callbackUrl.searchParams.set('code', input.code);
-  callbackUrl.searchParams.set('state', input.state);
+  callbackUrl.searchParams.set('oj_state', input.ojState);
   return callbackUrl.toString();
 }
 
@@ -402,13 +478,23 @@ export function renderStudentAuthCallbackRedirect(input: {
   code: string;
   expiresAt: string;
   callbackUri: string;
-  state: string;
+  ojState: string;
 }): string {
   const completionUri = createStudentAuthCompletionUri({
     callbackUri: input.callbackUri,
-    state: input.state,
+    ojState: input.ojState,
     code: input.code
   });
+  const directCallbackUri = resolveDirectStudentCallbackUri(input.callbackUri);
+  const directCompletionUri = directCallbackUri
+    ? createStudentAuthCompletionUri({
+        callbackUri: directCallbackUri,
+        ojState: input.ojState,
+        code: input.code
+      })
+    : null;
+  const primaryOpenUri = directCompletionUri ?? completionUri;
+  const escapedPrimaryOpenUri = escapeHtml(primaryOpenUri);
   const escapedCompletionUri = escapeHtml(completionUri);
   const autoOpenScript = JSON.stringify(completionUri);
 
@@ -422,10 +508,15 @@ export function renderStudentAuthCallbackRedirect(input: {
       </div>
       <section class="card success-card">
         <p class="card-copy">Returning to VS Code...</p>
-        <p class="helper-copy">If nothing happens, use the button below.</p>
+        <p class="helper-copy">If nothing happens automatically, use the button below to open the app directly.</p>
         <div class="actions">
-          <a class="button-link" href="${escapedCompletionUri}">Open VS Code</a>
+          <a class="button-link" href="${escapedPrimaryOpenUri}">Open VS Code</a>
         </div>
+        ${
+          directCompletionUri && directCompletionUri !== completionUri
+            ? `<p class="footer-link"><a href="${escapedCompletionUri}">Try remote callback link instead</a></p>`
+            : ''
+        }
         <div class="fallback-block">
           <p class="fallback-label">
             If you need the manual fallback, this code works until

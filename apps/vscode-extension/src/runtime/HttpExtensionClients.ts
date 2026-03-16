@@ -46,6 +46,8 @@ async function requestJson<T>(
   path: string,
   options: RequestJsonOptions = {}
 ): Promise<T> {
+  const method = options.method ?? 'GET';
+  const requestUrl = `${config.apiBaseUrl}${path}`;
   const headers = new Headers();
   if (options.body !== undefined) {
     headers.set('content-type', 'application/json');
@@ -59,8 +61,8 @@ async function requestJson<T>(
   let response: Response;
 
   try {
-    response = await fetch(`${config.apiBaseUrl}${path}`, {
-      method: options.method ?? 'GET',
+    response = await fetch(requestUrl, {
+      method,
       headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: controller.signal
@@ -74,10 +76,13 @@ async function requestJson<T>(
     ) {
       throw Object.assign(
         new Error(`Request timed out after ${config.requestTimeoutMs}ms. Check oj.requestTimeoutMs and try again.`),
-        { code: 'ETIMEDOUT' }
+        { code: 'ETIMEDOUT', requestMethod: method, requestUrl }
       );
     }
-    throw error;
+    if (error instanceof Error) {
+      throw Object.assign(error, { requestMethod: method, requestUrl });
+    }
+    throw Object.assign(new Error(String(error)), { requestMethod: method, requestUrl });
   } finally {
     clearTimeout(timeout);
   }
@@ -109,7 +114,7 @@ export class HttpAuthClient implements AuthClient {
       url.searchParams.set('callback_uri', input.callbackUri);
     }
     if (input?.state) {
-      url.searchParams.set('state', input.state);
+      url.searchParams.set('oj_state', input.state);
     }
     return url.toString();
   }

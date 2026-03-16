@@ -20,6 +20,21 @@ test('network failures show a user-friendly API unreachable message', () => {
   });
 });
 
+test('network failures include the target request when available', () => {
+  const error = Object.assign(new Error('fetch failed'), {
+    code: 'ECONNREFUSED',
+    requestMethod: 'POST',
+    requestUrl: 'http://127.0.0.1:3100/auth/extension/exchange'
+  });
+
+  assert.deepEqual(mapExtensionError(error), {
+    userMessage:
+      'Unable to reach the Placeholder student API at http://127.0.0.1:3100/auth/extension/exchange. Check that the server is running and verify oj.apiBaseUrl, then try again.',
+    logMessage:
+      'Network error ECONNREFUSED while requesting POST http://127.0.0.1:3100/auth/extension/exchange'
+  });
+});
+
 test('401 errors prompt the user to sign in', () => {
   assert.deepEqual(
     mapExtensionError(

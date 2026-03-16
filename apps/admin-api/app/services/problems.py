@@ -13,11 +13,11 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.models.problems import (
+    AdminProblemCase,
     AdminProblemCreateRequest,
     AdminProblemDetail,
     AdminProblemListItem,
     AdminProblemPreview,
-    AdminProblemPreviewCase,
     AdminProblemUpdateRequest,
 )
 
@@ -61,6 +61,7 @@ SELECT
   pva.visibility AS visibility,
   pva.time_limit_ms AS time_limit_ms,
   pva.memory_limit_kb AS memory_limit_kb,
+  pva.examples AS examples,
   pva.starter_code AS starter_code,
   pva.difficulty AS difficulty,
   pva.tags AS tags,
@@ -130,6 +131,7 @@ INSERT INTO problem_version_assets (
   tags,
   manifest_version,
   author,
+  examples,
   starter_code,
   content_digest
 )
@@ -144,6 +146,7 @@ VALUES (
   %(tags)s,
   %(manifest_version)s,
   %(author)s,
+  %(examples)s::jsonb,
   %(starter_code)s,
   %(content_digest)s
 )
@@ -392,6 +395,9 @@ class PsycopgProblemListService:
                             "tags": json.dumps(tags) if tags is not None else None,
                             "manifest_version": existing["manifest_version"],
                             "author": existing["author"],
+                            "examples": json.dumps(
+                                [example.model_dump(mode="json") for example in payload.examples]
+                            ),
                             "starter_code": payload.starterCode,
                             "content_digest": content_digest,
                         }
@@ -452,13 +458,14 @@ class PsycopgProblemListService:
             memoryLimitKb=payload.memoryLimitKb,
             visibility=payload.visibility,
             statementMarkdown=payload.statementMarkdown,
+            examples=payload.examples,
             starterCode=payload.starterCode,
             updatedAt=_format_timestamp(datetime.now(timezone.utc)),
         )
         _write_problem_files(
             problem_dir,
             detail,
-            examples=existing_snapshot.examples,
+            examples=[example.model_dump(mode="json") for example in payload.examples],
             public_tests=existing_snapshot.publicTests,
             include_hidden=False,
         )
@@ -481,6 +488,7 @@ def _build_created_problem_detail(payload: AdminProblemCreateRequest) -> AdminPr
         memoryLimitKb=payload.memoryLimitKb,
         visibility="draft",
         statementMarkdown=f"# {payload.title}\n\nProblem statement not written yet.\n",
+        examples=[],
         starterCode=_build_starter_code(payload.entryFunction),
         updatedAt=_format_timestamp(datetime.now(timezone.utc)),
     )
@@ -511,6 +519,7 @@ def _row_to_problem_detail(row: dict | None) -> AdminProblemDetail | None:
         memoryLimitKb=int(row["memory_limit_kb"]),
         visibility=str(row["visibility"]),
         statementMarkdown=str(row["statement_markdown"]),
+        examples=_normalize_case_list(row.get("examples")),
         starterCode=str(row["starter_code"]),
         updatedAt=_format_timestamp(row["updated_at"]),
     )
@@ -546,6 +555,7 @@ def _read_file_problem_detail(problem_dir: Path) -> AdminProblemDetail | None:
         memoryLimitKb=snapshot.memoryLimitKb,
         visibility=str(snapshot.visibility),
         statementMarkdown=snapshot.statementMarkdown,
+        examples=snapshot.examples,
         starterCode=snapshot.starterCode,
         updatedAt=snapshot.updatedAt,
     )
@@ -699,11 +709,11 @@ def _snapshot_to_problem_preview(snapshot: FileProblemSnapshot) -> AdminProblemP
         title=snapshot.title,
         statementMarkdown=snapshot.statementMarkdown,
         examples=[
-            AdminProblemPreviewCase(input=example["input"], output=example["output"])
+            AdminProblemCase(input=example["input"], output=example["output"])
             for example in snapshot.examples
         ],
         publicTests=[
-            AdminProblemPreviewCase(input=test_case["input"], output=test_case["output"])
+            AdminProblemCase(input=test_case["input"], output=test_case["output"])
             for test_case in snapshot.publicTests
         ],
     )
@@ -713,6 +723,7 @@ def _build_content_digest(payload: AdminProblemUpdateRequest) -> str:
     raw = json.dumps(
         {
             "entryFunction": payload.entryFunction,
+            "examples": [example.model_dump(mode="json") for example in payload.examples],
             "language": payload.language,
             "memoryLimitKb": payload.memoryLimitKb,
             "problemId": payload.problemId,

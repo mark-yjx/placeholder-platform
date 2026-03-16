@@ -60,7 +60,7 @@ class RecordingAuthClient implements AuthClient {
       url.searchParams.set('callback_uri', input.callbackUri);
     }
     if (input?.state) {
-      url.searchParams.set('state', input.state);
+      url.searchParams.set('oj_state', input.state);
     }
     return url.toString();
   }
@@ -105,12 +105,43 @@ test('browser auth start opens sign-in with callback uri and state', async () =>
     startedUrl.searchParams.get('callback_uri'),
     'vscode://placeholder.placeholder-extension/auth-complete'
   );
-  assert.match(String(startedUrl.searchParams.get('state')), /^[0-9a-f-]{36}$/i);
+  assert.match(String(startedUrl.searchParams.get('oj_state')), /^[0-9a-f-]{36}$/i);
   assert.equal(authClient.browserAuthRequests[0]?.mode, 'sign-in');
   assert.ok(
     infoMessages.some((message) => message.includes('VS Code will complete sign-in automatically'))
   );
   assert.ok(Array.from(stateStore.valuesSnapshot().keys()).includes('oj.auth.pendingBrowserAuth'));
+});
+
+test('browser auth start supports asynchronously resolved callback URIs', async () => {
+  const authClient = new RecordingAuthClient();
+  const tokenStore = new SessionTokenStore(new FakeSecretStorage());
+  const authCommands = new AuthCommands(authClient, tokenStore);
+  const openedUrls: string[] = [];
+  const flow = new BrowserAuthFlow(
+    authCommands,
+    {
+      showErrorMessage: () => undefined,
+      showInformationMessage: () => undefined,
+      showInputBox: async () => undefined
+    },
+    async (url) => {
+      openedUrls.push(url);
+    },
+    async () =>
+      'https://example.vscode-cdn.net/extension-auth-callback?target=vscode%3A%2F%2Fplaceholder.placeholder-extension%2Fauth-complete',
+    { stateStore: new FakeStateStore() }
+  );
+
+  await flow.start('sign-in');
+
+  const startedUrl = new URL(openedUrls[0]);
+  assert.equal(startedUrl.pathname, '/auth/sign-in');
+  assert.equal(
+    startedUrl.searchParams.get('callback_uri'),
+    'https://example.vscode-cdn.net/extension-auth-callback?target=vscode%3A%2F%2Fplaceholder.placeholder-extension%2Fauth-complete'
+  );
+  assert.match(String(startedUrl.searchParams.get('oj_state')), /^[0-9a-f-]{36}$/i);
 });
 
 test('browser auth start opens sign-up with callback uri and state', async () => {
@@ -140,7 +171,7 @@ test('browser auth start opens sign-up with callback uri and state', async () =>
     startedUrl.searchParams.get('callback_uri'),
     'vscode-insiders://placeholder.placeholder-extension/auth-complete'
   );
-  assert.match(String(startedUrl.searchParams.get('state')), /^[0-9a-f-]{36}$/i);
+  assert.match(String(startedUrl.searchParams.get('oj_state')), /^[0-9a-f-]{36}$/i);
 });
 
 test('valid browser auth callback completes the student session automatically', async () => {
@@ -177,9 +208,9 @@ test('valid browser auth callback completes the student session automatically', 
   ) as { state: string };
   await flow.handleUri({
     path: '/auth-complete',
-    query: `code=ABC123&state=${encodeURIComponent(pending.state)}`,
+    query: `code=ABC123&oj_state=${encodeURIComponent(pending.state)}`,
     toString: () =>
-      `vscode://placeholder.placeholder-extension/auth-complete?code=ABC123&state=${pending.state}`
+      `vscode://placeholder.placeholder-extension/auth-complete?code=ABC123&oj_state=${pending.state}`
   });
 
   assert.deepEqual(authClient.exchangedCodes, ['ABC123']);
@@ -212,9 +243,9 @@ test('invalid callback state is rejected without exchanging the auth code', asyn
   await flow.start('sign-in');
   await flow.handleUri({
     path: '/auth-complete',
-    query: 'code=ABC123&state=wrong-state',
+    query: 'code=ABC123&oj_state=wrong-state',
     toString: () =>
-      'vscode://placeholder.placeholder-extension/auth-complete?code=ABC123&state=wrong-state'
+      'vscode://placeholder.placeholder-extension/auth-complete?code=ABC123&oj_state=wrong-state'
   });
 
   assert.deepEqual(authClient.exchangedCodes, []);
@@ -251,9 +282,9 @@ test('manual fallback code entry succeeds when callback return fails', async () 
   ) as { state: string };
   await flow.handleUri({
     path: '/auth-complete',
-    query: `state=${encodeURIComponent(pending.state)}`,
+    query: `oj_state=${encodeURIComponent(pending.state)}`,
     toString: () =>
-      `vscode://placeholder.placeholder-extension/auth-complete?state=${pending.state}`
+      `vscode://placeholder.placeholder-extension/auth-complete?oj_state=${pending.state}`
   });
   const completed = await flow.enterFallbackCode();
 
@@ -263,4 +294,78 @@ test('manual fallback code entry succeeds when callback return fails', async () 
   );
   assert.deepEqual(authClient.exchangedCodes, ['FALL123']);
   assert.ok(infoMessages.some((message) => message.includes('Logged in as student@example.com')));
+});
+
+test('browser auth callback logs request details for transport failures', async () => {
+  const authClient: AuthClient = {
+    async login() {
+      return {
+        accessToken: 'student-token',
+        email: 'student@example.com',
+        role: 'student'
+      };
+    },
+    getBrowserAuthUrl(mode, input) {
+      const url = new URL(`http://oj.test/auth/${mode}`);
+      if (input?.callbackUri) {
+        url.searchParams.set('callback_uri', input.callbackUri);
+      }
+      if (input?.state) {
+        url.searchParams.set('oj_state', input.state);
+      }
+      return url.toString();
+    },
+    async exchangeBrowserCode() {
+      throw Object.assign(new Error('fetch failed'), {
+        code: 'ECONNREFUSED',
+        requestMethod: 'POST',
+        requestUrl: 'http://127.0.0.1:3100/auth/extension/exchange'
+      });
+    }
+  };
+  const tokenStore = new SessionTokenStore(new FakeSecretStorage());
+  const authCommands = new AuthCommands(authClient, tokenStore);
+  const errorMessages: string[] = [];
+  const outputLines: string[] = [];
+  const stateStore = new FakeStateStore();
+  const flow = new BrowserAuthFlow(
+    authCommands,
+    {
+      showErrorMessage: (message) => errorMessages.push(message),
+      showInformationMessage: () => undefined,
+      showInputBox: async () => undefined
+    },
+    async () => undefined,
+    () => createStudentAuthCallbackUri('vscode'),
+    {
+      output: { appendLine: (value) => outputLines.push(value) },
+      stateStore
+    }
+  );
+
+  await flow.start('sign-in');
+  const pending = Array.from(stateStore.valuesSnapshot().values()).find(
+    (value) => typeof value === 'object' && value !== null
+  ) as { state: string };
+  await flow.handleUri({
+    path: '/auth-complete',
+    query: `code=ABC123&oj_state=${encodeURIComponent(pending.state)}`,
+    toString: () =>
+      `vscode://placeholder.placeholder-extension/auth-complete?code=ABC123&oj_state=${pending.state}`
+  });
+
+  assert.ok(
+    outputLines.some((line) =>
+      line.includes(
+        'Browser auth callback failed: Network error ECONNREFUSED while requesting POST http://127.0.0.1:3100/auth/extension/exchange'
+      )
+    )
+  );
+  assert.ok(
+    errorMessages.some((message) =>
+      message.includes(
+        'Unable to reach the Placeholder student API at http://127.0.0.1:3100/auth/extension/exchange'
+      )
+    )
+  );
 });

@@ -14,10 +14,13 @@ function readFromPackageRoot(...segments: string[]): string {
   throw new Error(`Unable to resolve file: ${segments.join('/')}`);
 }
 
-test('problem detail panel is registered in extension runtime', () => {
+test('problem detail panel is opened in the editor area from extension runtime', () => {
   const extensionSource = readFromPackageRoot('src', 'extension.ts');
 
-  assert.match(extensionSource, /registerWebviewViewProvider\(\s*'ojProblemDetail'/);
+  assert.match(extensionSource, /new ProblemDetailWebviewPanel/);
+  assert.match(extensionSource, /createWebviewPanel\(\s*'ojProblemDetailPanel'/);
+  assert.match(extensionSource, /vscode\.ViewColumn\.Beside/);
+  assert.doesNotMatch(extensionSource, /registerWebviewViewProvider\(\s*'ojProblemDetail'/);
   assert.match(extensionSource, /executeCommand\('oj\.practice\.openProblemStarter'/);
   assert.match(extensionSource, /executeCommand\('oj\.practice\.runPublicTests'/);
   assert.match(extensionSource, /executeCommand\('oj\.practice\.submitCurrentFile'/);
@@ -31,6 +34,12 @@ test('problem detail panel includes required fields and actions', () => {
   assert.match(providerSource, /createProblemDetailViewModel\(/);
   assert.match(providerSource, /showProblemDetail\(problem: ProblemDetail \| null\): void/);
   assert.match(providerSource, /this\.currentProblem = problem;/);
+  assert.match(providerSource, /if \(!this\.currentPanel\)/);
+  assert.match(providerSource, /const panel = this\.createPanel\(\);/);
+  assert.match(providerSource, /this\.currentPanel = panel;/);
+  assert.match(providerSource, /panel\.webview\.onDidReceiveMessage/);
+  assert.match(providerSource, /this\.currentPanel\.reveal\(\);/);
+  assert.match(providerSource, /this\.currentPanel\.title = this\.currentProblem\?\.title\?\.trim\(\) \|\| 'Problem Detail';/);
   assert.match(providerSource, /this\.render\(\);/);
   assert.match(viewModelSource, /<h2>\$\{title\}<\/h2>/);
   assert.match(viewModelSource, /Select a problem from the Problems list to view details\./);

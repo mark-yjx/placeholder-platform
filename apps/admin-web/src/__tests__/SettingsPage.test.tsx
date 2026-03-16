@@ -4,6 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../auth/AuthContext';
 import { SettingsPage } from '../pages/SettingsPage';
 
+vi.mock('qrcode', () => ({
+  __esModule: true,
+  default: {
+    toDataURL: vi.fn(async (value: string) => `data:image/png;base64,${encodeURIComponent(value)}`)
+  }
+}));
+
 function renderSettingsPage() {
   return render(
     <MemoryRouter initialEntries={['/settings']}>
@@ -76,6 +83,10 @@ describe('settings page', () => {
     await waitFor(() => {
       expect(screen.getByText('ABCDEF123456')).toBeTruthy();
     });
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: 'TOTP QR code for admin@example.com' })).toBeTruthy();
+    });
+    expect(screen.getByText('Secret Fallback')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('First Authenticator Code'), {
       target: { value: '123456' }

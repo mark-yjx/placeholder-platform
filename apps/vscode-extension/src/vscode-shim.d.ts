@@ -27,6 +27,27 @@ declare module 'vscode' {
     languageId: string;
     fileName?: string;
   };
+  export type CodeLensProvider = {
+    provideCodeLenses(document: TextDocument): readonly CodeLens[] | Thenable<readonly CodeLens[]>;
+  };
+  export class Range {
+    constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number);
+  }
+  export class CodeLens {
+    constructor(
+      range: Range,
+      command?: {
+        command: string;
+        title: string;
+        arguments?: readonly unknown[];
+      }
+    );
+    command?: {
+      command: string;
+      title: string;
+      arguments?: readonly unknown[];
+    };
+  }
   export type Webview = {
     html: string;
     options?: {
@@ -90,7 +111,12 @@ declare module 'vscode' {
     executeCommand(commandId: string, ...args: unknown[]): Thenable<unknown>;
   };
 
+  export const languages: {
+    registerCodeLensProvider(selector: unknown, provider: CodeLensProvider): Disposable;
+  };
+
   export const env: {
+    asExternalUri(target: Uri): Thenable<Uri>;
     openExternal(target: Uri): Thenable<boolean>;
     uriScheme: string;
   };

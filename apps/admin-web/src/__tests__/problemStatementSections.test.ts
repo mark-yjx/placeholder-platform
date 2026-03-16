@@ -7,13 +7,27 @@ import {
 describe('problemStatementSections', () => {
   it('splits input and output sections away from the main statement body', () => {
     const sections = splitProblemStatementMarkdown(
-      '# Collapse\n\nBase description.\n\n## Input\n\nAn integer.\n\n## Output\n\nA collapsed integer.\n\n## Examples\n\nKeep this section.'
+      '# Collapse\n\nBase description.\n\n## Input Format\n\nAn integer.\n\n## Output Format\n\nA collapsed integer.\n\n## Examples\n\nKeep this section.'
     );
 
     expect(sections).toEqual({
-      bodyMarkdown: '# Collapse\n\nBase description.\n\n## Examples\n\nKeep this section.',
+      bodyMarkdown: '# Collapse\n\nBase description.',
       inputFormatMarkdown: 'An integer.',
-      outputFormatMarkdown: 'A collapsed integer.'
+      outputFormatMarkdown: 'A collapsed integer.',
+      examplesMarkdown: 'Keep this section.'
+    });
+  });
+
+  it('continues to split legacy input and output headings from older statements', () => {
+    const sections = splitProblemStatementMarkdown(
+      '# Collapse\n\nBase description.\n\n## Input\n\nAn integer.\n\n## Output\n\nA collapsed integer.'
+    );
+
+    expect(sections).toEqual({
+      bodyMarkdown: '# Collapse\n\nBase description.',
+      inputFormatMarkdown: 'An integer.',
+      outputFormatMarkdown: 'A collapsed integer.',
+      examplesMarkdown: ''
     });
   });
 
@@ -22,10 +36,11 @@ describe('problemStatementSections', () => {
       buildProblemStatementMarkdown({
         bodyMarkdown: '# Collapse\n\nBase description.',
         inputFormatMarkdown: 'An integer.',
-        outputFormatMarkdown: 'A collapsed integer.'
+        outputFormatMarkdown: 'A collapsed integer.',
+        examplesMarkdown: 'Keep this section.'
       })
     ).toBe(
-      '# Collapse\n\nBase description.\n\n## Input\n\nAn integer.\n\n## Output\n\nA collapsed integer.'
+      '# Collapse\n\nBase description.\n\n## Input Format\n\nAn integer.\n\n## Output Format\n\nA collapsed integer.\n\n## Examples\n\nKeep this section.'
     );
   });
 });

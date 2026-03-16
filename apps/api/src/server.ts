@@ -494,7 +494,7 @@ export function createApiRequestHandler(
       try {
         const callback = resolveStudentAuthCallback({
           callbackUri: url.searchParams.get('callback_uri'),
-          state: url.searchParams.get('state')
+          ojState: url.searchParams.get('oj_state')
         });
         sendHtml(
           response,
@@ -502,7 +502,7 @@ export function createApiRequestHandler(
           renderStudentAuthForm({
             mode: 'sign-in',
             callbackUri: callback?.callbackUri,
-            state: callback?.state
+            ojState: callback?.ojState
           })
         );
       } catch (error) {
@@ -522,7 +522,7 @@ export function createApiRequestHandler(
       try {
         const callback = resolveStudentAuthCallback({
           callbackUri: url.searchParams.get('callback_uri'),
-          state: url.searchParams.get('state')
+          ojState: url.searchParams.get('oj_state')
         });
         sendHtml(
           response,
@@ -530,7 +530,7 @@ export function createApiRequestHandler(
           renderStudentAuthForm({
             mode: 'sign-up',
             callbackUri: callback?.callbackUri,
-            state: callback?.state
+            ojState: callback?.ojState
           })
         );
       } catch (error) {
@@ -553,14 +553,14 @@ export function createApiRequestHandler(
       let callback:
         | {
             callbackUri: string;
-            state: string;
+            ojState: string;
           }
         | null;
 
       try {
         callback = resolveStudentAuthCallback({
           callbackUri: String(form.callbackUri ?? ''),
-          state: String(form.state ?? '')
+          ojState: String(form.oj_state ?? '')
         });
       } catch (error) {
         sendHtml(
@@ -584,7 +584,7 @@ export function createApiRequestHandler(
             errorMessage: !email ? 'Email is required.' : 'Password is required.',
             values: { email },
             callbackUri: callback?.callbackUri,
-            state: callback?.state
+            ojState: callback?.ojState
           })
         );
         return;
@@ -599,7 +599,7 @@ export function createApiRequestHandler(
               code: handoff.code,
               expiresAt: handoff.expiresAt,
               callbackUri: callback.callbackUri,
-              state: callback.state
+              ojState: callback.ojState
             })
           : renderStudentAuthSuccess({
               mode: 'sign-in',
@@ -624,7 +624,7 @@ export function createApiRequestHandler(
             errorMessage: message,
             values: { email },
             callbackUri: callback?.callbackUri,
-            state: callback?.state
+            ojState: callback?.ojState
           })
         );
       }
@@ -640,14 +640,14 @@ export function createApiRequestHandler(
       let callback:
         | {
             callbackUri: string;
-            state: string;
+            ojState: string;
           }
         | null;
 
       try {
         callback = resolveStudentAuthCallback({
           callbackUri: String(form.callbackUri ?? ''),
-          state: String(form.state ?? '')
+          ojState: String(form.oj_state ?? '')
         });
       } catch (error) {
         sendHtml(
@@ -671,7 +671,7 @@ export function createApiRequestHandler(
             errorMessage: 'Email, display name, password, and confirm password are required.',
             values: { email, displayName },
             callbackUri: callback?.callbackUri,
-            state: callback?.state
+            ojState: callback?.ojState
           })
         );
         return;
@@ -686,7 +686,7 @@ export function createApiRequestHandler(
             errorMessage: 'Password confirmation does not match.',
             values: { email, displayName },
             callbackUri: callback?.callbackUri,
-            state: callback?.state
+            ojState: callback?.ojState
           })
         );
         return;
@@ -705,7 +705,7 @@ export function createApiRequestHandler(
               code: handoff.code,
               expiresAt: handoff.expiresAt,
               callbackUri: callback.callbackUri,
-              state: callback.state
+              ojState: callback.ojState
             })
           : renderStudentAuthSuccess({
               mode: 'sign-up',
@@ -728,7 +728,7 @@ export function createApiRequestHandler(
             errorMessage: message,
             values: { email, displayName },
             callbackUri: callback?.callbackUri,
-            state: callback?.state
+            ojState: callback?.ojState
           })
         );
       }

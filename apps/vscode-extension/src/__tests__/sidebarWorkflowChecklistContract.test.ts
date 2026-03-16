@@ -24,15 +24,8 @@ test('sidebar no longer registers account login as primary UI', () => {
   assert.match(manifestSource, /"id": "ojPracticeHome"/);
 });
 
-test('status bar account entry and browser auth commands remain available', () => {
+test('problems toolbar keeps the account entry point and browser auth commands available', () => {
   const extensionSource = readFromRepoRoot('apps', 'vscode-extension', 'src', 'extension.ts');
-  const statusBarSource = readFromRepoRoot(
-    'apps',
-    'vscode-extension',
-    'src',
-    'ui',
-    'AccountStatusBarController.ts'
-  );
   const panelSource = readFromRepoRoot(
     'apps',
     'vscode-extension',
@@ -42,13 +35,18 @@ test('status bar account entry and browser auth commands remain available', () =
   );
   const manifestSource = readFromRepoRoot('apps', 'vscode-extension', 'package.json');
 
-  assert.match(statusBarSource, /visibleText = '\$\(account\) Placeholder'/);
-  assert.match(statusBarSource, /Signed in as \$\{email\}\. Open Placeholder account and stats/);
-  assert.match(statusBarSource, /commandId = 'oj\.account\.show'/);
+  assert.doesNotMatch(extensionSource, /createStatusBarItem\(/);
+  assert.doesNotMatch(extensionSource, /AccountStatusBarController/);
   assert.match(extensionSource, /new AccountWebviewPanel/);
+  assert.match(extensionSource, /registerCommand\(\s*'oj\.account\.show'/);
   assert.match(panelSource, /message\.command === 'signIn'/);
   assert.match(panelSource, /message\.command === 'signUp'/);
   assert.match(panelSource, /message\.command === 'logout'/);
   assert.match(manifestSource, /"command": "oj\.login"/);
+  assert.match(manifestSource, /"command": "oj\.account\.show"/);
+  assert.match(manifestSource, /"light": "media\/account-light\.svg"/);
+  assert.match(manifestSource, /"dark": "media\/account-dark\.svg"/);
+  assert.match(manifestSource, /"view\/title"/);
+  assert.match(manifestSource, /"view == ojProblems && oj\.practice\.viewsReady"/);
   assert.doesNotMatch(manifestSource, /"command": "oj\.signup"/);
 });

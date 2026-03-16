@@ -70,7 +70,41 @@ export function responseDetail(body: unknown): string | null {
   }
 
   const detail = body.detail;
-  return typeof detail === 'string' ? detail : null;
+  if (typeof detail === 'string') {
+    return detail;
+  }
+
+  if (!Array.isArray(detail)) {
+    return null;
+  }
+
+  const messages = detail
+    .map((item) => {
+      if (typeof item === 'string') {
+        return item.trim();
+      }
+
+      if (typeof item !== 'object' || item === null) {
+        return '';
+      }
+
+      const rawMessage = 'msg' in item && typeof item.msg === 'string' ? item.msg.trim() : '';
+      if (!rawMessage) {
+        return '';
+      }
+
+      const normalizedMessage = rawMessage.replace(/^Value error,\s*/i, '');
+      const location =
+        'loc' in item && Array.isArray(item.loc)
+          ? item.loc
+              .filter((part: unknown): part is string => typeof part === 'string' && part !== 'body')
+              .join('.')
+          : '';
+      return location ? `${location}: ${normalizedMessage}` : normalizedMessage;
+    })
+    .filter((message) => message.length > 0);
+
+  return messages.length > 0 ? messages.join(' ') : null;
 }
 
 export async function fetchAdminApi(path: string, options: RequestInit = {}): Promise<Response> {

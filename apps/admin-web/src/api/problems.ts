@@ -19,6 +19,11 @@ export type AdminProblemPreviewCase = {
   output: unknown;
 };
 
+export type AdminProblemExampleCase = {
+  input: unknown;
+  output: unknown;
+};
+
 export type AdminProblemPreview = {
   problemId: string;
   title: string;
@@ -45,6 +50,7 @@ export type AdminProblemDetail = {
   memoryLimitKb: number;
   visibility: AdminProblemVisibility;
   statementMarkdown: string;
+  examples: AdminProblemExampleCase[];
   starterCode: string;
   updatedAt: string;
 };

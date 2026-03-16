@@ -33,7 +33,7 @@ export class InMemoryAuthClient implements AuthClient {
       url.searchParams.set('callback_uri', input.callbackUri);
     }
     if (input?.state) {
-      url.searchParams.set('state', input.state);
+      url.searchParams.set('oj_state', input.state);
     }
     return url.toString();
   }

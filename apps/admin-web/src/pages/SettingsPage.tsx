@@ -1,4 +1,5 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { initTotpEnrollment } from '../auth/client';
 import { readStoredAdminToken } from '../auth/storage';
 import type { TotpEnrollment } from '../auth/types';
@@ -13,6 +14,43 @@ export function SettingsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoadingEnrollment, setIsLoadingEnrollment] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [qrCodeError, setQrCodeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (!enrollment) {
+      setQrCodeDataUrl(null);
+      setQrCodeError(null);
+      return;
+    }
+
+    void QRCode.toDataURL(enrollment.otpauthUri, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      scale: 6,
+      width: 220
+    })
+      .then((nextDataUrl: string) => {
+        if (isCancelled) {
+          return;
+        }
+        setQrCodeDataUrl(nextDataUrl);
+        setQrCodeError(null);
+      })
+      .catch((qrError: unknown) => {
+        if (isCancelled) {
+          return;
+        }
+        setQrCodeDataUrl(null);
+        setQrCodeError(qrError instanceof Error ? qrError.message : 'QR code generation failed.');
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [enrollment]);
 
   async function handleStartEnrollment() {
     const token = readStoredAdminToken();
@@ -28,6 +66,7 @@ export function SettingsPage() {
     try {
       const nextEnrollment = await initTotpEnrollment(token);
       setEnrollment(nextEnrollment);
+      setCode('');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'TOTP enrollment is unavailable.');
     } finally {
@@ -115,14 +154,46 @@ export function SettingsPage() {
               <>
                 {enrollment ? (
                   <div className="totp-enrollment-card">
+                    <div className="totp-enrollment-visual">
+                      <div>
+                        <p className="detail-label">Authenticator QR</p>
+                        {qrCodeDataUrl ? (
+                          <div className="totp-qr-frame">
+                            <img
+                              alt={`TOTP QR code for ${enrollment.accountName}`}
+                              className="totp-qr-image"
+                              height={220}
+                              src={qrCodeDataUrl}
+                              width={220}
+                            />
+                          </div>
+                        ) : (
+                          <div className="totp-qr-frame totp-qr-placeholder" role="status">
+                            <span>{qrCodeError ? 'QR unavailable' : 'Generating QR...'}</span>
+                          </div>
+                        )}
+                        <p className="field-note">
+                          Scan this code with your authenticator app, then confirm the first
+                          6-digit code below.
+                        </p>
+                        {qrCodeError ? (
+                          <p className="field-note">
+                            QR generation failed in this browser. Use the manual secret below
+                            instead.
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+
                     <div>
-                      <p className="detail-label">Secret</p>
+                      <p className="detail-label">Secret Fallback</p>
+                      <p className="field-note">
+                        If your authenticator app cannot scan the QR code, enter this secret
+                        manually.
+                      </p>
                       <p className="code-block compact-code-block">{enrollment.secret}</p>
                     </div>
-                    <p className="field-note">
-                      Add this secret to your authenticator app, then confirm the first 6-digit
-                      code below.
-                    </p>
+
                     <div>
                       <p className="detail-label">Provisioning URI</p>
                       <p className="code-block compact-code-block uri-code-block">

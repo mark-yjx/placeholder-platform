@@ -45,12 +45,18 @@ export type WindowLike = {
     ignoreFocusOut?: boolean;
   }) => Promise<string | undefined>;
   activeTextEditor?: {
-    document: {
-      getText: () => string;
-      languageId: string;
-      fileName?: string;
-    };
+    document: TextDocumentLike;
   };
+};
+
+export type TextDocumentLike = {
+  getText: () => string;
+  languageId: string;
+  fileName?: string;
+};
+
+export type WorkspaceLike = {
+  openTextDocument?: (uriOrPath: string) => Promise<TextDocumentLike>;
 };
 
 export type ExtensionCommandDependencies = {
@@ -58,6 +64,7 @@ export type ExtensionCommandDependencies = {
   browserAuthFlow?: BrowserAuthFlowLike;
   practiceCommands: PracticeCommands;
   engagementCommands: EngagementCommands;
+  workspace?: WorkspaceLike;
   waitForNextPoll?: (delayMs: number) => Promise<void>;
   practiceViews?: {
     showProblems: (problems: readonly PublishedProblem[]) => void;
@@ -253,23 +260,60 @@ export function registerExtensionCommands(
     return pickedProblem.problemId;
   };
 
-  const resolveCurrentPythonFileSource = (): string => {
-    const activeDocument = dependencies.window.activeTextEditor?.document;
-    if (!activeDocument) {
-      throw new Error('Open a Python file before submitting');
+  const isPythonDocument = (document: TextDocumentLike | undefined): document is TextDocumentLike => {
+    if (!document) {
+      return false;
     }
 
-    const fileName = activeDocument.fileName?.trim() ?? '';
-    if (!fileName.toLowerCase().endsWith('.py')) {
-      throw new Error('Active editor must be a .py file');
+    if (document.languageId.trim().toLowerCase() === 'python') {
+      return true;
     }
 
-    const sourceCode = activeDocument.getText().trim();
+    const fileName = document.fileName?.trim().toLowerCase() ?? '';
+    return fileName.endsWith('.py');
+  };
+
+  const readNonEmptyDocumentSource = (document: TextDocumentLike): string => {
+    const sourceCode = document.getText().trim();
     if (!sourceCode) {
       throw new Error('Active editor is empty');
     }
 
     return sourceCode;
+  };
+
+  const resolveCurrentPythonFileSource = async (input: {
+    purpose: 'submit' | 'runPublicTests';
+    problemId?: string;
+  }): Promise<string> => {
+    const activeDocument = dependencies.window.activeTextEditor?.document;
+    if (activeDocument) {
+      if (!isPythonDocument(activeDocument)) {
+        throw new Error('Active editor must be a Python file');
+      }
+
+      return readNonEmptyDocumentSource(activeDocument);
+    }
+
+    const storedFilePath = input.problemId
+      ? dependencies.localStateStore?.getProblemState(input.problemId)?.lastOpenedFilePath?.trim()
+      : '';
+    if (storedFilePath && dependencies.workspace?.openTextDocument) {
+      try {
+        const reopenedDocument = await dependencies.workspace.openTextDocument(storedFilePath);
+        if (isPythonDocument(reopenedDocument)) {
+          return readNonEmptyDocumentSource(reopenedDocument);
+        }
+      } catch {
+        // Ignore stale file paths and fall through to the primary error below.
+      }
+    }
+
+    throw new Error(
+      input.purpose === 'submit'
+        ? 'Open a Python file before submitting'
+        : 'Open a Python file before running public tests'
+    );
   };
 
   const resolveProblemEntryFunction = async (problemId: string): Promise<string> => {
@@ -431,10 +475,14 @@ export function registerExtensionCommands(
     ),
     dependencies.registerCommand(
       'oj.practice.submitCurrentFile',
-      runWithHandling('oj.practice.submitCurrentFile', async () => {
+      runWithHandling('oj.practice.submitCurrentFile', async (...args: unknown[]) => {
+        const explicitProblemId = typeof args[0] === 'string' ? args[0] : '';
         const inferredProblemId = inferProblemIdFromCurrentWorkspaceFile();
-        const problemId = await resolveSelectedProblemId(inferredProblemId ?? undefined);
-        const sourceCode = resolveCurrentPythonFileSource();
+        const problemId = await resolveSelectedProblemId(explicitProblemId || inferredProblemId || undefined);
+        const sourceCode = await resolveCurrentPythonFileSource({
+          purpose: 'submit',
+          problemId
+        });
         const entryFunction = await resolveProblemEntryFunction(problemId);
         const extractedPayload = extractSubmitPayload(sourceCode, entryFunction);
         const submission = await dependencies.practiceCommands.submitCode({
@@ -465,7 +513,10 @@ export function registerExtensionCommands(
           return;
         }
 
-        const sourceCode = resolveCurrentPythonFileSource();
+        const sourceCode = await resolveCurrentPythonFileSource({
+          purpose: 'runPublicTests',
+          problemId
+        });
         const entryFunction = await resolveProblemEntryFunction(problemId);
         const result = runLocalPublicTests(sourceCode, entryFunction, publicTests);
         const passed = result.total - result.failures.length;

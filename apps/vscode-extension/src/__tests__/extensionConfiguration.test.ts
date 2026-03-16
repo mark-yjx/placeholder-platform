@@ -34,6 +34,10 @@ test('api base url falls back to default when setting is empty', () => {
   assert.equal(resolveApiBaseUrl(configuration), DEFAULT_OJ_API_BASE_URL);
 });
 
+test('default api base url prefers explicit loopback', () => {
+  assert.equal(DEFAULT_OJ_API_BASE_URL, 'http://127.0.0.1:3100');
+});
+
 test('api base url validation rejects unsupported protocols', () => {
   assert.throws(
     () => validateApiBaseUrl('ftp://oj.example.test'),

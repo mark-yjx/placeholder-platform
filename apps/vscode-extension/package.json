@@ -45,7 +45,6 @@
     "onView:ojPracticeHome",
     "onView:ojProblems",
     "onView:ojSubmissions",
-    "onView:ojProblemDetail",
     "onView:ojSubmissionDetail",
     "onCommand:oj.engagement.favoriteProblem",
     "onCommand:oj.engagement.submitReview",
@@ -75,7 +74,7 @@
       "properties": {
         "oj.apiBaseUrl": {
           "type": "string",
-          "default": "http://localhost:3100",
+          "default": "http://127.0.0.1:3100",
           "description": "Base URL for the Placeholder student API used by the extension."
         },
         "oj.requestTimeoutMs": {
@@ -89,7 +88,11 @@
     "commands": [
       {
         "command": "oj.account.show",
-        "title": "Placeholder Practice: Open Account"
+        "title": "Placeholder Practice: Open Account",
+        "icon": {
+          "light": "media/account-light.svg",
+          "dark": "media/account-dark.svg"
+        }
       },
       {
         "command": "oj.logout",
@@ -160,12 +163,6 @@
           "id": "ojProblems",
           "name": "Problems",
           "when": "oj.practice.viewsReady"
-        },
-        {
-          "id": "ojProblemDetail",
-          "name": "Problem Detail",
-          "type": "webview",
-          "when": "oj.practice.viewsReady"
         }
       ],
       "ojPanel": [
@@ -187,7 +184,12 @@
         {
           "command": "oj.practice.fetchProblems",
           "when": "view == ojProblems && oj.practice.viewsReady",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "oj.account.show",
+          "when": "view == ojProblems && oj.practice.viewsReady",
+          "group": "navigation@2"
         }
       ]
     }

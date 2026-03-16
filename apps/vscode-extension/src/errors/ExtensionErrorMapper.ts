@@ -80,6 +80,21 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
 
   const rawMessage = error instanceof Error ? error.message : String(error);
   const normalizedMessage = rawMessage.toLowerCase();
+  const requestMethod =
+    typeof error === 'object' &&
+    error !== null &&
+    'requestMethod' in error &&
+    typeof (error as { requestMethod?: unknown }).requestMethod === 'string'
+      ? (error as { requestMethod: string }).requestMethod
+      : null;
+  const requestUrl =
+    typeof error === 'object' &&
+    error !== null &&
+    'requestUrl' in error &&
+    typeof (error as { requestUrl?: unknown }).requestUrl === 'string'
+      ? (error as { requestUrl: string }).requestUrl
+      : null;
+  const requestTarget = requestUrl ? `${requestMethod ? `${requestMethod} ` : ''}${requestUrl}` : null;
 
   if (
     networkCode === 'ECONNREFUSED' ||
@@ -90,8 +105,14 @@ export function mapExtensionError(error: unknown): MappedExtensionError {
     normalizedMessage.includes('socket hang up')
   ) {
     return {
-      userMessage: 'Unable to reach the Placeholder student API. Check that the server is running and verify oj.apiBaseUrl, then try again.',
-      logMessage: networkCode ? `Network error ${networkCode}` : rawMessage
+      userMessage: requestUrl
+        ? `Unable to reach the Placeholder student API at ${requestUrl}. Check that the server is running and verify oj.apiBaseUrl, then try again.`
+        : 'Unable to reach the Placeholder student API. Check that the server is running and verify oj.apiBaseUrl, then try again.',
+      logMessage: requestTarget
+        ? `${networkCode ? `Network error ${networkCode}` : rawMessage} while requesting ${requestTarget}`
+        : networkCode
+          ? `Network error ${networkCode}`
+          : rawMessage
     };
   }
 

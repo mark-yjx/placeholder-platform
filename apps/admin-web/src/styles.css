@@ -523,6 +523,50 @@ textarea {
   line-height: 1.6;
 }
 
+.compact-code-area {
+  min-height: 10rem;
+}
+
+.example-editor-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.example-editor-list {
+  display: grid;
+  gap: 16px;
+}
+
+.example-editor-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(248, 248, 251, 0.88);
+}
+
+.example-editor-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.example-editor-card-header h3 {
+  margin: 0;
+}
+
+.example-editor-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .form-actions {
   display: flex;
   align-items: center;
@@ -551,6 +595,41 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 20px;
   background: rgba(248, 248, 251, 0.88);
+}
+
+.totp-enrollment-visual {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.totp-qr-frame {
+  display: grid;
+  place-items: center;
+  width: min(220px, 100%);
+  min-height: 220px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+.totp-qr-image {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  border-radius: 12px;
+  image-rendering: pixelated;
+}
+
+.totp-qr-placeholder {
+  color: var(--text-tertiary);
+  background:
+    linear-gradient(135deg, rgba(19, 48, 109, 0.04), rgba(19, 48, 109, 0.1)),
+    #fff;
+  text-align: center;
 }
 
 .detail-label {
@@ -653,6 +732,10 @@ textarea {
 
   .header-actions {
     justify-content: flex-start;
+  }
+
+  .example-editor-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -15,6 +15,16 @@ const DEFAULT_FORM: AdminProblemCreateRequest = {
   memoryLimitKb: 262144
 };
 
+function deriveEntryFunction(problemId: string): string {
+  const trimmed = problemId.trim().toLowerCase();
+  if (!trimmed) {
+    return '';
+  }
+
+  const normalized = trimmed.replace(/-/g, '_').replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_');
+  return /^[0-9]/.test(normalized) ? `solve_${normalized}` : normalized;
+}
+
 export function ProblemCreatePage() {
   const navigate = useNavigate();
   const [form, setForm] = useState<AdminProblemCreateRequest>(DEFAULT_FORM);
@@ -26,6 +36,29 @@ export function ProblemCreatePage() {
     value: AdminProblemCreateRequest[Key]
   ) {
     setForm((current) => ({ ...current, [key]: value }));
+    if (error) {
+      setError(null);
+    }
+    if (saveState !== 'idle') {
+      setSaveState('idle');
+    }
+  }
+
+  function updateProblemId(value: string) {
+    setForm((current) => {
+      const currentProblemId = current.problemId;
+      const currentEntryFunction = current.entryFunction.trim();
+      const previousDerivedEntryFunction = deriveEntryFunction(currentProblemId);
+      const nextDerivedEntryFunction = deriveEntryFunction(value);
+      const shouldSyncEntryFunction =
+        !currentEntryFunction || currentEntryFunction === previousDerivedEntryFunction;
+
+      return {
+        ...current,
+        problemId: value,
+        entryFunction: shouldSyncEntryFunction ? nextDerivedEntryFunction : current.entryFunction
+      };
+    });
     if (error) {
       setError(null);
     }
@@ -81,7 +114,10 @@ export function ProblemCreatePage() {
                 <span>Problem ID</span>
                 <input
                   name="problemId"
-                  onChange={(event) => updateField('problemId', event.target.value)}
+                  onChange={(event) => updateProblemId(event.target.value)}
+                  pattern="[a-z0-9][a-z0-9_-]*"
+                  placeholder="two-sum"
+                  required
                   value={form.problemId}
                 />
               </label>
@@ -90,6 +126,8 @@ export function ProblemCreatePage() {
                 <input
                   name="title"
                   onChange={(event) => updateField('title', event.target.value)}
+                  placeholder="Two Sum"
+                  required
                   value={form.title}
                 />
               </label>
@@ -98,6 +136,9 @@ export function ProblemCreatePage() {
                 <input
                   name="entryFunction"
                   onChange={(event) => updateField('entryFunction', event.target.value)}
+                  pattern="[A-Za-z_][A-Za-z0-9_]*"
+                  placeholder="two_sum"
+                  required
                   value={form.entryFunction}
                 />
               </label>

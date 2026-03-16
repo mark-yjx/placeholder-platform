@@ -25,6 +25,16 @@ function readExtensionPackageJson(): {
   };
   activationEvents: readonly string[];
   contributes: {
+    configuration?: {
+      properties?: Record<
+        string,
+        {
+          type?: string;
+          default?: unknown;
+          description?: string;
+        }
+      >;
+    };
     commands?: readonly {
       command: string;
       title: string;
@@ -78,6 +88,10 @@ test('extension package keeps production packaging whitelist and activation even
     url: 'https://github.com/mark-yjx/placeholder-platform/issues'
   });
   assert.equal(manifest.main, './dist/extension.js');
+  assert.equal(
+    manifest.contributes.configuration?.properties?.['oj.apiBaseUrl']?.default,
+    'http://127.0.0.1:3100'
+  );
   assert.deepEqual(manifest.categories, ['Education', 'Programming Languages']);
   assert.deepEqual(manifest.keywords, [
     'online-judge',
@@ -90,6 +104,8 @@ test('extension package keeps production packaging whitelist and activation even
   assert.ok(fs.existsSync(path.join(packageRoot, 'CHANGELOG.md')));
   assert.ok(fs.existsSync(path.join(packageRoot, 'LICENSE.txt')));
   assert.ok(fs.existsSync(path.join(packageRoot, 'media', 'icon.png')));
+  assert.ok(fs.existsSync(path.join(packageRoot, 'media', 'account-light.svg')));
+  assert.ok(fs.existsSync(path.join(packageRoot, 'media', 'account-dark.svg')));
   assert.ok(fs.existsSync(path.join(packageRoot, 'media', 'fetch-problems-light.svg')));
   assert.ok(fs.existsSync(path.join(packageRoot, 'media', 'fetch-problems-dark.svg')));
   assert.equal(manifest.scripts.build, 'rm -rf dist && tsc -p tsconfig.build.json');
@@ -120,7 +136,6 @@ test('extension package keeps production packaging whitelist and activation even
     'onView:ojPracticeHome',
     'onView:ojProblems',
     'onView:ojSubmissions',
-    'onView:ojProblemDetail',
     'onView:ojSubmissionDetail',
     'onCommand:oj.engagement.favoriteProblem',
     'onCommand:oj.engagement.submitReview',
@@ -136,7 +151,14 @@ test('extension package keeps production packaging whitelist and activation even
   assert.deepEqual(
     (manifest.contributes.commands ?? []).slice(0, 3),
     [
-      { command: 'oj.account.show', title: 'Placeholder Practice: Open Account' },
+      {
+        command: 'oj.account.show',
+        title: 'Placeholder Practice: Open Account',
+        icon: {
+          light: 'media/account-light.svg',
+          dark: 'media/account-dark.svg'
+        }
+      },
       { command: 'oj.logout', title: 'Placeholder Practice: Logout' },
       { command: 'oj.login', title: 'Placeholder Practice: Login' }
     ]
@@ -160,8 +182,7 @@ test('extension package keeps production packaging whitelist and activation even
     })),
     [
       { id: 'ojPracticeHome', name: 'Placeholder Practice', when: 'oj.practice.homeVisible' },
-      { id: 'ojProblems', name: 'Problems', when: 'oj.practice.viewsReady' },
-      { id: 'ojProblemDetail', name: 'Problem Detail', when: 'oj.practice.viewsReady' }
+      { id: 'ojProblems', name: 'Problems', when: 'oj.practice.viewsReady' }
     ]
   );
   assert.deepEqual(
@@ -180,8 +201,8 @@ test('extension package keeps production packaging whitelist and activation even
     'webview'
   );
   assert.equal(
-    manifest.contributes.views.ojSidebar.find((view) => view.id === 'ojProblemDetail')?.type,
-    'webview'
+    manifest.contributes.views.ojSidebar.find((view) => view.id === 'ojProblemDetail'),
+    undefined
   );
   assert.equal(
     manifest.contributes.views.ojPanel.find((view) => view.id === 'ojSubmissionDetail')?.type,
@@ -191,7 +212,12 @@ test('extension package keeps production packaging whitelist and activation even
     {
       command: 'oj.practice.fetchProblems',
       when: 'view == ojProblems && oj.practice.viewsReady',
-      group: 'navigation'
+      group: 'navigation@1'
+    },
+    {
+      command: 'oj.account.show',
+      when: 'view == ojProblems && oj.practice.viewsReady',
+      group: 'navigation@2'
     }
   ]);
 });

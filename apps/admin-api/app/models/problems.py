@@ -1,7 +1,7 @@
 import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 PROBLEM_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 PYTHON_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -50,6 +50,11 @@ class AdminProblemListItem(BaseModel):
     updatedAt: str
 
 
+class AdminProblemCase(BaseModel):
+    input: Any
+    output: Any
+
+
 class AdminProblemDetail(BaseModel):
     problemId: str
     title: str
@@ -59,21 +64,17 @@ class AdminProblemDetail(BaseModel):
     memoryLimitKb: int
     visibility: Literal["draft", "published", "archived", "public", "private"]
     statementMarkdown: str
+    examples: list[AdminProblemCase] = Field(default_factory=list)
     starterCode: str
     updatedAt: str
-
-
-class AdminProblemPreviewCase(BaseModel):
-    input: Any
-    output: Any
 
 
 class AdminProblemPreview(BaseModel):
     problemId: str
     title: str
     statementMarkdown: str
-    examples: list[AdminProblemPreviewCase]
-    publicTests: list[AdminProblemPreviewCase]
+    examples: list[AdminProblemCase]
+    publicTests: list[AdminProblemCase]
 
 
 class AdminProblemCreateRequest(BaseModel):
@@ -116,6 +117,7 @@ class AdminProblemUpdateRequest(BaseModel):
     memoryLimitKb: int
     visibility: Literal["draft", "published", "archived", "public", "private"]
     statementMarkdown: str
+    examples: list[AdminProblemCase] = Field(default_factory=list)
     starterCode: str
 
     @field_validator("problemId", mode="after")

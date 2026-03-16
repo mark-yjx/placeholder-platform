@@ -39,6 +39,7 @@ describe('problem create page', () => {
       memoryLimitKb: 262144,
       visibility: 'draft',
       statementMarkdown: '# Collapse Identical Digits\n\nProblem statement not written yet.\n',
+      examples: [],
       starterCode:
         'def collapse(number: int) -> int:\n    """\n    Write your solution here.\n    """\n    pass\n',
       updatedAt: '2026-03-10T00:00:00Z'
@@ -94,5 +95,59 @@ describe('problem create page', () => {
         })
       })
     );
+  });
+
+  it('derives the entry function from the problem id by default', () => {
+    renderCreateFlow();
+
+    fireEvent.change(screen.getByLabelText('Problem ID'), {
+      target: { value: 'two-sum' }
+    });
+
+    expect((screen.getByLabelText('Entry Function') as HTMLInputElement).value).toBe('two_sum');
+  });
+
+  it('shows validation details returned by the admin api', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          detail: [
+            {
+              loc: ['body', 'problemId'],
+              msg: 'Value error, problemId is required.'
+            },
+            {
+              loc: ['body', 'entryFunction'],
+              msg: 'Value error, entryFunction is required.'
+            }
+          ]
+        }),
+        {
+          status: 422,
+          headers: { 'content-type': 'application/json' }
+        }
+      )
+    );
+
+    renderCreateFlow();
+
+    fireEvent.change(screen.getByLabelText('Problem ID'), {
+      target: { value: 'collapse' }
+    });
+    fireEvent.change(screen.getByLabelText('Title'), {
+      target: { value: 'Collapse Identical Digits' }
+    });
+    fireEvent.change(screen.getByLabelText('Entry Function'), {
+      target: { value: 'collapse' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          'problemId: problemId is required. entryFunction: entryFunction is required.'
+        )
+      ).toBeTruthy();
+    });
   });
 });
